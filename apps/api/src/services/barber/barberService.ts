@@ -1,0 +1,584 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+import type {
+  AppointmentFilterSchema,
+  CreateBarberProfileRequest,
+  CreateServiceRequest,
+  ScheduleEntry,
+  UpdateBarberProfileRequest,
+  UpdateServiceRequest,
+} from '@barber-saas/shared-types';
+import type { z } from 'zod';
+
+import { query, withTransaction, type DatabaseExecutor } from '../../db/queries/barber.queries';
+import { AppError } from '../../middleware/errorHandler';
+import { datesBetween, dayName, generateDaySlots, isoDayOfWeek } from '../../utils/slotGenerator';
+
+type Row = Record<string, unknown>;
+type AppointmentFilters = z.infer<typeof AppointmentFilterSchema>;
+
+const SERVICE_LIMITS: Record<string, number> = { FREE: 5, BASIC: 20, PREMIUM: Infinity };
+export const BARBER_ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
+  PENDING: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['IN_PROGRESS', 'CANCELLED', 'NO_SHOW'],
+  IN_PROGRESS: ['COMPLETED'],
+};
+
+const profileNotFound = () =>
+  new AppError(404, 'Barber profile does not exist. Create one first.', 'BARBER_PROFILE_NOT_FOUND');
+const serviceNotFound = () => new AppError(404, 'Service not found.', 'SERVICE_NOT_FOUND');
+
+const numberOrNull = (value: unknown): number | null => (value === null ? null : Number(value));
+const time = (value: unknown): string => String(value).slice(0, 5);
+const date = (value: unknown): string =>
+  value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
+
+const mapProfile = (row: Row) => ({
+  id: row.id,
+  userId: row.user_id,
+  businessName: row.business_name,
+  bio: row.bio,
+  yearsOfExperience: row.years_of_experience,
+  averageRating: Number(row.average_rating),
+  totalReviews: row.total_reviews,
+  totalClients: row.total_clients,
+  profilePhotoUrl: row.profile_photo_url,
+  address: row.address,
+  city: row.city,
+  state: row.state,
+  zipCode: row.zip_code,
+  latitude: numberOrNull(row.latitude),
+  longitude: numberOrNull(row.longitude),
+  subscriptionTier: row.subscription_tier,
+  isVerified: row.is_verified,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const mapService = (row: Row) => ({
+  id: row.id,
+  barberId: row.barber_id,
+  name: row.name,
+  description: row.description,
+  price: Number(row.price),
+  durationMinutes: row.duration_minutes,
+  category: row.category,
+  isActive: row.is_active,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+export const findBarberProfile = async (
+  userId: string,
+  executor?: DatabaseExecutor,
+): Promise<Row | null> => {
+  const rows = await query<Row>(
+    'SELECT * FROM barber_profiles WHERE user_id = $1',
+    [userId],
+    executor,
+  );
+  return rows[0] ?? null;
+};
+
+const requireProfile = async (userId: string, executor?: DatabaseExecutor): Promise<Row> => {
+  const profile = await findBarberProfile(userId, executor);
+  if (profile === null) throw profileNotFound();
+  return profile;
+};
+
+export const getMyProfile = async (userId: string) => mapProfile(await requireProfile(userId));
+
+export const createProfile = async (userId: string, input: CreateBarberProfileRequest) => {
+  if ((await findBarberProfile(userId)) !== null) {
+    throw new AppError(
+      409,
+      'Barber profile already exists. Use PATCH to update.',
+      'PROFILE_ALREADY_EXISTS',
+    );
+  }
+  const fields = {
+    business_name: input.businessName,
+    bio: input.bio ?? null,
+    years_of_experience: input.yearsOfExperience ?? null,
+    address: input.address ?? null,
+    city: input.city ?? null,
+    state: input.state ?? null,
+    zip_code: input.zipCode ?? null,
+    latitude: input.latitude ?? null,
+    longitude: input.longitude ?? null,
+  };
+  const rows = await query<Row>(
+    `INSERT INTO barber_profiles
+      (user_id, business_name, bio, years_of_experience, address, city, state, zip_code, latitude, longitude)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+    [userId, ...Object.values(fields)],
+  );
+  return mapProfile(rows[0] as Row);
+};
+
+export const updateProfile = async (userId: string, input: UpdateBarberProfileRequest) => {
+  const profile = await requireProfile(userId);
+  const columns: Record<string, unknown> = {
+    businessName: ['business_name', input.businessName],
+    bio: ['bio', input.bio],
+    yearsOfExperience: ['years_of_experience', input.yearsOfExperience],
+    address: ['address', input.address],
+    city: ['city', input.city],
+    state: ['state', input.state],
+    zipCode: ['zip_code', input.zipCode],
+    latitude: ['latitude', input.latitude],
+    longitude: ['longitude', input.longitude],
+  };
+  const entries = Object.entries(columns).filter(([key]) => Object.hasOwn(input, key)) as Array<
+    [string, [string, unknown]]
+  >;
+  const values = entries.map(([, [, value]]) => value);
+  const sets = entries.map(([, [column]], index) => `${column} = $${index + 1}`);
+  values.push(profile.id);
+  const rows = await query<Row>(
+    `UPDATE barber_profiles SET ${sets.join(', ')} WHERE id = $${values.length} RETURNING *`,
+    values,
+  );
+  return mapProfile(rows[0] as Row);
+};
+
+export const updatePhoto = async (userId: string, photoUrl: string) => {
+  const profile = await requireProfile(userId);
+  await query('UPDATE barber_profiles SET profile_photo_url = $1 WHERE id = $2', [
+    photoUrl,
+    profile.id,
+  ]);
+  return { profilePhotoUrl: photoUrl, message: 'Profile photo updated.' };
+};
+
+export const createOffering = async (userId: string, input: CreateServiceRequest) => {
+  const profile = await requireProfile(userId);
+  const count = await query<Row>(
+    'SELECT COUNT(*)::int AS count FROM services WHERE barber_id = $1 AND is_active = true',
+    [profile.id],
+  );
+  const tier = String(profile.subscription_tier);
+  if (Number(count[0]?.count) >= (SERVICE_LIMITS[tier] ?? 5)) {
+    throw new AppError(
+      403,
+      `${tier} tier service limit reached. Upgrade to add more.`,
+      'SERVICE_LIMIT_REACHED',
+    );
+  }
+  const rows = await query<Row>(
+    `INSERT INTO services (barber_id,name,description,price,duration_minutes,category)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    [
+      profile.id,
+      input.name,
+      input.description ?? null,
+      input.price,
+      input.durationMinutes,
+      input.category,
+    ],
+  );
+  return mapService(rows[0] as Row);
+};
+
+export const listOfferings = async (userId: string, active?: boolean, category?: string) => {
+  const profile = await requireProfile(userId);
+  const values: unknown[] = [profile.id];
+  const where = ['barber_id = $1'];
+  if (active !== undefined) {
+    values.push(active);
+    where.push(`is_active = $${values.length}`);
+  }
+  if (category !== undefined) {
+    values.push(category);
+    where.push(`category = $${values.length}`);
+  }
+  const rows = await query<Row>(
+    `SELECT * FROM services WHERE ${where.join(' AND ')} ORDER BY created_at DESC`,
+    values,
+  );
+  return { services: rows.map(mapService), total: rows.length };
+};
+
+const requireOffering = async (userId: string, serviceId: string): Promise<Row> => {
+  const profile = await requireProfile(userId);
+  const rows = await query<Row>('SELECT * FROM services WHERE id = $1 AND barber_id = $2', [
+    serviceId,
+    profile.id,
+  ]);
+  if (rows[0] === undefined) throw serviceNotFound();
+  return rows[0];
+};
+
+export const getOffering = async (userId: string, serviceId: string) =>
+  mapService(await requireOffering(userId, serviceId));
+
+export const updateOffering = async (
+  userId: string,
+  serviceId: string,
+  input: UpdateServiceRequest,
+) => {
+  await requireOffering(userId, serviceId);
+  const mapping: Record<string, string> = {
+    name: 'name',
+    description: 'description',
+    price: 'price',
+    durationMinutes: 'duration_minutes',
+    category: 'category',
+    isActive: 'is_active',
+  };
+  const entries = Object.entries(input);
+  const values = entries.map(([, value]) => value);
+  const sets = entries.map(([key], index) => `${mapping[key]} = $${index + 1}`);
+  values.push(serviceId);
+  const rows = await query<Row>(
+    `UPDATE services SET ${sets.join(', ')} WHERE id = $${values.length} RETURNING *`,
+    values,
+  );
+  return mapService(rows[0] as Row);
+};
+
+export const deactivateOffering = async (userId: string, serviceId: string) => {
+  await requireOffering(userId, serviceId);
+  await query('UPDATE services SET is_active = false WHERE id = $1', [serviceId]);
+  return { message: 'Service deactivated successfully.', serviceId };
+};
+
+const mapSchedule = (row: Row) => ({
+  id: row.id,
+  dayOfWeek: row.day_of_week,
+  dayName: dayName(Number(row.day_of_week)),
+  startTime: time(row.start_time),
+  endTime: time(row.end_time),
+  slotDurationMinutes: row.slot_duration_minutes,
+  isActive: row.is_active,
+});
+
+export const getSchedule = async (userId: string) => {
+  const profile = await requireProfile(userId);
+  const rows = await query<Row>(
+    'SELECT * FROM barber_schedules WHERE barber_id = $1 ORDER BY day_of_week',
+    [profile.id],
+  );
+  return { schedule: rows.map(mapSchedule) };
+};
+
+export const setSchedule = async (userId: string, schedule: ScheduleEntry[]) =>
+  withTransaction(async (client) => {
+    const profile = await requireProfile(userId, client);
+    const days = schedule.map(({ dayOfWeek }) => dayOfWeek);
+    await client.query(
+      'DELETE FROM barber_schedules WHERE barber_id = $1 AND NOT (day_of_week = ANY($2::int[]))',
+      [profile.id, days],
+    );
+    for (const entry of schedule) {
+      await client.query(
+        `INSERT INTO barber_schedules
+          (barber_id,day_of_week,start_time,end_time,slot_duration_minutes,is_active)
+         VALUES ($1,$2,$3,$4,$5,$6)
+         ON CONFLICT (barber_id,day_of_week) DO UPDATE SET
+          start_time=EXCLUDED.start_time,end_time=EXCLUDED.end_time,
+          slot_duration_minutes=EXCLUDED.slot_duration_minutes,is_active=EXCLUDED.is_active`,
+        [
+          profile.id,
+          entry.dayOfWeek,
+          entry.startTime,
+          entry.endTime,
+          entry.slotDurationMinutes,
+          entry.isActive,
+        ],
+      );
+    }
+    const rows = await query<Row>(
+      'SELECT * FROM barber_schedules WHERE barber_id = $1 ORDER BY day_of_week',
+      [profile.id],
+      client,
+    );
+    return { message: 'Schedule updated successfully.', schedule: rows.map(mapSchedule) };
+  });
+
+const generateForProfile = async (
+  profileId: unknown,
+  startDate: string,
+  endDate: string,
+  executor?: DatabaseExecutor,
+) => {
+  const schedules = await query<Row>(
+    'SELECT * FROM barber_schedules WHERE barber_id = $1 AND is_active = true',
+    [profileId],
+    executor,
+  );
+  const blocked = await query<Row>(
+    'SELECT blocked_date FROM barber_blocked_dates WHERE barber_id = $1 AND blocked_date BETWEEN $2 AND $3',
+    [profileId, startDate, endDate],
+    executor,
+  );
+  const blockedDates = new Set(blocked.map((row) => date(row.blocked_date)));
+  let generated = 0;
+  let skipped = 0;
+  for (const slotDate of datesBetween(startDate, endDate)) {
+    const schedule = schedules.find((row) => Number(row.day_of_week) === isoDayOfWeek(slotDate));
+    if (schedule === undefined || blockedDates.has(slotDate)) continue;
+    for (const slot of generateDaySlots(
+      time(schedule.start_time),
+      time(schedule.end_time),
+      Number(schedule.slot_duration_minutes),
+    )) {
+      const rows = await query<Row>(
+        `INSERT INTO availability_slots
+          (barber_id,slot_date,start_time,end_time,duration_minutes,status)
+         VALUES ($1,$2,$3,$4,$5,'AVAILABLE')
+         ON CONFLICT (barber_id,slot_date,start_time) DO NOTHING RETURNING id`,
+        [profileId, slotDate, slot.startTime, slot.endTime, schedule.slot_duration_minutes],
+        executor,
+      );
+      rows.length === 1 ? generated++ : skipped++;
+    }
+  }
+  return { generated, skipped };
+};
+
+export const generateSlots = async (userId: string, startDate: string, endDate: string) => {
+  const profile = await requireProfile(userId);
+  const result = await generateForProfile(profile.id, startDate, endDate);
+  return {
+    message: 'Slots generated successfully.',
+    ...result,
+    dateRange: { start: startDate, end: endDate },
+  };
+};
+
+const mapPrivateSlot = (row: Row) => ({
+  id: row.id,
+  date: date(row.slot_date),
+  dayName: dayName(isoDayOfWeek(date(row.slot_date))),
+  startTime: time(row.start_time),
+  endTime: time(row.end_time),
+  status: row.status,
+});
+
+export const listSlots = async (userId: string, startDate: string, endDate: string) => {
+  const profile = await requireProfile(userId);
+  const rows = await query<Row>(
+    `SELECT * FROM availability_slots
+     WHERE barber_id = $1 AND slot_date BETWEEN $2 AND $3
+     ORDER BY slot_date,start_time`,
+    [profile.id, startDate, endDate],
+  );
+  const count = (status: string) => rows.filter((row) => row.status === status).length;
+  return {
+    slots: rows.map(mapPrivateSlot),
+    summary: {
+      totalSlots: rows.length,
+      available: count('AVAILABLE'),
+      booked: count('BOOKED'),
+      blocked: count('BLOCKED'),
+    },
+  };
+};
+
+export const blockDate = async (userId: string, blockedDate: string, reason?: string) =>
+  withTransaction(async (client) => {
+    const profile = await requireProfile(userId, client);
+    const result = await query<Row>(
+      `INSERT INTO barber_blocked_dates (barber_id,blocked_date,reason)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (barber_id,blocked_date) DO UPDATE SET reason=EXCLUDED.reason RETURNING *`,
+      [profile.id, blockedDate, reason ?? null],
+      client,
+    );
+    await client.query(
+      `UPDATE availability_slots SET status='BLOCKED'
+       WHERE barber_id=$1 AND slot_date=$2 AND status='AVAILABLE'`,
+      [profile.id, blockedDate],
+    );
+    return {
+      id: result[0]?.id,
+      date: blockedDate,
+      reason: result[0]?.reason,
+      message: 'Date blocked. Existing available slots for this date were blocked.',
+    };
+  });
+
+export const unblockDate = async (userId: string, blockedDate: string) =>
+  withTransaction(async (client) => {
+    const profile = await requireProfile(userId, client);
+    const deleted = await query<Row>(
+      'DELETE FROM barber_blocked_dates WHERE barber_id=$1 AND blocked_date=$2 RETURNING id',
+      [profile.id, blockedDate],
+      client,
+    );
+    if (deleted.length === 0)
+      throw new AppError(404, 'Blocked date not found.', 'BLOCKED_DATE_NOT_FOUND');
+    await client.query(
+      `UPDATE availability_slots SET status='AVAILABLE'
+       WHERE barber_id=$1 AND slot_date=$2 AND status='BLOCKED'`,
+      [profile.id, blockedDate],
+    );
+    await generateForProfile(profile.id, blockedDate, blockedDate, client);
+    return { message: 'Date unblocked.', date: blockedDate };
+  });
+
+export const listAppointments = async (userId: string, filters: AppointmentFilters) => {
+  const profile = await requireProfile(userId);
+  const values: unknown[] = [profile.id];
+  const where = ['a.barber_id=$1'];
+  if (filters.status !== undefined) {
+    values.push(filters.status);
+    where.push(`a.status=$${values.length}`);
+  }
+  if (filters.date !== undefined) {
+    values.push(filters.date);
+    where.push(`a.scheduled_at::date=$${values.length}`);
+  } else if (filters.startDate !== undefined && filters.endDate !== undefined) {
+    values.push(filters.startDate, filters.endDate);
+    where.push(`a.scheduled_at::date BETWEEN $${values.length - 1} AND $${values.length}`);
+  }
+  const countRows = await query<Row>(
+    `SELECT COUNT(*)::int AS total FROM appointments a WHERE ${where.join(' AND ')}`,
+    values,
+  );
+  values.push(filters.limit, (filters.page - 1) * filters.limit);
+  const rows = await query<Row>(
+    `SELECT a.*,s.name AS service_name,u.first_name,u.last_name,u.phone
+     FROM appointments a JOIN services s ON s.id=a.service_id JOIN users u ON u.id=a.client_id
+     WHERE ${where.join(' AND ')} ORDER BY a.scheduled_at DESC
+     LIMIT $${values.length - 1} OFFSET $${values.length}`,
+    values,
+  );
+  const total = Number(countRows[0]?.total ?? 0);
+  return {
+    appointments: rows.map((row) => ({
+      id: row.id,
+      scheduledAt: row.scheduled_at,
+      durationMinutes: row.duration_minutes,
+      status: row.status,
+      paymentStatus: row.payment_status,
+      priceQuoted: Number(row.price_quoted),
+      service: { id: row.service_id, name: row.service_name },
+      client: {
+        id: row.client_id,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        phone: row.phone,
+      },
+      clientNotes: row.client_notes,
+      barberNotes: row.barber_notes,
+    })),
+    pagination: {
+      page: filters.page,
+      limit: filters.limit,
+      total,
+      totalPages: Math.ceil(total / filters.limit),
+    },
+  };
+};
+
+export const updateAppointmentStatus = async (
+  userId: string,
+  appointmentId: string,
+  nextStatus: string,
+  notes?: string,
+) =>
+  withTransaction(async (client) => {
+    const profile = await requireProfile(userId, client);
+    const rows = await query<Row>(
+      'SELECT * FROM appointments WHERE id=$1 AND barber_id=$2 FOR UPDATE',
+      [appointmentId, profile.id],
+      client,
+    );
+    const appointment = rows[0];
+    if (appointment === undefined)
+      throw new AppError(404, 'Appointment not found.', 'APPOINTMENT_NOT_FOUND');
+    const current = String(appointment.status);
+    if (!(BARBER_ALLOWED_TRANSITIONS[current] ?? []).includes(nextStatus)) {
+      throw new AppError(
+        400,
+        `Cannot transition from ${current} to ${nextStatus}.`,
+        'INVALID_STATUS_TRANSITION',
+      );
+    }
+    const timestampColumn =
+      nextStatus === 'CONFIRMED'
+        ? 'confirmed_at'
+        : nextStatus === 'COMPLETED'
+          ? 'completed_at'
+          : nextStatus === 'CANCELLED'
+            ? 'cancelled_at'
+            : null;
+    const values: unknown[] = [nextStatus, notes ?? appointment.barber_notes, appointmentId];
+    const timestampSet = timestampColumn === null ? '' : `, ${timestampColumn}=CURRENT_TIMESTAMP`;
+    const updated = await query<Row>(
+      `UPDATE appointments SET status=$1,barber_notes=$2${timestampSet} WHERE id=$3 RETURNING *`,
+      values,
+      client,
+    );
+    if (nextStatus === 'CANCELLED' && appointment.availability_slot_id !== null) {
+      await client.query(
+        `UPDATE availability_slots SET status='AVAILABLE',appointment_id=NULL WHERE id=$1`,
+        [appointment.availability_slot_id],
+      );
+    }
+    return {
+      id: updated[0]?.id,
+      status: updated[0]?.status,
+      updatedAt: updated[0]?.updated_at,
+    };
+  });
+
+export const getPublicProfile = async (barberId: string) => {
+  const rows = await query<Row>('SELECT * FROM barber_profiles WHERE id=$1', [barberId]);
+  const row = rows[0];
+  if (row === undefined) throw profileNotFound();
+  return {
+    id: row.id,
+    businessName: row.business_name,
+    bio: row.bio,
+    yearsOfExperience: row.years_of_experience,
+    averageRating: Number(row.average_rating),
+    totalReviews: row.total_reviews,
+    profilePhotoUrl: row.profile_photo_url,
+    city: row.city,
+    state: row.state,
+    subscriptionTier: row.subscription_tier,
+    isVerified: row.is_verified,
+  };
+};
+
+export const getPublicOfferings = async (barberId: string) => {
+  await getPublicProfile(barberId);
+  const rows = await query<Row>(
+    'SELECT * FROM services WHERE barber_id=$1 AND is_active=true ORDER BY name',
+    [barberId],
+  );
+  return {
+    services: rows.map((row) => {
+      const service = mapService(row);
+      return {
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        price: service.price,
+        durationMinutes: service.durationMinutes,
+        category: service.category,
+      };
+    }),
+  };
+};
+
+export const getPublicSlots = async (barberId: string, startDate: string, endDate: string) => {
+  await getPublicProfile(barberId);
+  const rows = await query<Row>(
+    `SELECT * FROM availability_slots
+     WHERE barber_id=$1 AND slot_date BETWEEN $2 AND $3 AND status IN ('AVAILABLE','BOOKED')
+     ORDER BY slot_date,start_time`,
+    [barberId, startDate, endDate],
+  );
+  return {
+    slots: rows.map((row) => ({
+      id: row.id,
+      date: date(row.slot_date),
+      startTime: time(row.start_time),
+      endTime: time(row.end_time),
+      isAvailable: row.status === 'AVAILABLE',
+    })),
+  };
+};

@@ -1,0 +1,32 @@
+{
+  "name": "barber-saas",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Production-ready technical foundation for a barber operations and client booking SaaS.",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @barber-saas/api dev",
+    "build": "pnpm -r build",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "tsc": "pnpm -r typecheck",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "pnpm --filter @barber-saas/api db:migrate",
+    "db:rollback": "pnpm --filter @barber-saas/api db:rollback",
+    "db:seed": "pnpm --filter @barber-saas/api db:seed",
+    "db:connect": "psql ${DATABASE_URL:-postgresql://barber_user:barber_password@localhost:55433/barber_saas}"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4"
+  }
+}
