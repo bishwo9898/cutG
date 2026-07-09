@@ -12,7 +12,7 @@ The schema is normalized around identity, barber operations, booking inventory, 
 | `availability_slots` | Bookable time inventory for each barber.                                                |
 | `appointments`       | Client bookings and appointment lifecycle state.                                        |
 | `payments`           | Stripe-oriented payment records using cents for money.                                  |
-| `subscriptions`      | Barber SaaS subscription status and feature flags.                                      |
+| `subscriptions`      | cutG subscription status and feature flags.                                             |
 | `reviews`            | One verified review per completed appointment.                                          |
 | `notifications`      | Durable queue for in-app, email, SMS, and push notifications.                           |
 

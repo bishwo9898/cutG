@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: barber_saas_test
+          POSTGRES_USER: barber_test
+          POSTGRES_PASSWORD: barber_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U barber_test -d barber_saas_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgresql://barber_test:barber_test_password@localhost:5432/barber_saas_test
+      JWT_SECRET: ci_only_secret_that_is_long_enough_for_validation
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:api
+      - run: pnpm --filter @barber-saas/web test
+      - run: pnpm build

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { PasswordSchema } from './auth';
 import { AppointmentStatusEnum, PaymentStatusEnum, UserTypeEnum } from './enums';
 
 export const ApiErrorResponseSchema = z.object({
@@ -23,7 +24,7 @@ export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
 export const CreateUserRequestSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(12),
+  password: PasswordSchema,
   phone: z.string().min(7).max(20).optional(),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
@@ -44,10 +45,10 @@ export const AppointmentResponseSchema = z.object({
   clientId: z.string().uuid(),
   barberId: z.string().uuid(),
   serviceId: z.string().uuid(),
-  scheduledAt: z.date(),
+  scheduledAt: z.string().datetime(),
   status: AppointmentStatusEnum,
   paymentStatus: PaymentStatusEnum,
   priceQuoted: z.number(),
-  createdAt: z.date(),
+  createdAt: z.string().datetime(),
 });
 export type AppointmentResponse = z.infer<typeof AppointmentResponseSchema>;

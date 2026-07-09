@@ -6,6 +6,7 @@ import type {
   ForgotPasswordRequest,
   LoginRequest,
   LoginResponse,
+  ResendVerificationRequest,
   RegisterRequest,
   ResetPasswordRequest,
   UpdateProfileRequest,
@@ -23,6 +24,7 @@ import {
   createUser,
   findPublicUserById,
   findUserByEmail,
+  invalidateEmailVerificationTokens,
   markEmailVerified,
   updatePasswordHash,
 } from '../../db/queries/auth.queries';
@@ -174,6 +176,32 @@ export const verifyEmail = async (input: VerifyEmailRequest): Promise<VerifyEmai
   });
 };
 
+export const resendVerification = async (
+  input: ResendVerificationRequest,
+): Promise<MessageResult> => {
+  const user = await findUserByEmail(normalizeEmail(input.email));
+
+  if (user !== null && user.is_active && !user.email_verified) {
+    const verificationCode = generateVerificationCode();
+    const verificationExpiresAt = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
+
+    await withTransaction(async (client) => {
+      await invalidateEmailVerificationTokens(user.id, client);
+      await createEmailVerificationToken(user.id, verificationCode, verificationExpiresAt, client);
+    });
+
+    await sendVerificationEmail({
+      email: user.email,
+      code: verificationCode,
+      expiresAt: verificationExpiresAt,
+    });
+  }
+
+  return {
+    message: 'If the account needs verification, a new code has been sent.',
+  };
+};
+
 export const loginUser = async (input: LoginRequest): Promise<LoginResponse> => {
   const user = await findUserByEmail(normalizeEmail(input.email));
 
@@ -185,6 +213,10 @@ export const loginUser = async (input: LoginRequest): Promise<LoginResponse> => 
 
   if (!passwordMatches) {
     throw new AppError(401, 'Email or password is incorrect.', 'INVALID_CREDENTIALS');
+  }
+
+  if (!user.email_verified) {
+    throw new AppError(403, 'Verify your email before signing in.', 'EMAIL_NOT_VERIFIED');
   }
 
   const tokenPair = createTokenPair({

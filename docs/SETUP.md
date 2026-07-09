@@ -2,44 +2,59 @@
 
 ## Prerequisites
 
-- Node.js 18 or newer
-- pnpm 8 or newer
+- Node.js 20.9 or newer
+- pnpm 9 or newer
 - Docker Desktop or compatible Docker engine
 - PostgreSQL CLI tools if you want to use `pnpm db:connect`
 
 ## Local Environment
 
+The standard first-time setup is:
+
+```bash
+make setup
+make dev
+```
+
+`make setup` is repeatable and does not overwrite an existing `.env`. It installs dependencies, starts PostgreSQL and Redis, waits for PostgreSQL, then runs migrations and seed data.
+
+Open the applications:
+
+- Frontend: [http://localhost:3000](http://localhost:3000)
+- API: [http://localhost:4000](http://localhost:4000)
+- API health: [http://localhost:4000/health](http://localhost:4000/health)
+
+Useful Make commands:
+
+```bash
+make help
+make status
+make logs
+make restart
+make down
+make test
+```
+
+`make reset` deletes all local PostgreSQL and Redis data and asks for confirmation before continuing.
+
+### Setup Without Make
+
+The equivalent direct commands are:
+
 ```bash
 pnpm install
-cp .env.example .env
-docker compose up -d
-```
-
-If `.env` already exists, do not overwrite it unless you intentionally want to reset local ports and secrets.
-
-Verify containers:
-
-```bash
-docker compose ps
-```
-
-Run database setup:
-
-```bash
+test -f .env || cp .env.example .env
+docker compose up -d postgres redis
 pnpm db:migrate
 pnpm db:seed
-```
-
-Start the API:
-
-```bash
 pnpm dev
 ```
 
-Check health:
+Verify the containers and API:
 
 ```bash
-curl http://localhost:3000/health
+docker compose ps
+curl http://localhost:4000/health
 ```
 
 ## Database Access
@@ -61,6 +76,8 @@ SELECT status, COUNT(*) FROM appointments GROUP BY status;
 - If port `55433` is already in use, set `POSTGRES_HOST_PORT` to another free port and update `DATABASE_URL` to match it.
 - This project defaults Redis to host port `6380` because local Redis commonly uses `6379`.
 - If Redis port `6380` is already in use, set `REDIS_HOST_PORT` to another free port.
-- If `pnpm dev` fails with `EADDRINUSE` on port `3000`, another API server is already running. Stop that terminal with `Ctrl+C` or change `PORT` in `.env`.
+- The web application uses port `3000`; the API uses port `4000`.
+- If `pnpm dev` fails with `EADDRINUSE`, inspect the port with `lsof -nP -iTCP:3000 -sTCP:LISTEN` or `lsof -nP -iTCP:4000 -sTCP:LISTEN`, then stop the stale process.
+- If Docker reports a port conflict, update the corresponding host port in `.env`; keep `DATABASE_URL` synchronized with `POSTGRES_HOST_PORT`.
 - If migrations fail because extensions cannot be created, verify the connected user owns the local database.
 - If `pnpm db:seed` fails, rerun it after `pnpm db:migrate`; the seed is designed to clear existing sample rows first.

@@ -2,6 +2,11 @@ import { z } from 'zod';
 
 import { UserTypeEnum } from './enums';
 
+export const PasswordSchema = z
+  .string()
+  .min(12, 'Password must contain at least 12 characters.')
+  .max(72, 'Password must contain at most 72 characters.');
+
 const PhoneSchema = z
   .string()
   .trim()
@@ -9,10 +14,10 @@ const PhoneSchema = z
 
 export const RegisterRequestSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: PasswordSchema,
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
-  userType: UserTypeEnum,
+  userType: z.enum(['CLIENT', 'BARBER']),
 });
 export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
 
@@ -27,6 +32,11 @@ export const VerifyEmailRequestSchema = z.object({
   verificationCode: z.string().length(6),
 });
 export type VerifyEmailRequest = z.infer<typeof VerifyEmailRequestSchema>;
+
+export const ResendVerificationRequestSchema = z.object({
+  email: z.string().email(),
+});
+export type ResendVerificationRequest = z.infer<typeof ResendVerificationRequestSchema>;
 
 export const RefreshTokenRequestSchema = z.object({
   refreshToken: z.string().min(1),
@@ -52,7 +62,7 @@ export type ForgotPasswordRequest = z.infer<typeof ForgotPasswordRequestSchema>;
 export const ResetPasswordRequestSchema = z.object({
   email: z.string().email(),
   resetCode: z.string().min(1),
-  newPassword: z.string().min(8),
+  newPassword: PasswordSchema,
 });
 export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequestSchema>;
 
@@ -77,7 +87,7 @@ export type LoginResponse = z.infer<typeof LoginResponseSchema>;
 export const AuthUserSchema = AuthUserSummarySchema.extend({
   phone: z.string().nullable(),
   isActive: z.boolean(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
 });
 export type AuthUser = z.infer<typeof AuthUserSchema>;

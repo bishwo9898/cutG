@@ -3,6 +3,7 @@ import {
   LoginRequestSchema,
   RefreshTokenRequestSchema,
   RegisterRequestSchema,
+  ResendVerificationRequestSchema,
   ResetPasswordRequestSchema,
   UpdateProfileRequestSchema,
   VerifyEmailRequestSchema,
@@ -17,6 +18,7 @@ import {
 } from 'express';
 
 import { requireAuth } from '../middleware/auth';
+import { authRateLimiter } from '../middleware/rateLimit';
 import {
   forgotPassword,
   getProfile,
@@ -24,6 +26,7 @@ import {
   logoutUser,
   refreshAccessToken,
   registerUser,
+  resendVerification,
   resetPassword,
   updateProfile,
   verifyEmail,
@@ -42,6 +45,7 @@ const asyncHandler = (
 
 authRouter.post(
   '/register',
+  authRateLimiter,
   asyncHandler(async (request, response): Promise<void> => {
     const body = RegisterRequestSchema.parse(request.body);
     const result = await registerUser(body);
@@ -52,6 +56,7 @@ authRouter.post(
 
 authRouter.post(
   '/verify-email',
+  authRateLimiter,
   asyncHandler(async (request, response): Promise<void> => {
     const body = VerifyEmailRequestSchema.parse(request.body);
     const result = await verifyEmail(body);
@@ -61,7 +66,19 @@ authRouter.post(
 );
 
 authRouter.post(
+  '/resend-verification',
+  authRateLimiter,
+  asyncHandler(async (request, response): Promise<void> => {
+    const body = ResendVerificationRequestSchema.parse(request.body);
+    const result = await resendVerification(body);
+
+    response.json(result);
+  }),
+);
+
+authRouter.post(
   '/login',
+  authRateLimiter,
   asyncHandler(async (request, response): Promise<void> => {
     const body = LoginRequestSchema.parse(request.body);
     const result = await loginUser(body);
@@ -116,6 +133,7 @@ authRouter.patch(
 
 authRouter.post(
   '/forgot-password',
+  authRateLimiter,
   asyncHandler(async (request, response): Promise<void> => {
     const body = ForgotPasswordRequestSchema.parse(request.body);
     const result = await forgotPassword(body);
@@ -126,6 +144,7 @@ authRouter.post(
 
 authRouter.post(
   '/reset-password',
+  authRateLimiter,
   asyncHandler(async (request, response): Promise<void> => {
     const body = ResetPasswordRequestSchema.parse(request.body);
     const result = await resetPassword(body);

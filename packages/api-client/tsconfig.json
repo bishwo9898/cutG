@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "outDir": "dist",
+    "rootDir": "src",
+    "baseUrl": "../..",
+    "paths": {
+      "@barber-saas/shared-types": ["packages/shared-types/dist"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

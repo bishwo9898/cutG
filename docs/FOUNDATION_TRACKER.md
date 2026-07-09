@@ -6,7 +6,7 @@ This document tracks what has been built so far from the Phase 0 foundation plan
 
 ## Current Status
 
-Phase 0 foundation, Phase 1 authentication, and Phase 2 barber management APIs are implemented. The repository is a pnpm monorepo for a barber operations and client booking SaaS with an Express API, PostgreSQL schema, seed data, JWT authentication, shared TypeScript/Zod packages, Docker local services, and onboarding documentation.
+Phase 0 foundation, Phase 1 authentication, Phase 2 barber management APIs, and the initial cutG barber web dashboard are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
 
 Verified commands:
 
@@ -22,15 +22,15 @@ pnpm db:seed
 Verified live endpoints:
 
 ```bash
-curl http://localhost:3000/
-curl http://localhost:3000/health
+curl http://localhost:4000/
+curl http://localhost:4000/health
 ```
 
 Current API root response:
 
 ```json
 {
-  "name": "Barber SaaS API",
+  "name": "cutG API",
   "version": "v1",
   "status": "ok",
   "links": {
@@ -170,7 +170,7 @@ The initial schema includes 9 production-oriented tables:
 | `availability_slots` | Barber time inventory for future booking flows.                  |
 | `appointments`       | Client bookings and appointment lifecycle state.                 |
 | `payments`           | Stripe-ready payment record storage.                             |
-| `subscriptions`      | Barber SaaS subscription management.                             |
+| `subscriptions`      | cutG subscription management.                                    |
 | `reviews`            | Client feedback tied to completed appointments.                  |
 | `notifications`      | Durable notification queue for email/SMS/push/in-app later.      |
 
@@ -227,16 +227,18 @@ Location: `apps/web`
 
 Current state:
 
-- Workspace package exists.
-- TypeScript config exists.
-- Placeholder source file exists at `apps/web/src/index.ts`.
-- Build and typecheck scripts exist.
-
-Important: this is not a real Next.js frontend yet. It is a placeholder workspace reserved for the frontend phase. No pages, routes, components, styles, auth screens, dashboard, booking UI, or client marketplace UI have been built yet.
+- Next.js 16 App Router with TypeScript and Tailwind CSS
+- HTTP-only cookie authentication through Next.js route handlers
+- Barber registration, verification, login, and password recovery
+- Responsive protected dashboard shell
+- Profile, services, availability, appointments, and public-preview screens
+- TanStack Query server state and React Hook Form validation
+- Shared transport-independent API client package
 
 Current scripts:
 
 ```bash
+pnpm --filter @barber-saas/web dev
 pnpm --filter @barber-saas/web typecheck
 pnpm --filter @barber-saas/web build
 ```
@@ -395,7 +397,7 @@ DATABASE_POOL_MIN=2
 DATABASE_POOL_MAX=10
 REDIS_HOST_PORT=6380
 WEB_APP_URL=http://localhost:3000
-MOBILE_APP_URL=barber-saas://
+MOBILE_APP_URL=cutg://
 ENABLE_ANALYTICS=false
 ENABLE_AI_FEATURES=false
 ```
@@ -420,7 +422,7 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PUBLIC_KEY=pk_test_...
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
-AWS_S3_BUCKET=barber-saas-dev
+AWS_S3_BUCKET=cutg-dev
 SENDGRID_API_KEY=
 ```
 
@@ -477,12 +479,10 @@ The foundation and initial authentication backend are ready for continued implem
 - The API root now advertises both `/auth` and `/health`.
 - `GET /health` is database-aware; if it returns `database.status = "error"`, check `DATABASE_URL`, Docker health, and port conflicts first.
 - `pnpm dev` starts only the API at present; it does not start a browser frontend.
-- A previous `EADDRINUSE` on port `3000` was caused by an older `tsx watch src/index.ts` process from this same project, not another application. Find future listeners with `lsof -nP -iTCP:3000 -sTCP:LISTEN`, inspect the PID, and stop only the confirmed stale watcher before restarting `pnpm dev`.
-- Do not launch `pnpm dev` twice in separate terminals. The second API watcher will fail because the first one already owns port `3000`.
 - Stop the active watcher with `Ctrl+C` when finished so it does not remain alive between development sessions.
 - The root git status may show unrelated files outside this project because the broader parent directory appears to be under a larger git context. Keep project work scoped to `/Users/bishwobirajdallakoti/Desktop/cutg`.
 
-## Our Endpoints so far!
+## Our Endpoints so far
 
 GET / → API root
 GET /health → Database-aware health check

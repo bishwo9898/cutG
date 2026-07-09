@@ -3,7 +3,8 @@
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
+    "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -19,7 +20,9 @@
     "baseUrl": ".",
     "paths": {
       "@barber-saas/shared-types": ["packages/shared-types/src"],
-      "@barber-saas/shared-utils": ["packages/shared-utils/src"]
+      "@barber-saas/shared-utils": ["packages/shared-utils/src"],
+      "@barber-saas/api-client": ["packages/api-client/src"],
+      "@/*": ["apps/web/src/*"]
     }
   },
   "exclude": ["node_modules", "dist"]

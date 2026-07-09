@@ -17,6 +17,24 @@ services:
     networks:
       - barber-network
 
+  postgres-test:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: barber_saas_test
+      POSTGRES_USER: barber_test
+      POSTGRES_PASSWORD: barber_test_password
+    ports:
+      - '${POSTGRES_TEST_HOST_PORT:-55434}:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U barber_test -d barber_saas_test']
+      interval: 2s
+      timeout: 5s
+      retries: 15
+    networks:
+      - barber-network
+
   redis:
     image: redis:7-alpine
     ports:

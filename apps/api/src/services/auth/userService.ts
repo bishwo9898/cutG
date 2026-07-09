@@ -25,8 +25,8 @@ export const toAuthUser = (user: PublicUserRecord): AuthUser => {
     ...toAuthUserSummary(user),
     phone: user.phone,
     isActive: user.is_active,
-    createdAt: user.created_at,
-    updatedAt: user.updated_at,
+    createdAt: user.created_at.toISOString(),
+    updatedAt: user.updated_at.toISOString(),
   };
 };
 

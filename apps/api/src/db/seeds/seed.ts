@@ -267,7 +267,7 @@ const buildClients = (): ClientSeed[] => {
     email:
       index === 0
         ? 'client1@example.com'
-        : `${client.firstName}.${client.lastName}.${index}@clients.barbersaas.test`.toLowerCase(),
+        : `${client.firstName}.${client.lastName}.${index}@clients.cutg.test`.toLowerCase(),
     phone: `+15550002${String(index).padStart(3, '0')}`,
   }));
 };
@@ -450,7 +450,7 @@ export async function seed(knex: Knex): Promise<void> {
       city: barber.city,
       state: barber.state,
       zip_code: barber.zipCode,
-      profile_photo_url: `https://images.barbersaas.test/${barber.profileId}.jpg`,
+      profile_photo_url: `https://images.cutg.test/${barber.profileId}.jpg`,
       profile_photo_key: `barbers/${barber.profileId}/profile.jpg`,
       subscription_tier: barber.tier,
       subscription_valid_until: addDays(new Date(), 30),

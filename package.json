@@ -1,20 +1,25 @@
 {
-  "name": "barber-saas",
+  "name": "cutg",
   "version": "0.1.0",
   "private": true,
-  "description": "Production-ready technical foundation for a barber operations and client booking SaaS.",
+  "description": "Technical foundation for cutG, a barber operations and client booking platform.",
   "engines": {
-    "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
+    "node": ">=20.9.0",
+    "pnpm": ">=9.0.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @barber-saas/api dev",
+    "dev": "concurrently -n api,web -c blue,green \"pnpm dev:api\" \"pnpm dev:web\"",
+    "dev:api": "pnpm --filter @barber-saas/api dev",
+    "dev:web": "pnpm --filter @barber-saas/web dev",
     "build": "pnpm -r build",
-    "lint": "eslint . --ext .ts",
+    "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "tsc": "pnpm -r typecheck",
-    "typecheck": "pnpm -r typecheck",
+    "tsc": "pnpm typecheck",
+    "typecheck": "pnpm --filter @barber-saas/shared-types build && pnpm --filter @barber-saas/shared-utils build && pnpm -r typecheck",
+    "test": "pnpm test:api",
+    "test:api": "node scripts/test-api.mjs",
+    "test:api:local": "docker compose up -d postgres-test && pnpm test:api",
     "db:migrate": "pnpm --filter @barber-saas/api db:migrate",
     "db:rollback": "pnpm --filter @barber-saas/api db:rollback",
     "db:seed": "pnpm --filter @barber-saas/api db:seed",
@@ -25,7 +30,9 @@
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
+    "eslint-import-resolver-typescript": "^3.6.1",
     "eslint-plugin-import": "^2.29.1",
+    "concurrently": "^9.2.1",
     "prettier": "^3.3.3",
     "typescript": "^5.5.4"
   }

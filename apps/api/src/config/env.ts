@@ -23,7 +23,7 @@ const EnvSchema = z.object({
   JWT_EXPIRY: z.string().min(1).default('24h'),
   JWT_REFRESH_EXPIRY: z.string().min(1).default('30d'),
   WEB_APP_URL: z.string().url().default('http://localhost:3000'),
-  MOBILE_APP_URL: z.string().default('barber-saas://'),
+  MOBILE_APP_URL: z.string().default('cutg://'),
   ENABLE_ANALYTICS: z.coerce.boolean().default(false),
   ENABLE_AI_FEATURES: z.coerce.boolean().default(false),
 });

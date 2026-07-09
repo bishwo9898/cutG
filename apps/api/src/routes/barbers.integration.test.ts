@@ -3,6 +3,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { app } from '../app';
 import { closeDatabase } from '../config/database';
+import {
+  createBarberProfileFixture,
+  createVerifiedUser,
+  resetTestDatabase,
+} from '../test/fixtures';
 
 let barberToken = '';
 let clientToken = '';
@@ -12,12 +17,17 @@ type ProfileBody = { id: string; businessName: string };
 type GenerateBody = { generated: number };
 
 beforeAll(async () => {
+  await resetTestDatabase();
+  const barber = await createVerifiedUser('BARBER', 'barber.integration@example.com');
+  await createBarberProfileFixture(barber.id);
+  await createVerifiedUser('CLIENT', 'client.integration@example.com');
+
   const barberLogin = await request(app)
     .post('/auth/login')
-    .send({ email: 'barber1@example.com', password: 'password123' });
+    .send({ email: 'barber.integration@example.com', password: 'strong-password-123' });
   const clientLogin = await request(app)
     .post('/auth/login')
-    .send({ email: 'client1@example.com', password: 'password123' });
+    .send({ email: 'client.integration@example.com', password: 'strong-password-123' });
   barberToken = (barberLogin.body as LoginBody).accessToken;
   clientToken = (clientLogin.body as LoginBody).accessToken;
 });

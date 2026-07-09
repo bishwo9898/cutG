@@ -31,6 +31,8 @@ const numberOrNull = (value: unknown): number | null => (value === null ? null :
 const time = (value: unknown): string => String(value).slice(0, 5);
 const date = (value: unknown): string =>
   value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
+const dateTime = (value: unknown): string =>
+  value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
 
 const mapProfile = (row: Row) => ({
   id: row.id,
@@ -50,8 +52,8 @@ const mapProfile = (row: Row) => ({
   longitude: numberOrNull(row.longitude),
   subscriptionTier: row.subscription_tier,
   isVerified: row.is_verified,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
+  createdAt: dateTime(row.created_at),
+  updatedAt: dateTime(row.updated_at),
 });
 
 const mapService = (row: Row) => ({
@@ -63,8 +65,8 @@ const mapService = (row: Row) => ({
   durationMinutes: row.duration_minutes,
   category: row.category,
   isActive: row.is_active,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
+  createdAt: dateTime(row.created_at),
+  updatedAt: dateTime(row.updated_at),
 });
 
 export const findBarberProfile = async (
@@ -398,6 +400,25 @@ export const blockDate = async (userId: string, blockedDate: string, reason?: st
     };
   });
 
+export const listBlockedDates = async (userId: string) => {
+  const profile = await requireProfile(userId);
+  const rows = await query<Row>(
+    `SELECT id, blocked_date, reason
+     FROM barber_blocked_dates
+     WHERE barber_id = $1 AND blocked_date >= CURRENT_DATE
+     ORDER BY blocked_date`,
+    [profile.id],
+  );
+
+  return {
+    blockedDates: rows.map((row) => ({
+      id: row.id,
+      date: date(row.blocked_date),
+      reason: row.reason,
+    })),
+  };
+};
+
 export const unblockDate = async (userId: string, blockedDate: string) =>
   withTransaction(async (client) => {
     const profile = await requireProfile(userId, client);
@@ -448,7 +469,7 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
   return {
     appointments: rows.map((row) => ({
       id: row.id,
-      scheduledAt: row.scheduled_at,
+      scheduledAt: dateTime(row.scheduled_at),
       durationMinutes: row.duration_minutes,
       status: row.status,
       paymentStatus: row.payment_status,
@@ -520,7 +541,7 @@ export const updateAppointmentStatus = async (
     return {
       id: updated[0]?.id,
       status: updated[0]?.status,
-      updatedAt: updated[0]?.updated_at,
+      updatedAt: dateTime(updated[0]?.updated_at),
     };
   });
 

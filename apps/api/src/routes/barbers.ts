@@ -40,6 +40,7 @@ import {
   getPublicSlots,
   getSchedule,
   listAppointments,
+  listBlockedDates,
   listOfferings,
   listSlots,
   setSchedule,
@@ -163,6 +164,12 @@ barberRouter.post(
   asyncHandler(async (request, response) => {
     const input = BlockDateSchema.parse(request.body);
     response.status(201).json(await blockDate(userId(request), input.date, input.reason));
+  }),
+);
+barberRouter.get(
+  '/me/blocked-dates',
+  asyncHandler(async (request, response) => {
+    response.json(await listBlockedDates(userId(request)));
   }),
 );
 barberRouter.delete(

@@ -1,10 +1,10 @@
-# Barber SaaS
+# cutG
 
-Production-ready Phase 0 foundation for a barber operations and client booking SaaS.
+Barber operations and client booking platform.
 
 ## Stack
 
-- Node.js 18+
+- Node.js 20.9+
 - pnpm workspaces
 - Express.js with TypeScript strict mode
 - PostgreSQL 14+ with Knex migrations
@@ -14,21 +14,19 @@ Production-ready Phase 0 foundation for a barber operations and client booking S
 ## Quick Start
 
 ```bash
-pnpm install
-cp .env.example .env
-docker compose up -d
-pnpm db:migrate
-pnpm db:seed
-pnpm dev
+make setup
+make dev
 ```
 
-If `.env` already exists, do not overwrite it unless you intentionally want to reset local ports and secrets.
+`make setup` installs dependencies, creates `.env` only when it is missing, starts PostgreSQL and Redis, then migrates and seeds the database.
+
+Open the frontend at [http://localhost:3000](http://localhost:3000). The API runs at [http://localhost:4000](http://localhost:4000).
 
 Health check:
 
 ```bash
-curl http://localhost:3000/
-curl http://localhost:3000/health
+curl http://localhost:4000/
+curl http://localhost:4000/health
 ```
 
 Expected response shape:
@@ -48,13 +46,25 @@ Expected response shape:
 ## Workspace Layout
 
 - `apps/api`: Express API, database migrations, seeds, and runtime config.
-- `apps/web`: Next.js placeholder for Phase 4.
+- `apps/web`: Next.js frontend.
 - `apps/mobile`: React Native placeholder for Phase 7.
 - `packages/shared-types`: Zod schemas and inferred TypeScript types.
 - `packages/shared-utils`: Shared validators and utility contracts.
 - `docs`: Architecture, API, database, setup, and deployment notes.
 
 ## Core Commands
+
+```bash
+make help
+make up
+make down
+make status
+make logs
+make dev
+make test
+```
+
+The underlying pnpm commands remain available:
 
 ```bash
 pnpm dev
@@ -67,6 +77,17 @@ pnpm db:seed
 pnpm db:connect
 ```
 
+For setup without Make:
+
+```bash
+pnpm install
+test -f .env || cp .env.example .env
+docker compose up -d postgres redis
+pnpm db:migrate
+pnpm db:seed
+pnpm dev
+```
+
 ## Seeded Data
 
 The seed script creates 3 barber profiles, 12 client users, services, 45 availability slots, 20 appointments, 10 payments, 8 reviews, subscriptions, and notifications.
@@ -74,4 +95,3 @@ The seed script creates 3 barber profiles, 12 client users, services, 45 availab
 ## Documentation
 
 Start with [docs/FOUNDATION_TRACKER.md](docs/FOUNDATION_TRACKER.md) for the current build status, then read [docs/SETUP.md](docs/SETUP.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/DATABASE.md](docs/DATABASE.md).
-# cutG

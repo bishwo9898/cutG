@@ -184,6 +184,21 @@ export const createEmailVerificationToken = async (
   );
 };
 
+export const invalidateEmailVerificationTokens = async (
+  userId: string,
+  client: PoolClient,
+): Promise<void> => {
+  await client.query(
+    `
+      UPDATE email_verification_tokens
+      SET used_at = CURRENT_TIMESTAMP
+      WHERE user_id = $1
+        AND used_at IS NULL
+    `,
+    [userId],
+  );
+};
+
 export const consumeEmailVerificationToken = async (
   userId: string,
   code: string,
