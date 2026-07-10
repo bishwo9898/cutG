@@ -28,6 +28,22 @@ export type BarberProfile = {
   isVerified: boolean;
 };
 
+export type PublicBarber = {
+  id: string;
+  businessName: string;
+  bio: string | null;
+  profilePhotoUrl: string | null;
+  city: string | null;
+  state: string | null;
+  averageRating: number;
+  totalReviews: number;
+  isVerified: boolean;
+  subscriptionTier: 'FREE' | 'BASIC' | 'PREMIUM';
+  lowestServicePrice: number | null;
+  serviceCategories: string[];
+  nextAvailableSlot: string | null;
+};
+
 export type BarberService = {
   id: string;
   barberId: string;
@@ -37,6 +53,19 @@ export type BarberService = {
   durationMinutes: 15 | 30 | 45 | 60 | 90 | 120;
   category: 'haircut' | 'beard' | 'shave' | 'combo' | 'kids' | 'other';
   isActive: boolean;
+};
+
+export type PublicService = Pick<
+  BarberService,
+  'id' | 'name' | 'description' | 'price' | 'durationMinutes' | 'category'
+>;
+
+export type PublicSlot = {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  isAvailable: boolean;
 };
 
 export type ScheduleEntry = {
@@ -65,4 +94,50 @@ export type Appointment = {
   };
   clientNotes: string | null;
   barberNotes: string | null;
+};
+
+export type ClientAppointment = {
+  id: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: string;
+  paymentStatus: string;
+  priceQuoted: number;
+  clientNotes: string | null;
+  barberNotes: string | null;
+  service: {
+    id: string;
+    name: string;
+    price?: number;
+    durationMinutes?: number;
+    category?: string;
+  };
+  barber: {
+    id: string;
+    businessName: string;
+    profilePhotoUrl: string | null;
+    city: string | null;
+    address?: string | null;
+  };
+  slot: PublicSlot | null;
+  review: Review | null;
+};
+
+export type Review = {
+  id: string;
+  rating: number;
+  title: string | null;
+  comment: string | null;
+  createdAt: string;
+  client?: {
+    firstName: string;
+    lastInitial: string;
+  };
+};
+
+export type Pagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 };

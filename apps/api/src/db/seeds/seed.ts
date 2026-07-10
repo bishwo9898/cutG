@@ -386,6 +386,7 @@ export async function seed(knex: Knex): Promise<void> {
   faker.seed(20260707);
 
   await knex('notifications').del();
+  await knex('client_saved_barbers').del();
   await knex('reviews').del();
   await knex('payments').del();
   await knex('subscriptions').del();
@@ -620,6 +621,35 @@ export async function seed(knex: Knex): Promise<void> {
       helpful_count: faker.number.int({ min: 0, max: 12 }),
     })),
   );
+
+  await knex.raw(`
+    UPDATE barber_profiles bp SET
+      average_rating = COALESCE(review_summary.average_rating, 0),
+      total_reviews = COALESCE(review_summary.total_reviews, 0),
+      updated_at = CURRENT_TIMESTAMP
+    FROM (
+      SELECT
+        barber_id,
+        ROUND(AVG(rating)::numeric, 2) AS average_rating,
+        COUNT(*)::int AS total_reviews
+      FROM reviews
+      GROUP BY barber_id
+    ) review_summary
+    WHERE bp.id = review_summary.barber_id;
+  `);
+
+  await knex('client_saved_barbers').insert([
+    {
+      id: randomUUID(),
+      client_id: requireAt(clients, 0, 'saved barber client').id,
+      barber_id: requireAt(barberSeeds, 0, 'saved barber').profileId,
+    },
+    {
+      id: randomUUID(),
+      client_id: requireAt(clients, 1, 'saved barber client').id,
+      barber_id: requireAt(barberSeeds, 1, 'saved barber').profileId,
+    },
+  ]);
 
   await knex('notifications').insert(
     appointments.slice(0, 12).map((appointment, index) => ({

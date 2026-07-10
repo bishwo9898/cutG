@@ -12,7 +12,6 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-
 import { AuthShell } from '@/components/auth-shell';
 import { Notice } from '@/components/notice';
 
@@ -29,7 +28,7 @@ export default function RegisterPage(): React.ReactElement {
     formState: { errors, isSubmitting },
   } = useForm<RegisterRequest>({
     resolver: zodResolver(schema),
-    defaultValues: { userType: 'BARBER' },
+    defaultValues: { userType: 'CLIENT' },
   });
 
   const submit = async (values: RegisterRequest): Promise<void> => {
@@ -52,11 +51,9 @@ export default function RegisterPage(): React.ReactElement {
   return (
     <AuthShell>
       <div className="auth-form">
-        <span className="eyebrow">Start your workspace</span>
-        <h1>Make room for the work</h1>
-        <p className="subtitle">
-          Set up your barber account. You can build your public profile next.
-        </p>
+        <span className="eyebrow">Start with cutG</span>
+        <h1>Create your account</h1>
+        <p className="subtitle">Join as a client to book, or as a barber to manage your shop.</p>
         <form className="form-stack" onSubmit={handleSubmit(submit)}>
           {error !== null && <Notice>{error}</Notice>}
           <div className="form-row">
@@ -111,13 +108,22 @@ export default function RegisterPage(): React.ReactElement {
               {errors.password?.message ?? 'Use at least 12 characters.'}
             </span>
           </div>
-          <input type="hidden" value="BARBER" {...register('userType')} />
+          <div className="field">
+            <label htmlFor="userType">Account type</label>
+            <select id="userType" className="select" {...register('userType')}>
+              <option value="CLIENT">Client</option>
+              <option value="BARBER">Barber</option>
+            </select>
+            {errors.userType?.message !== undefined && (
+              <span className="field-error">{errors.userType.message}</span>
+            )}
+          </div>
           <button
             className="button button-primary button-full"
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? 'Creating account...' : 'Create barber account'}
+            {isSubmitting ? 'Creating account...' : 'Create account'}
             <ArrowRight size={17} />
           </button>
         </form>

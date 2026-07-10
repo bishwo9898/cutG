@@ -41,20 +41,20 @@ function LoginForm(): React.ReactElement {
       return;
     }
 
-    if (body.user?.userType !== 'BARBER') {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      setError('The barber dashboard is only available to barber accounts.');
-      return;
-    }
-
-    router.push(searchParams.get('next') ?? '/dashboard');
+    const fallback =
+      body.user?.userType === 'BARBER'
+        ? '/dashboard'
+        : body.user?.userType === 'ADMIN'
+          ? '/admin'
+          : '/';
+    router.push(searchParams.get('next') ?? fallback);
     router.refresh();
   };
 
   return (
     <AuthShell>
       <div className="auth-form">
-        <span className="eyebrow">Barber workspace</span>
+        <span className="eyebrow">cutG account</span>
         <h1>Welcome back</h1>
         <p className="subtitle">Sign in to manage your day, your way.</p>
         <form className="form-stack" onSubmit={handleSubmit(submit)}>
@@ -102,7 +102,7 @@ function LoginForm(): React.ReactElement {
         <p className="auth-footer">
           New to cutG?{' '}
           <Link className="text-link" href="/register">
-            Create your workspace
+            Create your account
           </Link>
         </p>
       </div>

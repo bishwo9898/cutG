@@ -1,22 +1,23 @@
 # Foundation Tracker
 
-Last updated: July 8, 2026
+Last updated: July 9, 2026
 
 This document tracks what has been built so far from the Phase 0 foundation plan and what still needs to be configured locally before the next phase.
 
 ## Current Status
 
-Phase 0 foundation, Phase 1 authentication, Phase 2 barber management APIs, and the initial cutG barber web dashboard are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
+Phase 0 foundation, Phase 1 authentication, Phase 2 barber management APIs, Phase 3 client discovery/booking APIs, and the initial cutG web experiences are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
 
 Verified commands:
 
 ```bash
 pnpm typecheck
 pnpm lint
-pnpm format:check
 pnpm build
+pnpm test
 pnpm db:migrate
 pnpm db:seed
+make test
 ```
 
 Verified live endpoints:
@@ -35,6 +36,8 @@ Current API root response:
   "status": "ok",
   "links": {
     "auth": "/auth",
+    "barbers": "/barbers",
+    "clients": "/clients",
     "health": "/health"
   }
 }
@@ -49,6 +52,7 @@ Current API root response:
 │   ├── web/
 │   └── mobile/
 ├── packages/
+│   ├── api-client/
 │   ├── shared-types/
 │   └── shared-utils/
 ├── docs/
@@ -78,6 +82,8 @@ Built so far:
 - API root route: `GET /`
 - Health route: `GET /health`
 - Authentication router mounted at `/auth`
+- Barber router mounted at `/barbers`
+- Client router mounted at `/clients`
 - Registration and bcrypt password hashing
 - Email verification code generation and consumption
 - Login with JWT access and refresh tokens
@@ -107,6 +113,46 @@ Current backend routes:
 | `POST`  | `/auth/forgot-password` | No            | Generate a password-reset code.                 |
 | `POST`  | `/auth/reset-password`  | No            | Consume a reset code and replace the password.  |
 
+Current Phase 2 barber routes:
+
+| Method   | Path                                             | Auth required | Purpose                                   |
+| -------- | ------------------------------------------------ | ------------- | ----------------------------------------- |
+| `GET`    | `/barbers/me`                                    | Barber token  | Read the authenticated barber profile.    |
+| `POST`   | `/barbers/me/profile`                            | Barber token  | Create the barber profile once.           |
+| `PATCH`  | `/barbers/me/profile`                            | Barber token  | Update barber profile fields.             |
+| `POST`   | `/barbers/me/photo`                              | Barber token  | Update the profile photo URL.             |
+| `POST`   | `/barbers/me/services`                           | Barber token  | Create a tier-limited service.            |
+| `GET`    | `/barbers/me/services`                           | Barber token  | List/filter owned services.               |
+| `GET`    | `/barbers/me/services/:serviceId`                | Barber token  | Read one owned service.                   |
+| `PATCH`  | `/barbers/me/services/:serviceId`                | Barber token  | Update one owned service.                 |
+| `DELETE` | `/barbers/me/services/:serviceId`                | Barber token  | Soft-delete one owned service.            |
+| `GET`    | `/barbers/me/schedule`                           | Barber token  | Read weekly schedule rules.               |
+| `PUT`    | `/barbers/me/schedule`                           | Barber token  | Transactionally replace weekly schedule.  |
+| `GET`    | `/barbers/me/slots`                              | Barber token  | List private slots by date range.         |
+| `POST`   | `/barbers/me/slots/generate`                     | Barber token  | Idempotently generate availability slots. |
+| `POST`   | `/barbers/me/blocked-dates`                      | Barber token  | Block a local calendar date.              |
+| `DELETE` | `/barbers/me/blocked-dates/:date`                | Barber token  | Unblock and regenerate availability.      |
+| `GET`    | `/barbers/me/appointments`                       | Barber token  | List paginated owned appointments.        |
+| `PATCH`  | `/barbers/me/appointments/:appointmentId/status` | Barber token  | Apply allowed appointment transitions.    |
+| `GET`    | `/barbers/:barberId`                             | No            | Read sanitized public barber profile.     |
+| `GET`    | `/barbers/:barberId/services`                    | No            | List active public services.              |
+| `GET`    | `/barbers/:barberId/slots`                       | No            | List safe public availability.            |
+| `GET`    | `/barbers/:barberId/reviews`                     | No            | List public reviews and rating summary.   |
+
+Current Phase 3 client routes:
+
+| Method   | Path                                      | Auth required | Purpose                                |
+| -------- | ----------------------------------------- | ------------- | -------------------------------------- |
+| `GET`    | `/clients/me`                             | Client token  | Read the authenticated client profile. |
+| `GET`    | `/clients/me/saved-barbers`               | Client token  | List saved barbers.                    |
+| `POST`   | `/clients/me/saved-barbers`               | Client token  | Save a barber.                         |
+| `DELETE` | `/clients/me/saved-barbers/:barberId`     | Client token  | Remove a saved barber.                 |
+| `POST`   | `/clients/me/appointments`                | Client token  | Book an appointment atomically.        |
+| `GET`    | `/clients/me/appointments`                | Client token  | List paginated client appointments.    |
+| `GET`    | `/clients/me/appointments/:appointmentId` | Client token  | Read one owned appointment.            |
+| `DELETE` | `/clients/me/appointments/:appointmentId` | Client token  | Cancel pending/confirmed appointments. |
+| `POST`   | `/clients/me/reviews`                     | Client token  | Review a completed owned appointment.  |
+
 Authentication implementation notes:
 
 - Passwords are hashed with `bcrypt`.
@@ -131,6 +177,16 @@ Phase 2 adds:
 - Vitest unit tests and Supertest database-backed integration tests
 - Migration `003_barber_schedule.ts`
 
+Phase 3 adds:
+
+- Public barber search and public barber review listings
+- Client profile read, saved barbers, appointment booking, appointment cancellation, and reviews
+- Transactional booking with slot locking and conflict checks
+- Slot freeing on client cancellation
+- Transactional barber rating recalculation after reviews
+- Next.js marketplace homepage, search, public profile, booking, appointments, and saved-barber pages
+- Migration `004_client_features.ts`
+
 Seed accounts use password `password123`:
 
 - `barber1@example.com`
@@ -140,8 +196,7 @@ Seed accounts use password `password123`:
 
 Not built yet:
 
-- Appointment booking APIs
-- Payment endpoints
+- Payment endpoints and checkout
 - Stripe webhooks
 - Admin endpoints
 - Realtime notifications
@@ -159,6 +214,8 @@ Migrations:
 
 - `apps/api/src/db/migrations/001_initial_schema.ts`
 - `apps/api/src/db/migrations/002_auth_tables.ts`
+- `apps/api/src/db/migrations/003_barber_schedule.ts`
+- `apps/api/src/db/migrations/004_client_features.ts`
 
 The initial schema includes 9 production-oriented tables:
 
@@ -182,6 +239,26 @@ The authentication migration adds `users.password_hash` and 3 supporting tables:
 | `password_reset_tokens`     | Expiring, single-use password reset codes.                |
 | `token_blacklist`           | Revoked access-token JTIs retained until token expiry.    |
 
+The barber schedule migration adds:
+
+| Table                  | Purpose                                                      |
+| ---------------------- | ------------------------------------------------------------ |
+| `barber_schedules`     | Weekly recurring local-time working hours by barber and day. |
+| `barber_blocked_dates` | Local calendar dates blocked from public availability.       |
+
+Additional Phase 2 database changes:
+
+- `IN_PROGRESS` added to `appointment_status_enum`.
+- Unique slot constraint on `(barber_id, slot_date, start_time)` for conflict-safe slot generation.
+- Updated indexes and constraints for schedules, blocked dates, slots, and appointment workflows.
+- Updated-at trigger support on the new schedule and blocked-date tables.
+
+The client feature migration adds:
+
+| Table                  | Purpose                                        |
+| ---------------------- | ---------------------------------------------- |
+| `client_saved_barbers` | Client favorites, unique by client and barber. |
+
 Database features included:
 
 - UUID primary keys via `pgcrypto`
@@ -201,11 +278,14 @@ Seed data currently creates:
 - 3 barber users and profiles
 - 12 client users
 - 9 services
-- 45 availability slots
+- recurring barber schedules
+- future blocked dates
+- approximately two weeks of availability slots
 - 20 appointments
 - 10 payments
 - 3 subscriptions
 - 8 reviews
+- 2 saved-barber examples
 - 12 notifications
 
 Appointment status mix:
@@ -229,11 +309,17 @@ Current state:
 
 - Next.js 16 App Router with TypeScript and Tailwind CSS
 - HTTP-only cookie authentication through Next.js route handlers
-- Barber registration, verification, login, and password recovery
+- Client/barber registration, verification, login, and password recovery
 - Responsive protected dashboard shell
-- Profile, services, availability, appointments, and public-preview screens
+- Barber dashboard home, profile, services, availability, appointments, and public-preview screens
+- Client marketplace homepage, search, barber profile, booking flow, appointments, appointment detail, and saved barbers
+- Browser-side forms and state for profile/service/schedule workflows
+- Browser-side forms and state for client booking, cancellation, saved barbers, and reviews
+- Next.js API proxy routes for login, logout, and backend requests
 - TanStack Query server state and React Hook Form validation
 - Shared transport-independent API client package
+
+Important distinction: the client booking interface is now functional without payments. Stripe-backed checkout remains a future phase.
 
 Current scripts:
 
@@ -265,6 +351,22 @@ pnpm --filter @barber-saas/mobile build
 
 ## Shared Packages
 
+### `packages/api-client`
+
+Purpose: transport-independent TypeScript client for the web app and future clients.
+
+Includes:
+
+- API error helpers
+- Authentication calls
+- Current user calls
+- Barber profile, service, schedule, slot, appointment, and public barber calls
+- Client profile, saved-barber, booking, cancellation, and review calls
+
+Key files:
+
+- `packages/api-client/src/index.ts`
+
 ### `packages/shared-types`
 
 Purpose: shared Zod schemas and inferred TypeScript types.
@@ -274,6 +376,8 @@ Includes:
 - Database table schemas
 - API request/response schemas
 - Authentication request/response schemas
+- Barber request/response schemas
+- Client discovery, booking, appointment, saved-barber, and review schemas
 - Shared enums
 - Root exports from `src/index.ts`
 
@@ -283,6 +387,8 @@ Key files:
 - `packages/shared-types/src/database.ts`
 - `packages/shared-types/src/api.ts`
 - `packages/shared-types/src/auth.ts`
+- `packages/shared-types/src/barber.ts`
+- `packages/shared-types/src/client.ts`
 - `packages/shared-types/src/index.ts`
 
 ### `packages/shared-utils`
@@ -352,15 +458,18 @@ Generated output:
 
 ## Documentation Already Added
 
-| Document                     | Purpose                                       |
-| ---------------------------- | --------------------------------------------- |
-| `README.md`                  | Quick project overview and startup commands.  |
-| `docs/SETUP.md`              | Local developer setup and troubleshooting.    |
-| `docs/DATABASE.md`           | Schema summary and ER diagram.                |
-| `docs/API.md`                | Current API patterns and route conventions.   |
-| `docs/ARCHITECTURE.md`       | System architecture and scaling path.         |
-| `docs/DEPLOYMENT.md`         | Deployment notes and production expectations. |
-| `docs/FOUNDATION_TRACKER.md` | This running tracker of what exists so far.   |
+| Document                     | Purpose                                               |
+| ---------------------------- | ----------------------------------------------------- |
+| `README.md`                  | Quick project overview and startup commands.          |
+| `docs/SETUP.md`              | Local developer setup and troubleshooting.            |
+| `docs/DATABASE.md`           | Schema summary and ER diagram.                        |
+| `docs/API.md`                | Current API patterns and route conventions.           |
+| `docs/ARCHITECTURE.md`       | System architecture and scaling path.                 |
+| `docs/BARBERS.md`            | Barber schedule, slot, blocking, and status behavior. |
+| `docs/CLIENTS.md`            | Client discovery, booking, cancellation, and reviews. |
+| `docs/DEPLOYMENT.md`         | Deployment notes and production expectations.         |
+| `docs/FOUNDATION_TRACKER.md` | This running tracker of what exists so far.           |
+| `docs/ROADMAP.md`            | Forward-looking product and engineering plan.         |
 
 ## What You Need To Do
 
@@ -389,7 +498,7 @@ For local development, these values are enough:
 ```env
 NODE_ENV=development
 LOG_LEVEL=debug
-PORT=3000
+PORT=4000
 HOST=localhost
 DATABASE_URL=postgresql://barber_user:barber_password@localhost:55433/barber_saas
 POSTGRES_HOST_PORT=55433
@@ -444,11 +553,24 @@ pnpm db:seed
 pnpm dev
 ```
 
+Shortcut commands now exist in the root `Makefile`:
+
+```bash
+make setup
+make dev
+make test
+make status
+make logs
+make down
+```
+
+`make setup` installs dependencies, creates `.env` only when it is missing, starts PostgreSQL/Redis, migrates, and seeds. `make dev` keeps application servers local through pnpm for fast reloads.
+
 ### 5. Verify the API
 
 ```bash
-curl http://localhost:3000/
-curl http://localhost:3000/health
+curl http://localhost:4000/
+curl http://localhost:4000/health
 ```
 
 Expected health state:
@@ -464,23 +586,23 @@ Expected health state:
 
 ## Next Phase Readiness
 
-The foundation and initial authentication backend are ready for continued implementation. The remaining natural steps from the original planning document are:
+The foundation, authentication backend, Phase 2 barber backend, Phase 3 client backend, initial barber dashboard, and client marketplace pages are ready for continued implementation. The remaining natural steps from the original planning document are:
 
-- Complete Phase 1: auth tests, production email delivery, and any frontend auth screens
-- Complete Phase 2 follow-up: broader edge-case and end-to-end coverage
-- Phase 3: client discovery, appointment booking, reviews
-- Phase 4: real frontend app in `apps/web`
-- Phase 5+: notifications, realtime flows, payments, AI-ready features
+- Complete Phase 3 follow-up: broader live acceptance coverage and UX refinement
+- Phase 4: payments, checkout, and production-ready booking/payment handoff
+- Phase 5+: notifications, realtime flows, AI-ready features
 
 ## Known Local Notes
 
 - The API reads the root `.env` even when it is started from `apps/api`.
-- `GET /` was added so browser visits to `http://localhost:3000/` no longer return `ROUTE_NOT_FOUND`.
-- The API root now advertises both `/auth` and `/health`.
+- `GET /` was added so browser visits to the API root no longer return `ROUTE_NOT_FOUND`.
+- The API root now advertises `/auth`, `/barbers`, `/clients`, and `/health`.
 - `GET /health` is database-aware; if it returns `database.status = "error"`, check `DATABASE_URL`, Docker health, and port conflicts first.
-- `pnpm dev` starts only the API at present; it does not start a browser frontend.
-- Stop the active watcher with `Ctrl+C` when finished so it does not remain alive between development sessions.
-- The root git status may show unrelated files outside this project because the broader parent directory appears to be under a larger git context. Keep project work scoped to `/Users/bishwobirajdallakoti/Desktop/cutg`.
+- `pnpm dev` starts both the API and the web app through `concurrently`.
+- Frontend URL: `http://localhost:3000`.
+- API URL: `http://localhost:4000`.
+- Stop active dev servers with `Ctrl+C` in the terminal running `make dev` or `pnpm dev`.
+- The local branch has been committed as `cf2da00` (`Build cutG foundation and barber dashboard`) and is ahead of GitHub until `git push origin main` succeeds from an authenticated terminal.
 
 ## Our Endpoints so far
 
@@ -495,3 +617,33 @@ GET /auth/me
 PATCH /auth/me
 POST /auth/forgot-password
 POST /auth/reset-password
+GET /barbers/me
+POST /barbers/me/profile
+PATCH /barbers/me/profile
+POST /barbers/me/photo
+POST /barbers/me/services
+GET /barbers/me/services
+GET /barbers/me/services/:serviceId
+PATCH /barbers/me/services/:serviceId
+DELETE /barbers/me/services/:serviceId
+GET /barbers/me/schedule
+PUT /barbers/me/schedule
+GET /barbers/me/slots
+POST /barbers/me/slots/generate
+POST /barbers/me/blocked-dates
+DELETE /barbers/me/blocked-dates/:date
+GET /barbers/me/appointments
+PATCH /barbers/me/appointments/:appointmentId/status
+GET /barbers/:barberId
+GET /barbers/:barberId/services
+GET /barbers/:barberId/slots
+GET /barbers/:barberId/reviews
+GET /clients/me
+GET /clients/me/saved-barbers
+POST /clients/me/saved-barbers
+DELETE /clients/me/saved-barbers/:barberId
+POST /clients/me/appointments
+GET /clients/me/appointments
+GET /clients/me/appointments/:appointmentId
+DELETE /clients/me/appointments/:appointmentId
+POST /clients/me/reviews

@@ -4,6 +4,7 @@ import { API_VERSION, APP_NAME } from '../config/constants';
 
 import { authRouter } from './auth';
 import { barberRouter } from './barbers';
+import { clientRouter } from './clients';
 import { healthRouter } from './health';
 
 export const routes: ExpressRouter = Router();
@@ -16,6 +17,7 @@ routes.get('/', (_request, response): void => {
     links: {
       auth: '/auth',
       barbers: '/barbers',
+      clients: '/clients',
       health: '/health',
     },
   });
@@ -23,4 +25,5 @@ routes.get('/', (_request, response): void => {
 
 routes.use('/auth', authRouter);
 routes.use('/barbers', barberRouter);
+routes.use('/clients', clientRouter);
 routes.use('/health', healthRouter);

@@ -1,6 +1,7 @@
 import {
   AppointmentFilterSchema,
   AppointmentParamsSchema,
+  BarberSearchQuerySchema,
   BlockDateSchema,
   BlockedDateParamsSchema,
   CreateBarberProfileSchema,
@@ -8,6 +9,7 @@ import {
   DateRangeSchema,
   GenerateSlotsSchema,
   PublicSlotsQuerySchema,
+  ReviewQuerySchema,
   ServiceFilterSchema,
   ServiceParamsSchema,
   SetScheduleSchema,
@@ -50,6 +52,7 @@ import {
   updatePhoto,
   updateProfile,
 } from '../services/barber/barberService';
+import { listPublicReviews, searchBarbers } from '../services/discovery/barberSearchService';
 import type { AuthenticatedRequest } from '../types/auth';
 import { addDaysToDate } from '../utils/slotGenerator';
 
@@ -60,6 +63,13 @@ const asyncHandler =
     void handler(request, response).catch(next);
   };
 const userId = (request: Request): string => (request as AuthenticatedRequest).auth.id;
+
+barberRouter.get(
+  '/',
+  asyncHandler(async (request, response) => {
+    response.json(await searchBarbers(BarberSearchQuerySchema.parse(request.query)));
+  }),
+);
 
 barberRouter.use('/me', requireAuth, requireRoles('BARBER'));
 
@@ -199,6 +209,13 @@ barberRouter.patch(
   }),
 );
 
+barberRouter.get(
+  '/:barberId/reviews',
+  asyncHandler(async (request, response) => {
+    const { barberId } = UuidParamsSchema.parse(request.params);
+    response.json(await listPublicReviews(barberId, ReviewQuerySchema.parse(request.query)));
+  }),
+);
 barberRouter.get(
   '/:barberId',
   asyncHandler(async (request, response) => {

@@ -86,3 +86,49 @@ export class ApiClient {
     return body as T;
   }
 }
+
+export type QueryValue = string | number | boolean | null | undefined;
+export type QueryParams = Record<string, QueryValue>;
+
+export const toQueryString = (params: QueryParams = {}): string => {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      search.set(key, String(value));
+    }
+  }
+  const value = search.toString();
+  return value.length > 0 ? `?${value}` : '';
+};
+
+export const barberDiscoveryApi = {
+  search: <T>(client: ApiClient, params?: QueryParams): Promise<T> =>
+    client.get<T>(`/barbers${toQueryString(params)}`),
+  getProfile: <T>(client: ApiClient, barberId: string): Promise<T> =>
+    client.get<T>(`/barbers/${barberId}`),
+  getServices: <T>(client: ApiClient, barberId: string): Promise<T> =>
+    client.get<T>(`/barbers/${barberId}/services`),
+  getSlots: <T>(client: ApiClient, barberId: string, params?: QueryParams): Promise<T> =>
+    client.get<T>(`/barbers/${barberId}/slots${toQueryString(params)}`),
+  getReviews: <T>(client: ApiClient, barberId: string, params?: QueryParams): Promise<T> =>
+    client.get<T>(`/barbers/${barberId}/reviews${toQueryString(params)}`),
+};
+
+export const clientApi = {
+  me: <T>(client: ApiClient): Promise<T> => client.get<T>('/clients/me'),
+  savedBarbers: <T>(client: ApiClient): Promise<T> => client.get<T>('/clients/me/saved-barbers'),
+  saveBarber: <T>(client: ApiClient, barberId: string): Promise<T> =>
+    client.post<T>('/clients/me/saved-barbers', { barberId }),
+  removeSavedBarber: <T>(client: ApiClient, barberId: string): Promise<T> =>
+    client.delete<T>(`/clients/me/saved-barbers/${barberId}`),
+  bookAppointment: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/clients/me/appointments', body),
+  appointments: <T>(client: ApiClient, params?: QueryParams): Promise<T> =>
+    client.get<T>(`/clients/me/appointments${toQueryString(params)}`),
+  appointment: <T>(client: ApiClient, appointmentId: string): Promise<T> =>
+    client.get<T>(`/clients/me/appointments/${appointmentId}`),
+  cancelAppointment: <T>(client: ApiClient, appointmentId: string): Promise<T> =>
+    client.delete<T>(`/clients/me/appointments/${appointmentId}`),
+  createReview: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/clients/me/reviews', body),
+};
