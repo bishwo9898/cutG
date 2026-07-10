@@ -267,16 +267,12 @@ barberRouter.post(
     response.json(await resumeSubscription(userId(request)));
   }),
 );
-barberRouter.get(
-  '/me/analytics',
-  requireSubscriptionTier('BASIC'),
-  (_request, response) => {
-    response.json({
-      message: 'Advanced analytics are available for this subscription tier.',
-      metrics: { placeholder: true },
-    });
-  },
-);
+barberRouter.get('/me/analytics', requireSubscriptionTier('BASIC'), (_request, response) => {
+  response.json({
+    message: 'Advanced analytics are available for this subscription tier.',
+    metrics: { placeholder: true },
+  });
+});
 
 barberRouter.get(
   '/:barberId/reviews',

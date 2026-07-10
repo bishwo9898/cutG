@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "cutG",
+    "slug": "cutg",
+    "scheme": "cutg",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cutg.mobile"
+    },
+    "android": {
+      "package": "com.cutg.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F0F1A"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-location",
+      "expo-image-picker",
+      "expo-notifications",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.cutg.mobile",
+          "enableGooglePay": true
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

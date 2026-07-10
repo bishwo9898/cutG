@@ -65,18 +65,28 @@ export default function AppointmentsPage(): React.ReactElement {
           <select
             aria-label="Filter by status"
             className="select"
-            onChange={(event) => { setStatus(event.target.value); setPage(1); }}
+            onChange={(event) => {
+              setStatus(event.target.value);
+              setPage(1);
+            }}
             value={status}
           >
             <option value="">All statuses</option>
             {['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'].map(
-              (value) => <option key={value} value={value}>{value.replace('_', ' ')}</option>,
+              (value) => (
+                <option key={value} value={value}>
+                  {value.replace('_', ' ')}
+                </option>
+              ),
             )}
           </select>
           <input
             aria-label="Filter by date"
             className="input"
-            onChange={(event) => { setDate(event.target.value); setPage(1); }}
+            onChange={(event) => {
+              setDate(event.target.value);
+              setPage(1);
+            }}
             type="date"
             value={date}
           />
@@ -91,20 +101,33 @@ export default function AppointmentsPage(): React.ReactElement {
         ) : appointments.data.appointments.length === 0 ? (
           <EmptyState
             title="No appointments found"
-            detail={status === '' && date === '' ? 'New bookings will appear here.' : 'Try clearing a filter.'}
+            detail={
+              status === '' && date === ''
+                ? 'New bookings will appear here.'
+                : 'Try clearing a filter.'
+            }
           />
         ) : (
           <>
             <div className="table-wrap">
               <table className="table">
                 <thead>
-                  <tr><th>Client</th><th>Service</th><th>Date and time</th><th>Price</th><th>Status</th><th>Actions</th></tr>
+                  <tr>
+                    <th>Client</th>
+                    <th>Service</th>
+                    <th>Date and time</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {appointments.data.appointments.map((appointment) => (
                     <tr key={appointment.id}>
                       <td>
-                        <strong>{appointment.client.firstName} {appointment.client.lastName}</strong>
+                        <strong>
+                          {appointment.client.firstName} {appointment.client.lastName}
+                        </strong>
                         {appointment.client.phone !== null && (
                           <small style={{ display: 'block' }}>{appointment.client.phone}</small>
                         )}
@@ -112,7 +135,11 @@ export default function AppointmentsPage(): React.ReactElement {
                       <td>{appointment.service.name}</td>
                       <td>{new Date(appointment.scheduledAt).toLocaleString()}</td>
                       <td>${appointment.priceQuoted.toFixed(2)}</td>
-                      <td><span className={`badge ${badgeTone(appointment.status)}`}>{appointment.status.replace('_', ' ')}</span></td>
+                      <td>
+                        <span className={`badge ${badgeTone(appointment.status)}`}>
+                          {appointment.status.replace('_', ' ')}
+                        </span>
+                      </td>
                       <td>
                         <div className="toolbar">
                           {(transitions[appointment.status] ?? []).map((action) => {
@@ -123,7 +150,10 @@ export default function AppointmentsPage(): React.ReactElement {
                                 disabled={updateStatus.isPending}
                                 key={action.status}
                                 onClick={() =>
-                                  updateStatus.mutate({ id: appointment.id, nextStatus: action.status })
+                                  updateStatus.mutate({
+                                    id: appointment.id,
+                                    nextStatus: action.status,
+                                  })
                                 }
                                 type="button"
                               >
@@ -141,7 +171,8 @@ export default function AppointmentsPage(): React.ReactElement {
             </div>
             <div className="panel-header">
               <span className="topbar-label">
-                Page {appointments.data.pagination.page} of {Math.max(1, appointments.data.pagination.totalPages)}
+                Page {appointments.data.pagination.page} of{' '}
+                {Math.max(1, appointments.data.pagination.totalPages)}
               </span>
               <div className="toolbar">
                 <button

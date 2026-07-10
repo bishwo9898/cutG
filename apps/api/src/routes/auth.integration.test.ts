@@ -142,19 +142,13 @@ describe('authentication API', () => {
     expect(refreshed.body).toHaveProperty('accessToken');
 
     expect(
-      (
-        await request(app)
-          .post('/auth/logout')
-          .set('Authorization', `Bearer ${tokens.accessToken}`)
-      ).status,
+      (await request(app).post('/auth/logout').set('Authorization', `Bearer ${tokens.accessToken}`))
+        .status,
     ).toBe(200);
 
     expect(
-      (
-        await request(app)
-          .get('/auth/me')
-          .set('Authorization', `Bearer ${tokens.accessToken}`)
-      ).status,
+      (await request(app).get('/auth/me').set('Authorization', `Bearer ${tokens.accessToken}`))
+        .status,
     ).toBe(401);
   });
 

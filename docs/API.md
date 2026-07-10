@@ -180,6 +180,10 @@ Stripe Connect onboarding and barber subscription management live under `/barber
 Subscription checkout returns both a web checkout URL and mobile deep links. Webhook state changes
 are idempotent and deduplicated by `subscription_events.stripe_event_id`.
 
+## Mobile API Consumption
+
+The Expo app in `apps/mobile` consumes these routes through `packages/api-client` via `apps/mobile/src/lib/apiClient.ts`. Tokens are stored with `expo-secure-store`, bearer headers are injected automatically, and `401` responses trigger one refresh-token retry before clearing auth state. Payment collection uses Stripe React Native against `POST /payments/create-intent`; webhook state remains the source of truth.
+
 ## Auth
 
 `POST /auth/register` creates a `CLIENT`, `BARBER`, or `ADMIN` account and logs a placeholder

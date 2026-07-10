@@ -27,7 +27,9 @@ type StripeCheckoutSession = {
 };
 
 const isConfigured = (): boolean =>
-  env.STRIPE_SECRET_KEY.startsWith('sk_') && !env.STRIPE_SECRET_KEY.includes('...');
+  env.NODE_ENV !== 'test' &&
+  env.STRIPE_SECRET_KEY.startsWith('sk_') &&
+  !env.STRIPE_SECRET_KEY.includes('...');
 
 const toFormBody = (params: Record<string, StripeFormValue>): URLSearchParams => {
   const body = new URLSearchParams();

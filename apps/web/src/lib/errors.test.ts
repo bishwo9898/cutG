@@ -1,7 +1,6 @@
 import { ApiError } from '@barber-saas/api-client';
 import { describe, expect, it } from 'vitest';
 
-
 import { errorMessage } from './errors';
 
 describe('errorMessage', () => {

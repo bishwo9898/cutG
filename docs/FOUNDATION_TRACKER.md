@@ -1,12 +1,12 @@
 # Foundation Tracker
 
-Last updated: July 9, 2026
+Last updated: July 10, 2026
 
 This document tracks what has been built so far from the Phase 0 foundation plan and what still needs to be configured locally before the next phase.
 
 ## Current Status
 
-Phase 0 foundation, Phase 1 authentication, Phase 2 barber management APIs, Phase 3 client discovery/booking APIs, Phase 4 payments/subscriptions APIs, and the initial cutG web experiences are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
+Phase 0 foundation, Phase 1 authentication, Phase 2 barber management APIs, Phase 3 client discovery/booking APIs, Phase 4 payments/subscriptions APIs, Phase 5 Expo React Native mobile app foundation, and the initial cutG web experiences are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
 
 Verified commands:
 
@@ -18,6 +18,7 @@ pnpm test
 pnpm db:migrate
 pnpm db:seed
 make test
+pnpm --filter @barber-saas/mobile typecheck
 ```
 
 Verified live endpoints:
@@ -221,6 +222,19 @@ Phase 4 adds:
 - Next.js dashboard pages for payments, earnings, and subscriptions
 - Migration `005_payments_and_subscriptions.ts`
 
+Phase 5 adds:
+
+- Expo SDK 51 / React Native 0.74 mobile app in `apps/mobile`
+- Expo Router auth, client, and barber route groups
+- SecureStore-backed JWT auth store with refresh-on-401 retry
+- Token-aware mobile API wrapper built on `packages/api-client`
+- TanStack Query hooks for discovery, booking, appointments, payments, and barber dashboard data
+- Stripe React Native payment screen for Payment Intent confirmation
+- Client mobile flows for search, profile, booking, payment, appointments, reviews, saved barbers, and profile editing
+- Barber mobile flows for today, schedule, clients, business hub, services, earnings, subscription, Stripe Connect, and profile editing
+- Mobile design tokens and reusable UI/card/list components
+- Mobile documentation in `docs/MOBILE.md`
+
 Seed accounts use password `password123`:
 
 - `barber1@example.com`
@@ -230,13 +244,14 @@ Seed accounts use password `password123`:
 
 Not built yet:
 
-- Payment endpoints and checkout
-- Stripe webhooks
-- Admin endpoints
-- Realtime notifications
+- Native push notification delivery
+- Real-time slot updates through WebSockets
+- Admin endpoints and admin mobile screens
 - Production email delivery
+- S3-backed barber photo upload
+- App Store / Play Store release configuration
 - Refresh-token rotation or server-side refresh-token revocation
-- Broader authentication and end-to-end workflow coverage
+- Broader end-to-end workflow coverage
 
 Those are intentionally future phases.
 
@@ -386,18 +401,39 @@ Location: `apps/mobile`
 
 Current state:
 
-- Workspace package exists.
-- TypeScript config exists.
-- Placeholder source file exists at `apps/mobile/src/index.ts`.
-- Build and typecheck scripts exist.
-
-Important: this is not a React Native app yet. It is a placeholder workspace reserved for a later mobile phase.
+- Expo SDK 51 app with React Native 0.74 and Expo Router
+- Deep link scheme `cutg://` in `apps/mobile/app.json`
+- Dark cutG design tokens and reusable React Native components
+- SecureStore auth state with access-token and refresh-token persistence
+- Token-aware API wrapper using `packages/api-client` and automatic refresh retry on `401`
+- TanStack Query hooks for public barber discovery, client appointments, payments, barber dashboard, earnings, and subscriptions
+- Client routes for discover/search, public barber profiles, booking, Stripe payment, appointments, saved barbers, and profile settings
+- Barber routes for today, schedule, appointment lists/details, services, earnings, subscription, Stripe Connect, and profile settings
+- Stripe React Native `CardField` payment screen wired to `/payments/create-intent`
+- React Native Maps, Expo Location, Expo Image Picker, Expo Notifications, and Expo Linking dependencies configured
+- Mobile setup documentation in `docs/MOBILE.md`
 
 Current scripts:
 
 ```bash
+pnpm --filter @barber-saas/mobile dev
+pnpm --filter @barber-saas/mobile ios
+pnpm --filter @barber-saas/mobile android
 pnpm --filter @barber-saas/mobile typecheck
 pnpm --filter @barber-saas/mobile build
+```
+
+Mobile environment file:
+
+```bash
+cp apps/mobile/.env.example apps/mobile/.env
+```
+
+Required Expo public values:
+
+```env
+EXPO_PUBLIC_API_URL=http://localhost:4000
+EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 ```
 
 ## Shared Packages
@@ -524,6 +560,7 @@ Generated output:
 | `docs/PAYMENTS.md`           | Stripe intents, Connect, webhooks, refunds, and fees. |
 | `docs/SUBSCRIPTIONS.md`      | Tier features, checkout, billing, and gates.          |
 | `docs/DEPLOYMENT.md`         | Deployment notes and production expectations.         |
+| `docs/MOBILE.md`             | Expo mobile setup, flows, Stripe, and limitations.    |
 | `docs/FOUNDATION_TRACKER.md` | This running tracker of what exists so far.           |
 | `docs/ROADMAP.md`            | Forward-looking product and engineering plan.         |
 
@@ -651,10 +688,10 @@ Expected health state:
 
 ## Next Phase Readiness
 
-The foundation, authentication backend, Phase 2 barber backend, Phase 3 client backend, Phase 4 payment/subscription backend, initial barber dashboard, and client marketplace pages are ready for continued implementation. The remaining natural steps from the original planning document are:
+The foundation, authentication backend, Phase 2 barber backend, Phase 3 client backend, Phase 4 payment/subscription backend, Phase 5 mobile app foundation, initial barber dashboard, and client marketplace pages are ready for continued implementation. The remaining natural steps from the original planning document are:
 
-- Complete Phase 4 follow-up: live Stripe CLI acceptance testing and Stripe SDK card-capture UI
-- Phase 5+: mobile app, notifications, realtime flows, AI-ready features
+- Complete Phase 5 follow-up: simulator QA, device QA, detailed schedule editor polish, and live Stripe mobile payment acceptance testing
+- Phase 6+: push notifications, realtime flows, S3 uploads, AI-ready features
 
 ## Known Local Notes
 
@@ -664,6 +701,7 @@ The foundation, authentication backend, Phase 2 barber backend, Phase 3 client b
 - `GET /health` is database-aware; if it returns `database.status = "error"`, check `DATABASE_URL`, Docker health, and port conflicts first.
 - `pnpm dev` starts both the API and the web app through `concurrently`.
 - Frontend URL: `http://localhost:3000`.
+- Mobile app: `pnpm --filter @barber-saas/mobile dev`; use `ios` or `android` scripts for simulators.
 - API URL: `http://localhost:4000`.
 - Stop active dev servers with `Ctrl+C` in the terminal running `make dev` or `pnpm dev`.
 - The local branch has been committed as `cf2da00` (`Build cutG foundation and barber dashboard`) and is ahead of GitHub until `git push origin main` succeeds from an authenticated terminal.

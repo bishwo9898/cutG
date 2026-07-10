@@ -8,7 +8,6 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-
 import { AuthShell } from '@/components/auth-shell';
 import { Notice } from '@/components/notice';
 

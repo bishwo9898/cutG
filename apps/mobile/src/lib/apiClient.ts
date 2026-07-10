@@ -1,0 +1,212 @@
+import {
+  ApiClient,
+  ApiError,
+  barberBillingApi,
+  barberDiscoveryApi,
+  clientApi,
+  paymentApi,
+} from '@barber-saas/api-client';
+import type {
+  BookAppointmentRequest,
+  CreateBarberProfileRequest,
+  CreateReviewRequest,
+  CreateServiceRequest,
+  LoginRequest,
+  RegisterRequest,
+  ResetPasswordRequest,
+  UpdateBarberProfileRequest,
+  UpdateProfileRequest,
+  UpdateServiceRequest,
+} from '@barber-saas/shared-types';
+
+import { useAuthStore } from '@/store/authStore';
+
+import type {
+  AppointmentSummary,
+  AuthUser,
+  AvailabilitySlot,
+  BarberProfile,
+  BarberService,
+  EarningsSummary,
+  LoginResponse,
+  Paginated,
+  PaymentIntentResponse,
+  PaymentStatusResponse,
+  PublicBarber,
+  Review,
+  StripeConnectStatus,
+  SubscriptionSummary,
+} from './types';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+
+const publicClient = new ApiClient({ baseUrl: API_URL });
+
+const createAuthedClient = (): ApiClient =>
+  new ApiClient({
+    baseUrl: API_URL,
+    headers: (): Record<string, string> => {
+      const token = useAuthStore.getState().accessToken;
+      return token === null ? {} : { Authorization: 'Bearer ' + token };
+    },
+  });
+
+const refreshAccessToken = async (): Promise<boolean> => {
+  const { refreshToken, setAccessToken, clearAuth } = useAuthStore.getState();
+  if (refreshToken === null) {
+    await clearAuth();
+    return false;
+  }
+
+  try {
+    const response = await publicClient.post<{ accessToken: string }>('/auth/refresh', {
+      refreshToken,
+    });
+    await setAccessToken(response.accessToken);
+    return true;
+  } catch {
+    await clearAuth();
+    return false;
+  }
+};
+
+const withAuth = async <T>(operation: (client: ApiClient) => Promise<T>): Promise<T> => {
+  try {
+    return await operation(createAuthedClient());
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401 && (await refreshAccessToken())) {
+      return operation(createAuthedClient());
+    }
+    throw error;
+  }
+};
+
+const paramsToQuery = (params?: Record<string, string | number | boolean | undefined>): string => {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value !== undefined && value !== '') search.set(key, String(value));
+  }
+  const query = search.toString();
+  return query.length > 0 ? '?' + query : '';
+};
+
+export const mobileApi = {
+  auth: {
+    register: (body: RegisterRequest): Promise<{ user: AuthUser; message?: string }> =>
+      publicClient.post('/auth/register', body),
+    verifyEmail: (email: string, verificationCode: string): Promise<{ message: string }> =>
+      publicClient.post('/auth/verify-email', { email, verificationCode }),
+    login: (body: LoginRequest): Promise<LoginResponse> => publicClient.post('/auth/login', body),
+    logout: (): Promise<{ message: string }> => withAuth((client) => client.post('/auth/logout')),
+    me: (): Promise<AuthUser> => withAuth((client) => client.get('/auth/me')),
+    updateMe: (body: UpdateProfileRequest): Promise<AuthUser> =>
+      withAuth((client) => client.patch('/auth/me', body)),
+    forgotPassword: (email: string): Promise<{ message: string }> =>
+      publicClient.post('/auth/forgot-password', { email }),
+    resetPassword: (body: ResetPasswordRequest): Promise<{ message: string }> =>
+      publicClient.post('/auth/reset-password', body),
+  },
+  discovery: {
+    search: (
+      params?: Record<string, string | number | boolean | undefined>,
+    ): Promise<Paginated<PublicBarber>> => barberDiscoveryApi.search(publicClient, params),
+    profile: (barberId: string): Promise<BarberProfile> =>
+      barberDiscoveryApi.getProfile(publicClient, barberId),
+    services: (barberId: string): Promise<Paginated<BarberService>> =>
+      barberDiscoveryApi.getServices(publicClient, barberId),
+    slots: (
+      barberId: string,
+      params?: Record<string, string | number | boolean | undefined>,
+    ): Promise<Paginated<AvailabilitySlot>> =>
+      barberDiscoveryApi.getSlots(publicClient, barberId, params),
+    reviews: (
+      barberId: string,
+      params?: Record<string, string | number | boolean | undefined>,
+    ): Promise<Paginated<Review>> => barberDiscoveryApi.getReviews(publicClient, barberId, params),
+  },
+  client: {
+    me: (): Promise<AuthUser> => withAuth((client) => clientApi.me(client)),
+    savedBarbers: (): Promise<Paginated<PublicBarber>> =>
+      withAuth((client) => clientApi.savedBarbers(client)),
+    saveBarber: (barberId: string): Promise<{ saved: boolean }> =>
+      withAuth((client) => clientApi.saveBarber(client, barberId)),
+    removeSavedBarber: (barberId: string): Promise<{ removed: boolean }> =>
+      withAuth((client) => clientApi.removeSavedBarber(client, barberId)),
+    bookAppointment: (body: BookAppointmentRequest): Promise<AppointmentSummary> =>
+      withAuth((client) => clientApi.bookAppointment(client, body)),
+    appointments: (
+      params?: Record<string, string | number | boolean | undefined>,
+    ): Promise<Paginated<AppointmentSummary>> =>
+      withAuth((client) => clientApi.appointments(client, params)),
+    appointment: (appointmentId: string): Promise<AppointmentSummary> =>
+      withAuth((client) => clientApi.appointment(client, appointmentId)),
+    cancelAppointment: (appointmentId: string): Promise<AppointmentSummary> =>
+      withAuth((client) => clientApi.cancelAppointment(client, appointmentId)),
+    createReview: (body: CreateReviewRequest): Promise<Review> =>
+      withAuth((client) => clientApi.createReview(client, body)),
+    paymentHistory: (): Promise<Paginated<PaymentStatusResponse>> =>
+      withAuth((client) => clientApi.paymentHistory(client)),
+  },
+  payments: {
+    createIntent: (appointmentId: string): Promise<PaymentIntentResponse> =>
+      withAuth((client) => paymentApi.createIntent(client, appointmentId)),
+    appointmentStatus: (appointmentId: string): Promise<PaymentStatusResponse> =>
+      withAuth((client) => paymentApi.appointmentStatus(client, appointmentId)),
+    refund: (appointmentId: string, reason?: string): Promise<PaymentStatusResponse> =>
+      withAuth((client) => paymentApi.refund(client, appointmentId, reason)),
+  },
+  barber: {
+    profile: (): Promise<BarberProfile> => withAuth((client) => client.get('/barbers/me')),
+    createProfile: (body: CreateBarberProfileRequest): Promise<BarberProfile> =>
+      withAuth((client) => client.post('/barbers/me/profile', body)),
+    updateProfile: (body: UpdateBarberProfileRequest): Promise<BarberProfile> =>
+      withAuth((client) => client.patch('/barbers/me/profile', body)),
+    updatePhoto: (photoUrl: string): Promise<BarberProfile> =>
+      withAuth((client) => client.post('/barbers/me/photo', { photoUrl })),
+    services: (
+      params?: Record<string, string | number | boolean | undefined>,
+    ): Promise<Paginated<BarberService>> =>
+      withAuth((client) => client.get('/barbers/me/services' + paramsToQuery(params))),
+    createService: (body: CreateServiceRequest): Promise<BarberService> =>
+      withAuth((client) => client.post('/barbers/me/services', body)),
+    updateService: (serviceId: string, body: UpdateServiceRequest): Promise<BarberService> =>
+      withAuth((client) => client.patch('/barbers/me/services/' + serviceId, body)),
+    deleteService: (serviceId: string): Promise<{ deleted: boolean }> =>
+      withAuth((client) => client.delete('/barbers/me/services/' + serviceId)),
+    schedule: (): Promise<{ schedule: unknown[] }> =>
+      withAuth((client) => client.get('/barbers/me/schedule')),
+    updateSchedule: (schedule: unknown[]): Promise<{ schedule: unknown[] }> =>
+      withAuth((client) => client.put('/barbers/me/schedule', { schedule })),
+    slots: (
+      params?: Record<string, string | number | boolean | undefined>,
+    ): Promise<Paginated<AvailabilitySlot>> =>
+      withAuth((client) => client.get('/barbers/me/slots' + paramsToQuery(params))),
+    appointments: (
+      params?: Record<string, string | number | boolean | undefined>,
+    ): Promise<Paginated<AppointmentSummary>> =>
+      withAuth((client) => client.get('/barbers/me/appointments' + paramsToQuery(params))),
+    updateAppointmentStatus: (
+      appointmentId: string,
+      body: { status: string; notes?: string },
+    ): Promise<AppointmentSummary> =>
+      withAuth((client) =>
+        client.patch('/barbers/me/appointments/' + appointmentId + '/status', body),
+      ),
+    stripeStatus: (): Promise<StripeConnectStatus> =>
+      withAuth((client) => barberBillingApi.stripeStatus(client)),
+    connectStripe: (): Promise<StripeConnectStatus> =>
+      withAuth((client) => barberBillingApi.connectStripe(client)),
+    earnings: (period?: string): Promise<EarningsSummary> =>
+      withAuth((client) => barberBillingApi.earnings(client, { period })),
+    subscription: (): Promise<SubscriptionSummary> =>
+      withAuth((client) => barberBillingApi.subscription(client)),
+    checkout: (tier: 'BASIC' | 'PREMIUM', interval: 'month' | 'year'): Promise<{ url: string }> =>
+      withAuth((client) => barberBillingApi.checkout(client, { tier, interval })),
+    cancelSubscription: (): Promise<SubscriptionSummary> =>
+      withAuth((client) => barberBillingApi.cancelSubscription(client)),
+    resumeSubscription: (): Promise<SubscriptionSummary> =>
+      withAuth((client) => barberBillingApi.resumeSubscription(client)),
+  },
+};
+
+export { ApiError } from '@barber-saas/api-client';

@@ -8,7 +8,6 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 
-
 import { Notice } from '@/components/notice';
 import { EmptyState, ErrorState, LoadingState } from '@/components/query-states';
 import { browserApi } from '@/lib/browser-api';

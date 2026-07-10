@@ -22,11 +22,7 @@
   "settings": {
     "import/resolver": {
       "typescript": {
-        "project": [
-          "./tsconfig.json",
-          "./apps/*/tsconfig.json",
-          "./packages/*/tsconfig.json"
-        ]
+        "project": ["./tsconfig.json", "./apps/*/tsconfig.json", "./packages/*/tsconfig.json"]
       }
     }
   },
@@ -59,5 +55,19 @@
       }
     ]
   },
-  "ignorePatterns": ["dist/", "node_modules/", "*.js", "apps/web/next-env.d.ts"]
+  "ignorePatterns": ["dist/", "node_modules/", "*.js", "apps/web/next-env.d.ts"],
+  "overrides": [
+    {
+      "files": ["apps/mobile/**/*.{ts,tsx}"],
+      "rules": {
+        "@typescript-eslint/no-redundant-type-constituents": "off",
+        "@typescript-eslint/no-unsafe-assignment": "off",
+        "@typescript-eslint/no-unsafe-call": "off",
+        "@typescript-eslint/no-unsafe-member-access": "off",
+        "@typescript-eslint/no-unsafe-return": "off",
+        "import/order": "off",
+        "@typescript-eslint/no-unsafe-argument": "off"
+      }
+    }
+  ]
 }

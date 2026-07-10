@@ -40,8 +40,7 @@ export default function AvailabilityPage(): React.ReactElement {
   });
   const blockedDates = useQuery({
     queryKey: ['blocked-dates'],
-    queryFn: () =>
-      browserApi.get<{ blockedDates: BlockedDate[] }>('/barbers/me/blocked-dates'),
+    queryFn: () => browserApi.get<{ blockedDates: BlockedDate[] }>('/barbers/me/blocked-dates'),
   });
   const slots = useQuery({
     queryKey: ['slots', range],
@@ -113,7 +112,9 @@ export default function AvailabilityPage(): React.ReactElement {
     value: ScheduleEntry[K],
   ): void => {
     setSchedule((current) =>
-      current.map((entry, entryIndex) => (entryIndex === index ? { ...entry, [key]: value } : entry)),
+      current.map((entry, entryIndex) =>
+        entryIndex === index ? { ...entry, [key]: value } : entry,
+      ),
     );
   };
 
@@ -187,7 +188,9 @@ export default function AvailabilityPage(): React.ReactElement {
                     value={entry.slotDurationMinutes}
                   >
                     {[15, 30, 45, 60].map((duration) => (
-                      <option key={duration} value={duration}>{duration} min</option>
+                      <option key={duration} value={duration}>
+                        {duration} min
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -197,12 +200,15 @@ export default function AvailabilityPage(): React.ReactElement {
         </div>
         <div className="form-stack">
           <section className="panel">
-            <div className="panel-header"><h2>Generate slots</h2></div>
+            <div className="panel-header">
+              <h2>Generate slots</h2>
+            </div>
             <div className="panel-body form-stack">
               {generate.isError && <Notice>{errorMessage(generate.error)}</Notice>}
               {generate.data !== undefined && (
                 <Notice tone="success">
-                  Added {generate.data.generated} slots. Skipped {generate.data.skipped} existing slots.
+                  Added {generate.data.generated} slots. Skipped {generate.data.skipped} existing
+                  slots.
                 </Notice>
               )}
               <div className="form-row">
@@ -238,13 +244,19 @@ export default function AvailabilityPage(): React.ReactElement {
               </button>
               <div className="toolbar">
                 <span className="badge">{slots.data?.summary.totalSlots ?? 0} total</span>
-                <span className="badge badge-success">{slots.data?.summary.available ?? 0} available</span>
-                <span className="badge badge-warning">{slots.data?.summary.booked ?? 0} booked</span>
+                <span className="badge badge-success">
+                  {slots.data?.summary.available ?? 0} available
+                </span>
+                <span className="badge badge-warning">
+                  {slots.data?.summary.booked ?? 0} booked
+                </span>
               </div>
             </div>
           </section>
           <section className="panel">
-            <div className="panel-header"><h2>Block a date</h2></div>
+            <div className="panel-header">
+              <h2>Block a date</h2>
+            </div>
             <div className="panel-body form-stack">
               {block.isError && <Notice>{errorMessage(block.error)}</Notice>}
               <div className="field">
@@ -278,13 +290,22 @@ export default function AvailabilityPage(): React.ReactElement {
                 Block date
               </button>
               {(blockedDates.data?.blockedDates.length ?? 0) === 0 ? (
-                <EmptyState title="No upcoming closures" detail="Blocked dates will stay visible here." />
+                <EmptyState
+                  title="No upcoming closures"
+                  detail="Blocked dates will stay visible here."
+                />
               ) : (
                 blockedDates.data?.blockedDates.map((item) => (
-                  <div className="toolbar" key={item.id} style={{ justifyContent: 'space-between' }}>
+                  <div
+                    className="toolbar"
+                    key={item.id}
+                    style={{ justifyContent: 'space-between' }}
+                  >
                     <span>
                       <strong>{new Date(`${item.date}T12:00:00`).toLocaleDateString()}</strong>
-                      {item.reason !== null && <small style={{ display: 'block' }}>{item.reason}</small>}
+                      {item.reason !== null && (
+                        <small style={{ display: 'block' }}>{item.reason}</small>
+                      )}
                     </span>
                     <button
                       className="icon-button"

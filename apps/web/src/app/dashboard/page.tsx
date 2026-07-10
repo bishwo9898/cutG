@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { CalendarCheck, CircleDollarSign, Scissors, Star, UserRoundPlus } from 'lucide-react';
 import Link from 'next/link';
 
-
 import { EmptyState, ErrorState, LoadingState } from '@/components/query-states';
 import { browserApi } from '@/lib/browser-api';
 import type { Appointment, BarberProfile, BarberService } from '@/lib/contracts';

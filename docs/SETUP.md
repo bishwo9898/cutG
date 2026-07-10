@@ -23,6 +23,7 @@ Open the applications:
 - Frontend: [http://localhost:3000](http://localhost:3000)
 - API: [http://localhost:4000](http://localhost:4000)
 - API health: [http://localhost:4000/health](http://localhost:4000/health)
+- Mobile Expo app: `pnpm --filter @barber-saas/mobile dev`
 
 Useful Make commands:
 
@@ -57,6 +58,24 @@ docker compose ps
 curl http://localhost:4000/health
 ```
 
+## Mobile Setup
+
+Create the mobile env file when working on iOS/Android:
+
+```bash
+cp apps/mobile/.env.example apps/mobile/.env
+```
+
+Set `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` to your Stripe publishable key. Use `EXPO_PUBLIC_API_URL=http://localhost:4000` for iOS Simulator. Use `http://10.0.2.2:4000` for Android Emulator. For a physical device, replace `localhost` with your computer's LAN IP, for example `http://192.168.1.x:4000`.
+
+Run Expo separately from `make dev`:
+
+```bash
+pnpm --filter @barber-saas/mobile dev
+pnpm --filter @barber-saas/mobile ios
+pnpm --filter @barber-saas/mobile android
+```
+
 ## Database Access
 
 ```bash
@@ -76,7 +95,7 @@ SELECT status, COUNT(*) FROM appointments GROUP BY status;
 - If port `55433` is already in use, set `POSTGRES_HOST_PORT` to another free port and update `DATABASE_URL` to match it.
 - This project defaults Redis to host port `6380` because local Redis commonly uses `6379`.
 - If Redis port `6380` is already in use, set `REDIS_HOST_PORT` to another free port.
-- The web application uses port `3000`; the API uses port `4000`.
+- The web application uses port `3000`; the API uses port `4000`. Expo/Metro will choose its own development port and show a QR code.
 - If `pnpm dev` fails with `EADDRINUSE`, inspect the port with `lsof -nP -iTCP:3000 -sTCP:LISTEN` or `lsof -nP -iTCP:4000 -sTCP:LISTEN`, then stop the stale process.
 - If Docker reports a port conflict, update the corresponding host port in `.env`; keep `DATABASE_URL` synchronized with `POSTGRES_HOST_PORT`.
 - If migrations fail because extensions cannot be created, verify the connected user owns the local database.

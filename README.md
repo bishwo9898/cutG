@@ -20,7 +20,7 @@ make dev
 
 `make setup` installs dependencies, creates `.env` only when it is missing, starts PostgreSQL and Redis, then migrates and seeds the database.
 
-Open the frontend at [http://localhost:3000](http://localhost:3000). The API runs at [http://localhost:4000](http://localhost:4000).
+Open the frontend at [http://localhost:3000](http://localhost:3000). The API runs at [http://localhost:4000](http://localhost:4000). Start mobile separately with `pnpm --filter @barber-saas/mobile dev`.
 
 Health check:
 
@@ -47,7 +47,7 @@ Expected response shape:
 
 - `apps/api`: Express API, database migrations, seeds, and runtime config.
 - `apps/web`: Next.js frontend.
-- `apps/mobile`: React Native placeholder for Phase 7.
+- `apps/mobile`: Expo React Native app for iOS and Android client/barber flows.
 - `packages/shared-types`: Zod schemas and inferred TypeScript types.
 - `packages/shared-utils`: Shared validators and utility contracts.
 - `docs`: Architecture, API, database, setup, and deployment notes.
@@ -75,6 +75,9 @@ pnpm db:migrate
 pnpm db:rollback
 pnpm db:seed
 pnpm db:connect
+pnpm --filter @barber-saas/mobile dev
+pnpm --filter @barber-saas/mobile ios
+pnpm --filter @barber-saas/mobile android
 ```
 
 For setup without Make:
@@ -94,4 +97,4 @@ The seed script creates 3 barber profiles, 12 client users, services, 45 availab
 
 ## Documentation
 
-Start with [docs/FOUNDATION_TRACKER.md](docs/FOUNDATION_TRACKER.md) for the current build status, then read [docs/SETUP.md](docs/SETUP.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/DATABASE.md](docs/DATABASE.md).
+Start with [docs/FOUNDATION_TRACKER.md](docs/FOUNDATION_TRACKER.md) for the current build status, then read [docs/SETUP.md](docs/SETUP.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DATABASE.md](docs/DATABASE.md), and [docs/MOBILE.md](docs/MOBILE.md).
