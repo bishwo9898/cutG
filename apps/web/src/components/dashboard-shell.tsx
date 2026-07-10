@@ -2,11 +2,14 @@
 
 import {
   CalendarDays,
+  CreditCard,
+  DollarSign,
   ExternalLink,
   LayoutDashboard,
   LogOut,
   Scissors,
   Store,
+  BadgeCheck,
   UserRound,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -19,6 +22,9 @@ const navItems = [
   { href: '/dashboard/services', label: 'Services', icon: Scissors },
   { href: '/dashboard/availability', label: 'Availability', icon: CalendarDays },
   { href: '/dashboard/appointments', label: 'Appointments', icon: Store },
+  { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
+  { href: '/dashboard/earnings', label: 'Earnings', icon: DollarSign },
+  { href: '/dashboard/subscription', label: 'Subscription', icon: BadgeCheck },
   { href: '/dashboard/profile', label: 'Profile', icon: UserRound },
   { href: '/dashboard/preview', label: 'Public preview', icon: ExternalLink },
 ];

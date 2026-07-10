@@ -1,0 +1,117 @@
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { app } from '../app';
+import { closeDatabase, pool } from '../config/database';
+import {
+  createBarberProfileFixture,
+  createVerifiedUser,
+  resetTestDatabase,
+} from '../test/fixtures';
+
+let barberToken = '';
+let clientToken = '';
+let barberId = '';
+let serviceId = '';
+let appointmentId = '';
+
+type LoginBody = { accessToken: string };
+type IntentBody = { clientSecret: string; breakdown: { platformFee: number } };
+type StripeStatusBody = { onboardingComplete: boolean };
+type EarningsBody = { summary: Record<string, unknown> };
+type SubscriptionBody = { tier: string };
+type ErrorBody = { error: string };
+
+beforeAll(async () => {
+  await resetTestDatabase();
+  const barber = await createVerifiedUser('BARBER', 'phase4.barber@example.com');
+  const client = await createVerifiedUser('CLIENT', 'phase4.client@example.com');
+  barberId = await createBarberProfileFixture(barber.id);
+  await pool.query(
+    `UPDATE barber_profiles SET
+      stripe_account_id = 'acct_test_phase4',
+      stripe_onboarding_complete = true,
+      stripe_charges_enabled = true,
+      stripe_payouts_enabled = true,
+      subscription_tier = 'PREMIUM'
+     WHERE id = $1`,
+    [barberId],
+  );
+
+  const service = await pool.query<{ id: string }>(
+    `INSERT INTO services (barber_id,name,price,duration_minutes,category)
+     VALUES ($1,'Paid Fade',25,30,'haircut')
+     RETURNING id`,
+    [barberId],
+  );
+  serviceId = service.rows[0]?.id ?? '';
+  const slot = await pool.query<{ id: string }>(
+    `INSERT INTO availability_slots (barber_id,slot_date,start_time,end_time,duration_minutes,status)
+     VALUES ($1,'2026-08-10','10:00','10:30',30,'BOOKED')
+     RETURNING id`,
+    [barberId],
+  );
+  const appointment = await pool.query<{ id: string }>(
+    `INSERT INTO appointments
+      (client_id,barber_id,service_id,availability_slot_id,scheduled_at,duration_minutes,status,
+       payment_status,location_address,price_quoted)
+     VALUES ($1,$2,$3,$4,'2026-08-10 10:00:00',30,'PENDING','PENDING','1 Test Street',25)
+     RETURNING id`,
+    [client.id, barberId, serviceId, slot.rows[0]?.id],
+  );
+  appointmentId = appointment.rows[0]?.id ?? '';
+  await pool.query('UPDATE availability_slots SET appointment_id = $1 WHERE id = $2', [
+    appointmentId,
+    slot.rows[0]?.id,
+  ]);
+
+  const barberLogin = await request(app)
+    .post('/auth/login')
+    .send({ email: 'phase4.barber@example.com', password: 'strong-password-123' });
+  const clientLogin = await request(app)
+    .post('/auth/login')
+    .send({ email: 'phase4.client@example.com', password: 'strong-password-123' });
+  barberToken = (barberLogin.body as LoginBody).accessToken;
+  clientToken = (clientLogin.body as LoginBody).accessToken;
+});
+
+afterAll(async () => closeDatabase());
+
+describe('Phase 4 payments and subscriptions API', () => {
+  it('creates a mobile-compatible payment intent for a client appointment', async () => {
+    const response = await request(app)
+      .post('/payments/create-intent')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ appointmentId });
+
+    expect(response.status).toBe(200);
+    expect((response.body as IntentBody).clientSecret).toContain('_secret_');
+    expect((response.body as IntentBody).breakdown.platformFee).toBe(2.5);
+  });
+
+  it('returns barber stripe status, earnings, and subscription state', async () => {
+    const stripeStatus = await request(app)
+      .get('/barbers/me/stripe/status')
+      .set('Authorization', `Bearer ${barberToken}`);
+    expect(stripeStatus.status).toBe(200);
+    expect((stripeStatus.body as StripeStatusBody).onboardingComplete).toBe(true);
+
+    const earnings = await request(app)
+      .get('/barbers/me/earnings')
+      .set('Authorization', `Bearer ${barberToken}`);
+    expect(earnings.status).toBe(200);
+    expect((earnings.body as EarningsBody).summary).toHaveProperty('totalEarnings');
+
+    const subscription = await request(app)
+      .get('/barbers/me/subscription')
+      .set('Authorization', `Bearer ${barberToken}`);
+    expect(subscription.status).toBe(200);
+    expect((subscription.body as SubscriptionBody).tier).toBe('PREMIUM');
+  });
+
+  it('rejects unsigned Stripe webhook payloads', async () => {
+    const response = await request(app).post('/webhooks/stripe').send({ type: 'test' });
+    expect(response.status).toBe(400);
+    expect((response.body as ErrorBody).error).toBe('INVALID_SIGNATURE');
+  });
+});

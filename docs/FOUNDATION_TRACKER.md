@@ -6,7 +6,7 @@ This document tracks what has been built so far from the Phase 0 foundation plan
 
 ## Current Status
 
-Phase 0 foundation, Phase 1 authentication, Phase 2 barber management APIs, Phase 3 client discovery/booking APIs, and the initial cutG web experiences are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
+Phase 0 foundation, Phase 1 authentication, Phase 2 barber management APIs, Phase 3 client discovery/booking APIs, Phase 4 payments/subscriptions APIs, and the initial cutG web experiences are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
 
 Verified commands:
 
@@ -38,7 +38,8 @@ Current API root response:
     "auth": "/auth",
     "barbers": "/barbers",
     "clients": "/clients",
-    "health": "/health"
+    "health": "/health",
+    "payments": "/payments"
   }
 }
 ```
@@ -84,6 +85,8 @@ Built so far:
 - Authentication router mounted at `/auth`
 - Barber router mounted at `/barbers`
 - Client router mounted at `/clients`
+- Payment router mounted at `/payments`
+- Raw-body Stripe webhook mounted at `/webhooks/stripe`
 - Registration and bcrypt password hashing
 - Email verification code generation and consumption
 - Login with JWT access and refresh tokens
@@ -134,6 +137,14 @@ Current Phase 2 barber routes:
 | `DELETE` | `/barbers/me/blocked-dates/:date`                | Barber token  | Unblock and regenerate availability.      |
 | `GET`    | `/barbers/me/appointments`                       | Barber token  | List paginated owned appointments.        |
 | `PATCH`  | `/barbers/me/appointments/:appointmentId/status` | Barber token  | Apply allowed appointment transitions.    |
+| `POST`   | `/barbers/me/stripe/connect`                     | Barber token  | Start Stripe Connect onboarding.          |
+| `GET`    | `/barbers/me/stripe/status`                      | Barber token  | Read Connect onboarding status.           |
+| `GET`    | `/barbers/me/earnings`                           | Barber token  | Read earnings and payout summaries.       |
+| `GET`    | `/barbers/me/subscription`                       | Barber token  | Read subscription status and features.    |
+| `POST`   | `/barbers/me/subscription/checkout`              | Barber token  | Create subscription checkout URL.         |
+| `POST`   | `/barbers/me/subscription/cancel`                | Barber token  | Cancel renewal at period end.             |
+| `POST`   | `/barbers/me/subscription/resume`                | Barber token  | Resume renewal.                           |
+| `GET`    | `/barbers/me/analytics`                          | Basic+ token  | Subscription-gated analytics placeholder. |
 | `GET`    | `/barbers/:barberId`                             | No            | Read sanitized public barber profile.     |
 | `GET`    | `/barbers/:barberId/services`                    | No            | List active public services.              |
 | `GET`    | `/barbers/:barberId/slots`                       | No            | List safe public availability.            |
@@ -152,6 +163,16 @@ Current Phase 3 client routes:
 | `GET`    | `/clients/me/appointments/:appointmentId` | Client token  | Read one owned appointment.            |
 | `DELETE` | `/clients/me/appointments/:appointmentId` | Client token  | Cancel pending/confirmed appointments. |
 | `POST`   | `/clients/me/reviews`                     | Client token  | Review a completed owned appointment.  |
+| `GET`    | `/clients/me/payment-history`             | Client token  | List payment history.                  |
+
+Current Phase 4 payment routes:
+
+| Method | Path                                   | Auth required    | Purpose                                         |
+| ------ | -------------------------------------- | ---------------- | ----------------------------------------------- |
+| `POST` | `/payments/create-intent`              | Client token     | Create mobile-compatible Stripe intent.         |
+| `GET`  | `/payments/appointment/:appointmentId` | Client or barber | Read owned appointment payment status.          |
+| `POST` | `/payments/refund`                     | Client token     | Refund paid appointments before completion.     |
+| `POST` | `/webhooks/stripe`                     | Stripe signature | Sync Stripe payment, subscription, and Connect. |
 
 Authentication implementation notes:
 
@@ -187,6 +208,19 @@ Phase 3 adds:
 - Next.js marketplace homepage, search, public profile, booking, appointments, and saved-barber pages
 - Migration `004_client_features.ts`
 
+Phase 4 adds:
+
+- Stripe Payment Intent creation for appointment payments
+- Cents-based platform fee and barber payout accounting
+- Client payment status, refund, and payment-history endpoints
+- Stripe webhook signature verification with raw request body
+- Idempotent webhook event processing through `subscription_events`
+- Stripe Connect onboarding/status for barber payouts
+- Barber earnings dashboard and payout batch storage
+- Barber subscription checkout, cancel, resume, status, and tier gates
+- Next.js dashboard pages for payments, earnings, and subscriptions
+- Migration `005_payments_and_subscriptions.ts`
+
 Seed accounts use password `password123`:
 
 - `barber1@example.com`
@@ -216,6 +250,7 @@ Migrations:
 - `apps/api/src/db/migrations/002_auth_tables.ts`
 - `apps/api/src/db/migrations/003_barber_schedule.ts`
 - `apps/api/src/db/migrations/004_client_features.ts`
+- `apps/api/src/db/migrations/005_payments_and_subscriptions.ts`
 
 The initial schema includes 9 production-oriented tables:
 
@@ -259,6 +294,19 @@ The client feature migration adds:
 | ---------------------- | ---------------------------------------------- |
 | `client_saved_barbers` | Client favorites, unique by client and barber. |
 
+The payment and subscription migration adds:
+
+| Table                 | Purpose                                                 |
+| --------------------- | ------------------------------------------------------- |
+| `payout_batches`      | Groups appointment earnings into barber payout batches. |
+| `subscription_events` | Idempotent Stripe webhook and subscription event log.   |
+
+Additional Phase 4 database changes:
+
+- Extends `payments` with platform fee, barber payout, refund, transfer, payout batch, and capture/failure fields.
+- Extends `barber_profiles` with Stripe onboarding, charges, and payouts status flags.
+- Extends `subscriptions` with Stripe customer, billing interval, current period, and cancel-at-period-end fields.
+
 Database features included:
 
 - UUID primary keys via `pgcrypto`
@@ -286,6 +334,7 @@ Seed data currently creates:
 - 3 subscriptions
 - 8 reviews
 - 2 saved-barber examples
+- 1 paid payout batch
 - 12 notifications
 
 Appointment status mix:
@@ -313,13 +362,15 @@ Current state:
 - Responsive protected dashboard shell
 - Barber dashboard home, profile, services, availability, appointments, and public-preview screens
 - Client marketplace homepage, search, barber profile, booking flow, appointments, appointment detail, and saved barbers
+- Barber payment setup, earnings, and subscription management pages
 - Browser-side forms and state for profile/service/schedule workflows
 - Browser-side forms and state for client booking, cancellation, saved barbers, and reviews
+- Browser-side payment-intent, refund, Connect onboarding, and subscription checkout actions
 - Next.js API proxy routes for login, logout, and backend requests
 - TanStack Query server state and React Hook Form validation
 - Shared transport-independent API client package
 
-Important distinction: the client booking interface is now functional without payments. Stripe-backed checkout remains a future phase.
+Important distinction: client payment intent creation is now functional, but card capture still needs Stripe SDK integration in the future mobile/web payment UI.
 
 Current scripts:
 
@@ -362,6 +413,7 @@ Includes:
 - Current user calls
 - Barber profile, service, schedule, slot, appointment, and public barber calls
 - Client profile, saved-barber, booking, cancellation, and review calls
+- Payment, refund, earnings, Connect, and subscription calls
 
 Key files:
 
@@ -378,6 +430,7 @@ Includes:
 - Authentication request/response schemas
 - Barber request/response schemas
 - Client discovery, booking, appointment, saved-barber, and review schemas
+- Payment, refund, earnings, and subscription checkout schemas
 - Shared enums
 - Root exports from `src/index.ts`
 
@@ -389,6 +442,7 @@ Key files:
 - `packages/shared-types/src/auth.ts`
 - `packages/shared-types/src/barber.ts`
 - `packages/shared-types/src/client.ts`
+- `packages/shared-types/src/payment.ts`
 - `packages/shared-types/src/index.ts`
 
 ### `packages/shared-utils`
@@ -467,6 +521,8 @@ Generated output:
 | `docs/ARCHITECTURE.md`       | System architecture and scaling path.                 |
 | `docs/BARBERS.md`            | Barber schedule, slot, blocking, and status behavior. |
 | `docs/CLIENTS.md`            | Client discovery, booking, cancellation, and reviews. |
+| `docs/PAYMENTS.md`           | Stripe intents, Connect, webhooks, refunds, and fees. |
+| `docs/SUBSCRIPTIONS.md`      | Tier features, checkout, billing, and gates.          |
 | `docs/DEPLOYMENT.md`         | Deployment notes and production expectations.         |
 | `docs/FOUNDATION_TRACKER.md` | This running tracker of what exists so far.           |
 | `docs/ROADMAP.md`            | Forward-looking product and engineering plan.         |
@@ -528,7 +584,16 @@ JWT_SECRET=replace_with_a_random_secret_of_at_least_32_characters
 JWT_EXPIRY=24h
 JWT_REFRESH_EXPIRY=30d
 STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_PUBLIC_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+PLATFORM_FEE_PERCENT=10
+STRIPE_PRICE_BASIC_MONTHLY=price_...
+STRIPE_PRICE_BASIC_ANNUAL=price_...
+STRIPE_PRICE_PREMIUM_MONTHLY=price_...
+STRIPE_PRICE_PREMIUM_ANNUAL=price_...
+STRIPE_SUBSCRIPTION_SUCCESS_URL=cutg://subscription/success
+STRIPE_SUBSCRIPTION_CANCEL_URL=cutg://subscription/cancelled
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 AWS_S3_BUCKET=cutg-dev
@@ -586,17 +651,16 @@ Expected health state:
 
 ## Next Phase Readiness
 
-The foundation, authentication backend, Phase 2 barber backend, Phase 3 client backend, initial barber dashboard, and client marketplace pages are ready for continued implementation. The remaining natural steps from the original planning document are:
+The foundation, authentication backend, Phase 2 barber backend, Phase 3 client backend, Phase 4 payment/subscription backend, initial barber dashboard, and client marketplace pages are ready for continued implementation. The remaining natural steps from the original planning document are:
 
-- Complete Phase 3 follow-up: broader live acceptance coverage and UX refinement
-- Phase 4: payments, checkout, and production-ready booking/payment handoff
-- Phase 5+: notifications, realtime flows, AI-ready features
+- Complete Phase 4 follow-up: live Stripe CLI acceptance testing and Stripe SDK card-capture UI
+- Phase 5+: mobile app, notifications, realtime flows, AI-ready features
 
 ## Known Local Notes
 
 - The API reads the root `.env` even when it is started from `apps/api`.
 - `GET /` was added so browser visits to the API root no longer return `ROUTE_NOT_FOUND`.
-- The API root now advertises `/auth`, `/barbers`, `/clients`, and `/health`.
+- The API root now advertises `/auth`, `/barbers`, `/clients`, `/health`, and `/payments`.
 - `GET /health` is database-aware; if it returns `database.status = "error"`, check `DATABASE_URL`, Docker health, and port conflicts first.
 - `pnpm dev` starts both the API and the web app through `concurrently`.
 - Frontend URL: `http://localhost:3000`.
@@ -634,6 +698,14 @@ POST /barbers/me/blocked-dates
 DELETE /barbers/me/blocked-dates/:date
 GET /barbers/me/appointments
 PATCH /barbers/me/appointments/:appointmentId/status
+POST /barbers/me/stripe/connect
+GET /barbers/me/stripe/status
+GET /barbers/me/earnings
+GET /barbers/me/subscription
+POST /barbers/me/subscription/checkout
+POST /barbers/me/subscription/cancel
+POST /barbers/me/subscription/resume
+GET /barbers/me/analytics
 GET /barbers/:barberId
 GET /barbers/:barberId/services
 GET /barbers/:barberId/slots
@@ -647,3 +719,8 @@ GET /clients/me/appointments
 GET /clients/me/appointments/:appointmentId
 DELETE /clients/me/appointments/:appointmentId
 POST /clients/me/reviews
+GET /clients/me/payment-history
+POST /payments/create-intent
+GET /payments/appointment/:appointmentId
+POST /payments/refund
+POST /webhooks/stripe

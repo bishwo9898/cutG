@@ -3,6 +3,7 @@ import {
   ClientAppointmentParamsSchema,
   ClientAppointmentQuerySchema,
   CreateReviewSchema,
+  PaymentHistoryQuerySchema,
   SaveBarberSchema,
   UuidParamsSchema,
 } from '@barber-saas/shared-types';
@@ -27,6 +28,7 @@ import {
   removeSavedBarber,
   saveBarber,
 } from '../services/client/clientService';
+import { listClientPaymentHistory } from '../services/payment/paymentService';
 import type { AuthenticatedRequest } from '../types/auth';
 
 export const clientRouter: ExpressRouter = Router();
@@ -113,5 +115,13 @@ clientRouter.post(
     response
       .status(201)
       .json(await createClientReview(userId(request), CreateReviewSchema.parse(request.body)));
+  }),
+);
+
+clientRouter.get(
+  '/me/payment-history',
+  asyncHandler(async (request, response) => {
+    const query = PaymentHistoryQuerySchema.parse(request.query);
+    response.json(await listClientPaymentHistory(userId(request), query.page, query.limit));
   }),
 );

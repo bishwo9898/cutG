@@ -4,3 +4,4 @@ export * from './barber';
 export * from './client';
 export * from './database';
 export * from './enums';
+export * from './payment';

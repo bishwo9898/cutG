@@ -331,7 +331,7 @@ const buildAppointments = (clients: ClientSeed[], slots: SlotSeed[]): Appointmen
   return statuses.map((status, index): AppointmentSeed => {
     const barber = requireAt(barberSeeds, index, 'appointment barber');
     const client =
-      index < 5
+      index < 5 || (status === 'PENDING' && barber.email === 'barber1@example.com')
         ? requireAt(clients, 0, 'John Client')
         : requireAt(clients, index - 4, 'appointment client');
     const service = requireAt(barber.services, index, 'appointment service');
@@ -389,6 +389,8 @@ export async function seed(knex: Knex): Promise<void> {
   await knex('client_saved_barbers').del();
   await knex('reviews').del();
   await knex('payments').del();
+  await knex('payout_batches').del();
+  await knex('subscription_events').del();
   await knex('subscriptions').del();
   await knex('barber_blocked_dates').del();
   await knex('barber_schedules').del();
@@ -455,7 +457,15 @@ export async function seed(knex: Knex): Promise<void> {
       profile_photo_key: `barbers/${barber.profileId}/profile.jpg`,
       subscription_tier: barber.tier,
       subscription_valid_until: addDays(new Date(), 30),
-      stripe_account_id: `acct_seed_${barber.profileId.replaceAll('-', '').slice(0, 12)}`,
+      stripe_account_id:
+        barber.email === 'barber1@example.com'
+          ? 'acct_test_barber1'
+          : barber.email === 'barber2@example.com'
+            ? 'acct_test_barber2'
+            : null,
+      stripe_onboarding_complete: barber.email === 'barber1@example.com',
+      stripe_charges_enabled: barber.email === 'barber1@example.com',
+      stripe_payouts_enabled: barber.email === 'barber1@example.com',
       is_verified: barber.tier !== 'FREE',
       verified_at: barber.tier !== 'FREE' ? new Date() : null,
       metadata: { seeded: true, specialties: ['fades', 'lineups', 'classic cuts'] },
@@ -561,11 +571,22 @@ export async function seed(knex: Knex): Promise<void> {
       barber_id: barber.profileId,
       tier: barber.tier,
       status: 'ACTIVE',
-      stripe_subscription_id: `sub_seed_${barber.profileId.replaceAll('-', '').slice(0, 12)}`,
+      stripe_customer_id:
+        barber.tier === 'FREE'
+          ? null
+          : `cus_seed_${barber.profileId.replaceAll('-', '').slice(0, 12)}`,
+      stripe_subscription_id:
+        barber.tier === 'FREE'
+          ? null
+          : `sub_seed_${barber.profileId.replaceAll('-', '').slice(0, 12)}`,
+      billing_interval: barber.tier === 'FREE' ? null : 'month',
       billing_cycle_start: addDays(now, -15),
       billing_cycle_end: addDays(now, 15),
+      current_period_start: addDays(now, -15),
+      current_period_end: addDays(now, 15),
       renewal_date: addDays(now, 16),
       auto_renew: true,
+      cancel_at_period_end: false,
       features: {
         max_services: barber.tier === 'FREE' ? 5 : barber.tier === 'BASIC' ? 15 : 100,
         max_clients: barber.tier === 'FREE' ? 100 : barber.tier === 'BASIC' ? 500 : 5000,
@@ -579,21 +600,52 @@ export async function seed(knex: Knex): Promise<void> {
     ...appointments.filter((appointment) => appointment.status === 'COMPLETED'),
     ...appointments.filter((appointment) => appointment.status === 'PENDING').slice(0, 2),
   ];
+  const barber1CompletedPayments = payableAppointments.filter(
+    (appointment) =>
+      appointment.status === 'COMPLETED' &&
+      appointment.barberId === requireAt(barberSeeds, 0, 'barber1').profileId,
+  );
+  const barber1PayoutBatchId = randomUUID();
+
+  await knex('payout_batches').insert({
+    id: barber1PayoutBatchId,
+    barber_id: requireAt(barberSeeds, 0, 'barber1').profileId,
+    stripe_transfer_id: 'tr_seed_barber1_batch1',
+    amount_cents: barber1CompletedPayments.reduce(
+      (sum, appointment) => sum + Math.round(appointment.priceQuoted * 100 * 0.9),
+      0,
+    ),
+    currency: 'usd',
+    status: 'paid',
+    appointment_count: 5,
+    period_start: isoDate(addDays(now, -14)),
+    period_end: isoDate(now),
+    paid_at: addDays(now, -1),
+  });
 
   await knex('payments').insert(
     payableAppointments.map((appointment, index) => ({
+      amount_cents: Math.round(appointment.priceQuoted * 100),
+      platform_fee_cents: Math.round(appointment.priceQuoted * 100 * 0.1),
+      barber_payout_cents:
+        Math.round(appointment.priceQuoted * 100) - Math.round(appointment.priceQuoted * 100 * 0.1),
       id: randomUUID(),
       appointment_id: appointment.id,
       client_id: appointment.clientId,
       barber_id: appointment.barberId,
-      amount_cents: Math.round(appointment.priceQuoted * 100),
-      currency: 'USD',
+      currency: 'usd',
       stripe_payment_intent_id: `pi_seed_${String(index).padStart(4, '0')}`,
       stripe_charge_id:
         appointment.paymentStatus === 'SUCCEEDED'
           ? `ch_seed_${String(index).padStart(4, '0')}`
           : null,
       status: appointment.paymentStatus,
+      captured_at: appointment.paymentStatus === 'SUCCEEDED' ? appointment.completedAt : null,
+      payout_batch_id:
+        appointment.status === 'COMPLETED' &&
+        appointment.barberId === requireAt(barberSeeds, 0, 'barber1').profileId
+          ? barber1PayoutBatchId
+          : null,
       metadata: { seeded: true },
     })),
   );

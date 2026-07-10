@@ -131,4 +131,29 @@ export const clientApi = {
     client.delete<T>(`/clients/me/appointments/${appointmentId}`),
   createReview: <T>(client: ApiClient, body: unknown): Promise<T> =>
     client.post<T>('/clients/me/reviews', body),
+  paymentHistory: <T>(client: ApiClient, params?: QueryParams): Promise<T> =>
+    client.get<T>(`/clients/me/payment-history${toQueryString(params)}`),
+};
+
+export const paymentApi = {
+  createIntent: <T>(client: ApiClient, appointmentId: string): Promise<T> =>
+    client.post<T>('/payments/create-intent', { appointmentId }),
+  appointmentStatus: <T>(client: ApiClient, appointmentId: string): Promise<T> =>
+    client.get<T>(`/payments/appointment/${appointmentId}`),
+  refund: <T>(client: ApiClient, appointmentId: string, reason?: string): Promise<T> =>
+    client.post<T>('/payments/refund', { appointmentId, reason }),
+};
+
+export const barberBillingApi = {
+  stripeStatus: <T>(client: ApiClient): Promise<T> => client.get<T>('/barbers/me/stripe/status'),
+  connectStripe: <T>(client: ApiClient): Promise<T> => client.post<T>('/barbers/me/stripe/connect'),
+  earnings: <T>(client: ApiClient, params?: QueryParams): Promise<T> =>
+    client.get<T>(`/barbers/me/earnings${toQueryString(params)}`),
+  subscription: <T>(client: ApiClient): Promise<T> => client.get<T>('/barbers/me/subscription'),
+  checkout: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/barbers/me/subscription/checkout', body),
+  cancelSubscription: <T>(client: ApiClient): Promise<T> =>
+    client.post<T>('/barbers/me/subscription/cancel'),
+  resumeSubscription: <T>(client: ApiClient): Promise<T> =>
+    client.post<T>('/barbers/me/subscription/resume'),
 };

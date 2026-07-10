@@ -9,6 +9,7 @@ import type {
 } from '@barber-saas/shared-types';
 import type { z } from 'zod';
 
+import { SUBSCRIPTION_TIERS, type SubscriptionTierName } from '../../config/subscriptionTiers';
 import { query, withTransaction, type DatabaseExecutor } from '../../db/queries/barber.queries';
 import { AppError } from '../../middleware/errorHandler';
 import { datesBetween, dayName, generateDaySlots, isoDayOfWeek } from '../../utils/slotGenerator';
@@ -16,7 +17,6 @@ import { datesBetween, dayName, generateDaySlots, isoDayOfWeek } from '../../uti
 type Row = Record<string, unknown>;
 type AppointmentFilters = z.infer<typeof AppointmentFilterSchema>;
 
-const SERVICE_LIMITS: Record<string, number> = { FREE: 5, BASIC: 20, PREMIUM: Infinity };
 export const BARBER_ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
   PENDING: ['CONFIRMED', 'CANCELLED'],
   CONFIRMED: ['IN_PROGRESS', 'CANCELLED', 'NO_SHOW'],
@@ -159,7 +159,9 @@ export const createOffering = async (userId: string, input: CreateServiceRequest
     [profile.id],
   );
   const tier = String(profile.subscription_tier);
-  if (Number(count[0]?.count) >= (SERVICE_LIMITS[tier] ?? 5)) {
+  const serviceLimit =
+    SUBSCRIPTION_TIERS[(tier as SubscriptionTierName) ?? 'FREE']?.maxServices ?? 5;
+  if (Number(count[0]?.count) >= serviceLimit) {
     throw new AppError(
       403,
       `${tier} tier service limit reached. Upgrade to add more.`,

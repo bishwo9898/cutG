@@ -7,12 +7,14 @@ import {
   CreateBarberProfileSchema,
   CreateServiceSchema,
   DateRangeSchema,
+  EarningsQuerySchema,
   GenerateSlotsSchema,
   PublicSlotsQuerySchema,
   ReviewQuerySchema,
   ServiceFilterSchema,
   ServiceParamsSchema,
   SetScheduleSchema,
+  SubscriptionCheckoutSchema,
   UpdateAppointmentStatusSchema,
   UpdateBarberPhotoSchema,
   UpdateBarberProfileSchema,
@@ -29,6 +31,7 @@ import {
 } from 'express';
 
 import { requireAuth, requireRoles } from '../middleware/auth';
+import { requireSubscriptionTier } from '../middleware/subscriptionGate';
 import {
   blockDate,
   createOffering,
@@ -53,6 +56,15 @@ import {
   updateProfile,
 } from '../services/barber/barberService';
 import { listPublicReviews, searchBarbers } from '../services/discovery/barberSearchService';
+import { getBarberEarnings } from '../services/payment/paymentService';
+import {
+  cancelSubscription,
+  createSubscriptionCheckoutSession,
+  getStripeConnectStatus,
+  getSubscriptionStatus,
+  resumeSubscription,
+  startStripeConnectOnboarding,
+} from '../services/subscription/subscriptionService';
 import type { AuthenticatedRequest } from '../types/auth';
 import { addDaysToDate } from '../utils/slotGenerator';
 
@@ -207,6 +219,63 @@ barberRouter.patch(
       await updateAppointmentStatus(userId(request), appointmentId, input.status, input.notes),
     );
   }),
+);
+
+barberRouter.post(
+  '/me/stripe/connect',
+  asyncHandler(async (request, response) => {
+    response.json(await startStripeConnectOnboarding(userId(request)));
+  }),
+);
+barberRouter.get(
+  '/me/stripe/status',
+  asyncHandler(async (request, response) => {
+    response.json(await getStripeConnectStatus(userId(request)));
+  }),
+);
+barberRouter.get(
+  '/me/earnings',
+  asyncHandler(async (request, response) => {
+    const { period } = EarningsQuerySchema.parse(request.query);
+    response.json(await getBarberEarnings(userId(request), period));
+  }),
+);
+barberRouter.get(
+  '/me/subscription',
+  asyncHandler(async (request, response) => {
+    response.json(await getSubscriptionStatus(userId(request)));
+  }),
+);
+barberRouter.post(
+  '/me/subscription/checkout',
+  asyncHandler(async (request, response) => {
+    const input = SubscriptionCheckoutSchema.parse(request.body);
+    response.json(
+      await createSubscriptionCheckoutSession(userId(request), input.tier, input.interval),
+    );
+  }),
+);
+barberRouter.post(
+  '/me/subscription/cancel',
+  asyncHandler(async (request, response) => {
+    response.json(await cancelSubscription(userId(request)));
+  }),
+);
+barberRouter.post(
+  '/me/subscription/resume',
+  asyncHandler(async (request, response) => {
+    response.json(await resumeSubscription(userId(request)));
+  }),
+);
+barberRouter.get(
+  '/me/analytics',
+  requireSubscriptionTier('BASIC'),
+  (_request, response) => {
+    response.json({
+      message: 'Advanced analytics are available for this subscription tier.',
+      metrics: { placeholder: true },
+    });
+  },
 );
 
 barberRouter.get(
