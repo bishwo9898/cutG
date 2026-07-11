@@ -5,7 +5,9 @@ import { z } from 'zod';
 
 import { DEFAULT_HOST, DEFAULT_PORT } from './constants';
 
-loadEnv({ path: resolve(__dirname, '../../../..', '.env') });
+const repositoryRoot = resolve(__dirname, '../../../..');
+loadEnv({ path: resolve(repositoryRoot, '.env.local') });
+loadEnv({ path: resolve(repositoryRoot, '.env') });
 loadEnv();
 
 const EnvSchema = z.object({

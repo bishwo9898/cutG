@@ -41,6 +41,7 @@ export default function MobileServicePage(): React.ReactElement {
   const [originAddress, setOriginAddress] = useState('');
   const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState(false);
+  const [mapLoadError, setMapLoadError] = useState(false);
   const circle = useRef<google.maps.Circle | null>(null);
 
   useEffect(() => {
@@ -60,6 +61,19 @@ export default function MobileServicePage(): React.ReactElement {
     setOriginAddress(config.data.originAddress ?? '');
     setNotes(config.data.mobileServiceNotes ?? '');
   }, [config.data]);
+
+  useEffect(() => {
+    const mapsWindow = window as Window & { gm_authFailure?: () => void };
+    const previousHandler = mapsWindow.gm_authFailure;
+    mapsWindow.gm_authFailure = (): void => setMapLoadError(true);
+    return (): void => {
+      if (previousHandler === undefined) {
+        delete mapsWindow.gm_authFailure;
+      } else {
+        mapsWindow.gm_authFailure = previousHandler;
+      }
+    };
+  }, []);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -108,7 +122,11 @@ export default function MobileServicePage(): React.ReactElement {
           </div>
           <div className="panel-body form-stack">
             {mapsKey.length > 0 ? (
-              <LoadScript googleMapsApiKey={mapsKey}>
+              <LoadScript
+                googleMapsApiKey={mapsKey}
+                onError={() => setMapLoadError(true)}
+                onLoad={() => setMapLoadError(false)}
+              >
                 <GoogleMap
                   center={{ lat: latitude, lng: longitude }}
                   mapContainerClassName="mobile-service-map"
@@ -152,6 +170,12 @@ export default function MobileServicePage(): React.ReactElement {
               </LoadScript>
             ) : (
               <Notice>Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to display the editable map.</Notice>
+            )}
+            {mapLoadError && (
+              <Notice>
+                Google Maps could not load. Check that Maps JavaScript API and billing are enabled,
+                and allow http://localhost:3000/* in this key's website restrictions.
+              </Notice>
             )}
             <div className="field">
               <label htmlFor="radius">Service radius: {radius} miles</label>

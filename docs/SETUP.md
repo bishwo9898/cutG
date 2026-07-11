@@ -80,6 +80,8 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
 
 Use separate restricted keys. Enable Geocoding and Distance Matrix for the server key, Places and native Maps SDKs for mobile, and Maps JavaScript for web. Restart API, web, and Expo after changing them. See `docs/MOBILE_BARBER.md` for restrictions and verification.
 
+The root `.env.local` and `.env` files are loaded by API, web, and Expo. `.env.local` takes precedence. Do not reuse a website-referrer key for server-side Geocoding or Places REST requests: Google rejects those requests even when Maps JavaScript works.
+
 Run Expo separately from `make dev`:
 
 ```bash

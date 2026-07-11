@@ -104,6 +104,8 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
 - Mobile key: enable Places API and Maps SDK for Android/iOS; restrict to `com.cutg.mobile` and signing identifiers.
 - Web key: enable Maps JavaScript API; restrict by allowed HTTP referrers.
 
+Use three distinct keys. For local web development, allow `http://localhost:3000/*` and optionally `http://127.0.0.1:3000/*` on the web key. A key with HTTP-referrer restrictions cannot call server-side Geocoding or Places REST endpoints.
+
 After changing Expo public values, restart Expo with `pnpm --filter @barber-saas/mobile dev --clear`. The Android native key is injected by `apps/mobile/app.config.js`.
 
 ## Local Verification
