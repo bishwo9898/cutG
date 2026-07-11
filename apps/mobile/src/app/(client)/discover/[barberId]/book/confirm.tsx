@@ -27,6 +27,7 @@ export default function ConfirmBookingScreen(): React.ReactElement {
   }>();
   const [notes, setNotes] = useState('');
   const [payAtShop, setPayAtShop] = useState(false);
+  const [mobileVisit, setMobileVisit] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const profile = useBarberProfile(barberId);
   const services = useBarberServices(barberId);
@@ -39,11 +40,22 @@ export default function ConfirmBookingScreen(): React.ReactElement {
   const confirm = async (): Promise<void> => {
     setError(null);
     try {
+      if (mobileVisit) {
+        const query = new URLSearchParams({
+          serviceId,
+          slotId,
+          notes,
+          payAtShop: String(payAtShop || !canPayOnline),
+        });
+        router.push(`/(client)/discover/${barberId}/book/address?${query.toString()}`);
+        return;
+      }
       const appointment = await book.mutateAsync({
         barberId,
         serviceId,
         availabilitySlotId: slotId,
         clientNotes: notes || undefined,
+        isMobileService: false,
       });
       if (canPayOnline && !payAtShop) {
         router.replace(
@@ -77,6 +89,15 @@ export default function ConfirmBookingScreen(): React.ReactElement {
         placeholder="Optional"
         multiline
       />
+      {profile.data?.mobileService?.isEnabled === true ? (
+        <View style={styles.payRow}>
+          <View style={styles.payText}>
+            <Text style={styles.title}>Mobile visit</Text>
+            <Text style={styles.meta}>This barber comes to your address.</Text>
+          </View>
+          <Switch value={mobileVisit} onValueChange={setMobileVisit} />
+        </View>
+      ) : null}
       <View style={styles.payRow}>
         <View style={styles.payText}>
           <Text style={styles.title}>Pay at shop</Text>
@@ -95,7 +116,13 @@ export default function ConfirmBookingScreen(): React.ReactElement {
       {error !== null ? <Text style={styles.error}>{error}</Text> : null}
       <Button
         disabled={book.isPending}
-        title={canPayOnline && !payAtShop ? 'Confirm & Pay' : 'Confirm Pay at Shop'}
+        title={
+          mobileVisit
+            ? 'Choose address'
+            : canPayOnline && !payAtShop
+              ? 'Confirm & Pay'
+              : 'Confirm Pay at Shop'
+        }
         onPress={() => {
           void confirm();
         }}

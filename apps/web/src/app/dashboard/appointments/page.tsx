@@ -25,6 +25,8 @@ const transitions: Record<string, Array<{ status: string; label: string; icon: t
     { status: 'NO_SHOW', label: 'No show', icon: UserX },
     { status: 'CANCELLED', label: 'Cancel', icon: X },
   ],
+  ON_THE_WAY: [{ status: 'ARRIVED', label: 'Arrived', icon: Check }],
+  ARRIVED: [{ status: 'IN_PROGRESS', label: 'Start service', icon: Play }],
   IN_PROGRESS: [{ status: 'COMPLETED', label: 'Complete', icon: Check }],
 };
 
@@ -72,13 +74,20 @@ export default function AppointmentsPage(): React.ReactElement {
             value={status}
           >
             <option value="">All statuses</option>
-            {['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'].map(
-              (value) => (
-                <option key={value} value={value}>
-                  {value.replace('_', ' ')}
-                </option>
-              ),
-            )}
+            {[
+              'PENDING',
+              'CONFIRMED',
+              'ON_THE_WAY',
+              'ARRIVED',
+              'IN_PROGRESS',
+              'COMPLETED',
+              'CANCELLED',
+              'NO_SHOW',
+            ].map((value) => (
+              <option key={value} value={value}>
+                {value.replace('_', ' ')}
+              </option>
+            ))}
           </select>
           <input
             aria-label="Filter by date"
@@ -132,9 +141,19 @@ export default function AppointmentsPage(): React.ReactElement {
                           <small style={{ display: 'block' }}>{appointment.client.phone}</small>
                         )}
                       </td>
-                      <td>{appointment.service.name}</td>
+                      <td>
+                        {appointment.service.name}
+                        {appointment.isMobileService === true && (
+                          <small style={{ display: 'block' }}>
+                            Mobile · {appointment.serviceAddress?.addressLine1},{' '}
+                            {appointment.serviceAddress?.city}
+                          </small>
+                        )}
+                      </td>
                       <td>{new Date(appointment.scheduledAt).toLocaleString()}</td>
-                      <td>${appointment.priceQuoted.toFixed(2)}</td>
+                      <td>
+                        ${(appointment.priceQuoted + (appointment.travelFee ?? 0)).toFixed(2)}
+                      </td>
                       <td>
                         <span className={`badge ${badgeTone(appointment.status)}`}>
                           {appointment.status.replace('_', ' ')}
@@ -142,7 +161,14 @@ export default function AppointmentsPage(): React.ReactElement {
                       </td>
                       <td>
                         <div className="toolbar">
-                          {(transitions[appointment.status] ?? []).map((action) => {
+                          {(appointment.status === 'CONFIRMED' &&
+                          appointment.isMobileService === true
+                            ? [
+                                { status: 'ON_THE_WAY', label: 'Start journey', icon: Play },
+                                ...(transitions.CONFIRMED ?? []).slice(1),
+                              ]
+                            : (transitions[appointment.status] ?? [])
+                          ).map((action) => {
                             const Icon = action.icon;
                             return (
                               <button

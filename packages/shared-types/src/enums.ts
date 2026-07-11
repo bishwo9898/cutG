@@ -12,6 +12,8 @@ export type SlotStatus = z.infer<typeof SlotStatusEnum>;
 export const AppointmentStatusEnum = z.enum([
   'PENDING',
   'CONFIRMED',
+  'ON_THE_WAY',
+  'ARRIVED',
   'IN_PROGRESS',
   'COMPLETED',
   'CANCELLED',

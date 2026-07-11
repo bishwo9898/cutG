@@ -149,6 +149,8 @@ export const AppointmentFilterSchema = z
 export const BarberAppointmentStatusEnum = z.enum([
   'CONFIRMED',
   'CANCELLED',
+  'ON_THE_WAY',
+  'ARRIVED',
   'IN_PROGRESS',
   'COMPLETED',
   'NO_SHOW',

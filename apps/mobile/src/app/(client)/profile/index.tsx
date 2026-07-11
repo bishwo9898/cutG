@@ -60,6 +60,11 @@ export default function ClientProfileScreen(): React.ReactElement {
         }}
       />
       <Button
+        title="Saved addresses"
+        variant="secondary"
+        onPress={() => router.push('/(client)/profile/addresses')}
+      />
+      <Button
         title="Sign out"
         variant="danger"
         onPress={() => {

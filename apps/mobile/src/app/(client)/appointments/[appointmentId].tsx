@@ -50,6 +50,14 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
   };
 
   const item = appointment.data;
+  const mobileTimeline = [
+    'PENDING',
+    'CONFIRMED',
+    'ON_THE_WAY',
+    'ARRIVED',
+    'IN_PROGRESS',
+    'COMPLETED',
+  ];
 
   return (
     <Screen
@@ -69,8 +77,36 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
             <Text style={styles.meta}>
               {item.barberName ?? 'Barber'} · {item.scheduledDate} at {item.startTime}
             </Text>
-            <Text style={styles.price}>{'$' + item.price.toFixed(2)}</Text>
+            <Text style={styles.price}>{'$' + (item.pricing?.total ?? item.price).toFixed(2)}</Text>
           </Card>
+          {item.isMobileService === true ? (
+            <Card>
+              <Badge label="Mobile service" tone="info" />
+              <Text style={styles.title}>Your barber comes to you</Text>
+              <Text style={styles.meta}>
+                {item.serviceAddress?.addressLine1}, {item.serviceAddress?.city},{' '}
+                {item.serviceAddress?.state}
+              </Text>
+              <View style={styles.timeline}>
+                {mobileTimeline.map((status) => {
+                  const reached =
+                    mobileTimeline.indexOf(status) <= mobileTimeline.indexOf(item.status);
+                  return (
+                    <Text
+                      key={status}
+                      style={[styles.timelineItem, reached && styles.timelineReached]}
+                    >
+                      {status.replaceAll('_', ' ')}
+                    </Text>
+                  );
+                })}
+              </View>
+              <Text style={styles.meta}>
+                Service: ${(item.pricing?.serviceFee ?? item.price).toFixed(2)}
+              </Text>
+              <Text style={styles.meta}>Travel fee: ${(item.travelFee ?? 0).toFixed(2)}</Text>
+            </Card>
+          ) : null}
           <Card>
             <Text style={styles.title}>Payment</Text>
             <Text style={styles.meta}>{payment.data?.paymentStatus ?? item.paymentStatus}</Text>
@@ -155,4 +191,7 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.textPrimary,
   },
+  timeline: { gap: spacing.xs, marginTop: spacing.md },
+  timelineItem: { ...typography.caption, color: colors.textMuted, textTransform: 'capitalize' },
+  timelineReached: { color: colors.info },
 });

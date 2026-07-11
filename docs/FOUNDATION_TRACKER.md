@@ -6,7 +6,7 @@ This document tracks what has been built so far from the Phase 0 foundation plan
 
 ## Current Status
 
-Phase 0 foundation, Phase 1 authentication, Phase 2 barber management APIs, Phase 3 client discovery/booking APIs, Phase 4 payments/subscriptions APIs, Phase 5 Expo React Native mobile app foundation, and the initial cutG web experiences are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
+Phase 0 foundation, Phase 1 authentication, Phase 2 barber management, Phase 3 client discovery/booking, Phase 4 payments/subscriptions, Phase 5 Expo React Native, and Phase 6 Mobile Barber are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, Expo application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
 
 Verified commands:
 
@@ -235,6 +235,19 @@ Phase 5 adds:
 - Mobile design tokens and reusable UI/card/list components
 - Mobile documentation in `docs/MOBILE.md`
 
+Phase 6 adds:
+
+- BASIC/PREMIUM mobile-service configuration with a 1-50 mile radius
+- Flat, per-mile, and free travel fees with platform suggestions
+- Google Geocoding and Distance Matrix adapters plus deterministic local/test behavior
+- Client address CRUD with one default address
+- Appointment location snapshots, distance, travel time, and separate travel fees
+- Atomic preceding travel-buffer reservation and release
+- `ON_THE_WAY` and `ARRIVED` states with client notifications
+- Mobile-only public discovery with sanitized service-area details
+- Expo and web settings, maps, address, booking, navigation, and status interfaces
+- Migration `006_mobile_barber.ts`
+
 Seed accounts use password `password123`:
 
 - `barber1@example.com`
@@ -266,6 +279,7 @@ Migrations:
 - `apps/api/src/db/migrations/003_barber_schedule.ts`
 - `apps/api/src/db/migrations/004_client_features.ts`
 - `apps/api/src/db/migrations/005_payments_and_subscriptions.ts`
+- `apps/api/src/db/migrations/006_mobile_barber.ts`
 
 The initial schema includes 9 production-oriented tables:
 
@@ -315,6 +329,15 @@ The payment and subscription migration adds:
 | --------------------- | ------------------------------------------------------- |
 | `payout_batches`      | Groups appointment earnings into barber payout batches. |
 | `subscription_events` | Idempotent Stripe webhook and subscription event log.   |
+
+The mobile barber migration adds:
+
+| Table                  | Purpose                                                    |
+| ---------------------- | ---------------------------------------------------------- |
+| `mobile_barber_config` | Barber travel radius, origin, fee rules, and public notes. |
+| `client_addresses`     | Geocoded saved client service addresses.                   |
+
+It also extends appointments and availability slots with location snapshots, travel accounting, lifecycle timestamps, and internal buffer fields.
 
 Additional Phase 4 database changes:
 
@@ -561,6 +584,7 @@ Generated output:
 | `docs/SUBSCRIPTIONS.md`      | Tier features, checkout, billing, and gates.          |
 | `docs/DEPLOYMENT.md`         | Deployment notes and production expectations.         |
 | `docs/MOBILE.md`             | Expo mobile setup, flows, Stripe, and limitations.    |
+| `docs/MOBILE_BARBER.md`      | Mobile service, maps, addresses, fees, and buffers.   |
 | `docs/FOUNDATION_TRACKER.md` | This running tracker of what exists so far.           |
 | `docs/ROADMAP.md`            | Forward-looking product and engineering plan.         |
 
@@ -602,6 +626,9 @@ WEB_APP_URL=http://localhost:3000
 MOBILE_APP_URL=cutg://
 ENABLE_ANALYTICS=false
 ENABLE_AI_FEATURES=false
+GOOGLE_MAPS_API_KEY=
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
 ```
 
 If port `55433` or `6380` is already taken, change all related local values together:
@@ -688,10 +715,11 @@ Expected health state:
 
 ## Next Phase Readiness
 
-The foundation, authentication backend, Phase 2 barber backend, Phase 3 client backend, Phase 4 payment/subscription backend, Phase 5 mobile app foundation, initial barber dashboard, and client marketplace pages are ready for continued implementation. The remaining natural steps from the original planning document are:
+The foundation through Phase 6, including web and native Mobile Barber flows, is ready for continued implementation. The remaining natural steps are:
 
-- Complete Phase 5 follow-up: simulator QA, device QA, detailed schedule editor polish, and live Stripe mobile payment acceptance testing
-- Phase 6+: push notifications, realtime flows, S3 uploads, AI-ready features
+- Complete simulator/device QA and live Stripe/Google Maps acceptance testing with restricted keys
+- Phase 7: realtime GPS tracking, WebSockets, and push notifications
+- Later phases: S3 uploads, travel analytics, and AI-assisted near-term availability
 
 ## Known Local Notes
 
@@ -762,3 +790,12 @@ POST /payments/create-intent
 GET /payments/appointment/:appointmentId
 POST /payments/refund
 POST /webhooks/stripe
+GET /barbers/me/mobile
+PUT /barbers/me/mobile
+POST /barbers/me/mobile/disable
+POST /barbers/me/mobile/estimate
+GET /clients/me/addresses
+POST /clients/me/addresses
+PATCH /clients/me/addresses/:addressId
+DELETE /clients/me/addresses/:addressId
+POST /clients/me/addresses/:addressId/set-default

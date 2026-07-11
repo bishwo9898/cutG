@@ -1,5 +1,7 @@
 # Mobile App
 
+Phase 6 adds Mobile Barber settings, saved addresses, address selection during booking, travel estimates, native navigation, travel-fee breakdowns, and `ON_THE_WAY`/`ARRIVED` status UI. See `docs/MOBILE_BARBER.md` for the full operational contract.
+
 Phase 5 turns `apps/mobile` into the Expo React Native app for cutG clients and barbers. It uses the existing API and shared workspace packages instead of duplicating backend contracts.
 
 ## Stack
@@ -26,6 +28,7 @@ Required local values:
 ```env
 EXPO_PUBLIC_API_URL=http://localhost:4000
 EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
 ```
 
 For iOS Simulator, `localhost` usually works. For Android Emulator, use `http://10.0.2.2:4000`. For a physical iPhone or Android device, `localhost` points to the device, not your Mac. Use your computer's LAN IP instead:

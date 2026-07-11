@@ -1,11 +1,14 @@
 import {
+  AddressParamsSchema,
   BookAppointmentSchema,
   ClientAppointmentParamsSchema,
   ClientAppointmentQuerySchema,
   CreateReviewSchema,
   PaymentHistoryQuerySchema,
+  SaveAddressSchema,
   SaveBarberSchema,
   UuidParamsSchema,
+  UpdateAddressSchema,
 } from '@barber-saas/shared-types';
 import {
   Router,
@@ -28,6 +31,13 @@ import {
   removeSavedBarber,
   saveBarber,
 } from '../services/client/clientService';
+import {
+  createClientAddress,
+  deleteClientAddress,
+  listClientAddresses,
+  setDefaultClientAddress,
+  updateClientAddress,
+} from '../services/mobile/geocodingService';
 import { listClientPaymentHistory } from '../services/payment/paymentService';
 import type { AuthenticatedRequest } from '../types/auth';
 
@@ -46,6 +56,48 @@ clientRouter.get(
   '/me',
   asyncHandler(async (request, response) => {
     response.json(await getClientProfile(userId(request)));
+  }),
+);
+
+clientRouter.get(
+  '/me/addresses',
+  asyncHandler(async (request, response) => {
+    response.json(await listClientAddresses(userId(request)));
+  }),
+);
+clientRouter.post(
+  '/me/addresses',
+  asyncHandler(async (request, response) => {
+    response
+      .status(201)
+      .json(await createClientAddress(userId(request), SaveAddressSchema.parse(request.body)));
+  }),
+);
+clientRouter.patch(
+  '/me/addresses/:addressId',
+  asyncHandler(async (request, response) => {
+    const { addressId } = AddressParamsSchema.parse(request.params);
+    response.json(
+      await updateClientAddress(
+        userId(request),
+        addressId,
+        UpdateAddressSchema.parse(request.body),
+      ),
+    );
+  }),
+);
+clientRouter.delete(
+  '/me/addresses/:addressId',
+  asyncHandler(async (request, response) => {
+    const { addressId } = AddressParamsSchema.parse(request.params);
+    response.json(await deleteClientAddress(userId(request), addressId));
+  }),
+);
+clientRouter.post(
+  '/me/addresses/:addressId/set-default',
+  asyncHandler(async (request, response) => {
+    const { addressId } = AddressParamsSchema.parse(request.params);
+    response.json(await setDefaultClientAddress(userId(request), addressId));
   }),
 );
 

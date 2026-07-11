@@ -46,6 +46,14 @@ export const AppointmentCard = ({
               <Badge label={appointment.status} tone={statusTone(appointment.status)} />
             </View>
             <Text style={styles.meta}>{appointment.serviceName}</Text>
+            {appointment.isMobileService === true ? (
+              <>
+                <Badge label="Mobile" tone="info" />
+                <Text style={styles.meta}>
+                  {appointment.serviceAddress?.addressLine1}, {appointment.serviceAddress?.city}
+                </Text>
+              </>
+            ) : null}
             <Text style={styles.meta}>
               {formatDate(appointment.scheduledDate)} at {appointment.startTime}
             </Text>
@@ -53,7 +61,7 @@ export const AppointmentCard = ({
               {'$' + appointment.price.toFixed(2) + ' · ' + appointment.paymentStatus}
             </Text>
             {onPrimaryAction !== undefined ? (
-              <Button title="Quick action" onPress={onPrimaryAction} variant="secondary" />
+              <Button title="Navigate" onPress={onPrimaryAction} variant="secondary" />
             ) : null}
           </View>
         </View>

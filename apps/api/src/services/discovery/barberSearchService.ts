@@ -58,12 +58,16 @@ export const searchBarbers = async (filters: BarberSearchQuery) => {
       WHERE s.barber_id = bp.id AND s.is_active = true AND s.price <= $${values.length}
     )`);
   }
+  if (filters.mobileOnly === true) {
+    where.push('mc.is_enabled = true');
+  }
 
   const whereSql = where.join(' AND ');
   const totalRows = await query<Row>(
     `SELECT COUNT(*)::int AS total
      FROM barber_profiles bp
      JOIN users u ON u.id = bp.user_id
+     LEFT JOIN mobile_barber_config mc ON mc.barber_id = bp.id
      WHERE ${whereSql}`,
     values,
   );
@@ -81,11 +85,18 @@ export const searchBarbers = async (filters: BarberSearchQuery) => {
        bp.total_reviews,
        bp.is_verified,
        bp.subscription_tier,
+       mc.is_enabled AS mobile_enabled,
+       mc.service_radius_miles,
+       mc.fee_structure,
+       mc.base_fee_cents,
+       mc.per_mile_rate_cents,
+       mc.mobile_service_notes,
        service_summary.lowest_service_price,
        COALESCE(service_summary.service_categories, ARRAY[]::text[]) AS service_categories,
        next_slot.next_available_slot
      FROM barber_profiles bp
      JOIN users u ON u.id = bp.user_id
+     LEFT JOIN mobile_barber_config mc ON mc.barber_id = bp.id
      LEFT JOIN LATERAL (
        SELECT
          MIN(s.price)::numeric AS lowest_service_price,
@@ -124,6 +135,18 @@ export const searchBarbers = async (filters: BarberSearchQuery) => {
         row.lowest_service_price === null ? null : Number(row.lowest_service_price),
       serviceCategories: row.service_categories,
       nextAvailableSlot: dateTime(row.next_available_slot),
+      mobileService:
+        row.mobile_enabled === true
+          ? {
+              isEnabled: true,
+              serviceRadiusMiles: Number(row.service_radius_miles),
+              travelFeeStructure: row.fee_structure,
+              baseFee: Number(row.base_fee_cents) / 100,
+              perMileRate:
+                row.fee_structure === 'per_mile' ? Number(row.per_mile_rate_cents) / 100 : null,
+              notes: row.mobile_service_notes,
+            }
+          : null,
     })),
     pagination: pagination(filters.page, filters.limit, total),
   };

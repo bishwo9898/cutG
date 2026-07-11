@@ -4,6 +4,7 @@ import {
   barberBillingApi,
   barberDiscoveryApi,
   clientApi,
+  mobileBarberApi,
   paymentApi,
 } from '@barber-saas/api-client';
 import type {
@@ -17,6 +18,10 @@ import type {
   UpdateBarberProfileRequest,
   UpdateProfileRequest,
   UpdateServiceRequest,
+  SaveAddressRequest,
+  SetMobileConfigRequest,
+  TravelEstimateRequest,
+  UpdateAddressRequest,
 } from '@barber-saas/shared-types';
 
 import { useAuthStore } from '@/store/authStore';
@@ -27,6 +32,7 @@ import type {
   AvailabilitySlot,
   BarberProfile,
   BarberService,
+  ClientAddress,
   EarningsSummary,
   LoginResponse,
   Paginated,
@@ -36,6 +42,8 @@ import type {
   Review,
   StripeConnectStatus,
   SubscriptionSummary,
+  MobileBarberConfig,
+  TravelEstimate,
 } from './types';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
@@ -146,6 +154,16 @@ export const mobileApi = {
       withAuth((client) => clientApi.createReview(client, body)),
     paymentHistory: (): Promise<Paginated<PaymentStatusResponse>> =>
       withAuth((client) => clientApi.paymentHistory(client)),
+    addresses: (): Promise<{ addresses: ClientAddress[] }> =>
+      withAuth((client) => clientApi.addresses(client)),
+    createAddress: (body: SaveAddressRequest): Promise<ClientAddress> =>
+      withAuth((client) => clientApi.createAddress(client, body)),
+    updateAddress: (addressId: string, body: UpdateAddressRequest): Promise<ClientAddress> =>
+      withAuth((client) => clientApi.updateAddress(client, addressId, body)),
+    deleteAddress: (addressId: string): Promise<{ message: string }> =>
+      withAuth((client) => clientApi.deleteAddress(client, addressId)),
+    setDefaultAddress: (addressId: string): Promise<ClientAddress> =>
+      withAuth((client) => clientApi.setDefaultAddress(client, addressId)),
   },
   payments: {
     createIntent: (appointmentId: string): Promise<PaymentIntentResponse> =>
@@ -206,6 +224,14 @@ export const mobileApi = {
       withAuth((client) => barberBillingApi.cancelSubscription(client)),
     resumeSubscription: (): Promise<SubscriptionSummary> =>
       withAuth((client) => barberBillingApi.resumeSubscription(client)),
+    mobileConfig: (): Promise<MobileBarberConfig> =>
+      withAuth((client) => mobileBarberApi.config(client)),
+    updateMobileConfig: (body: SetMobileConfigRequest): Promise<MobileBarberConfig> =>
+      withAuth((client) => mobileBarberApi.updateConfig(client, body)),
+    disableMobile: (): Promise<{ isEnabled: false; message: string }> =>
+      withAuth((client) => mobileBarberApi.disable(client)),
+    travelEstimate: (body: TravelEstimateRequest): Promise<TravelEstimate> =>
+      withAuth((client) => mobileBarberApi.estimate(client, body)),
   },
 };
 

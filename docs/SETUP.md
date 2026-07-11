@@ -68,6 +68,18 @@ cp apps/mobile/.env.example apps/mobile/.env
 
 Set `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` to your Stripe publishable key. Use `EXPO_PUBLIC_API_URL=http://localhost:4000` for iOS Simulator. Use `http://10.0.2.2:4000` for Android Emulator. For a physical device, replace `localhost` with your computer's LAN IP, for example `http://192.168.1.x:4000`.
 
+### Google Maps
+
+Phase 6 runs with deterministic development/test map behavior until keys are added:
+
+```env
+GOOGLE_MAPS_API_KEY=
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+```
+
+Use separate restricted keys. Enable Geocoding and Distance Matrix for the server key, Places and native Maps SDKs for mobile, and Maps JavaScript for web. Restart API, web, and Expo after changing them. See `docs/MOBILE_BARBER.md` for restrictions and verification.
+
 Run Expo separately from `make dev`:
 
 ```bash

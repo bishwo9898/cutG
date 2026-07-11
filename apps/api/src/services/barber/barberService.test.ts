@@ -6,7 +6,9 @@ describe('barber appointment transitions', () => {
   it('contains every allowed transition and keeps terminal states closed', () => {
     expect(BARBER_ALLOWED_TRANSITIONS).toEqual({
       PENDING: ['CONFIRMED', 'CANCELLED'],
-      CONFIRMED: ['IN_PROGRESS', 'CANCELLED', 'NO_SHOW'],
+      CONFIRMED: ['IN_PROGRESS', 'ON_THE_WAY', 'CANCELLED', 'NO_SHOW'],
+      ON_THE_WAY: ['ARRIVED'],
+      ARRIVED: ['IN_PROGRESS'],
       IN_PROGRESS: ['COMPLETED'],
     });
     expect(BARBER_ALLOWED_TRANSITIONS.COMPLETED).toBeUndefined();

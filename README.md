@@ -93,8 +93,10 @@ pnpm dev
 
 ## Seeded Data
 
-The seed script creates 3 barber profiles, 12 client users, services, 45 availability slots, 20 appointments, 10 payments, 8 reviews, subscriptions, and notifications.
+The seed script creates 3 barber profiles, 12 client users, recurring availability, appointments, payments, reviews, subscriptions, two mobile-barber configurations, and two saved client addresses. All demo accounts use `password123`.
+
+Google Maps keys are optional during local development because Phase 6 has deterministic mocks. Add `GOOGLE_MAPS_API_KEY`, `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`, and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` before live Maps acceptance testing.
 
 ## Documentation
 
-Start with [docs/FOUNDATION_TRACKER.md](docs/FOUNDATION_TRACKER.md) for the current build status, then read [docs/SETUP.md](docs/SETUP.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DATABASE.md](docs/DATABASE.md), and [docs/MOBILE.md](docs/MOBILE.md).
+Start with [docs/FOUNDATION_TRACKER.md](docs/FOUNDATION_TRACKER.md) for the current build status, then read [docs/SETUP.md](docs/SETUP.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DATABASE.md](docs/DATABASE.md), [docs/MOBILE.md](docs/MOBILE.md), and [docs/MOBILE_BARBER.md](docs/MOBILE_BARBER.md).

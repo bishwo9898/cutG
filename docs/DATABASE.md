@@ -45,6 +45,10 @@ erDiagram
 
 ## Migration Notes
 
+Phase 6 is migration `006_mobile_barber.ts`. It creates `mobile_barber_config` for one travel-area configuration per barber and `client_addresses` for geocoded client locations with one default per client.
+
+It extends appointments with copied service location, travel fee, distance, duration, and mobile lifecycle timestamps. Availability slots gain `is_travel_buffer` and `travel_buffer_for` so internal travel inventory can be reserved and released without public exposure. `ON_THE_WAY` and `ARRIVED` remain PostgreSQL enum values during rollback because removing enum values is unsafe when rows may reference them.
+
 `availability_slots` and `appointments` need a two-step relationship. The migration creates `availability_slots`, then `appointments`, then adds `availability_slots.appointment_id` after both tables exist.
 
 Never edit a migration after it has been run in a shared environment. Add a new migration instead.

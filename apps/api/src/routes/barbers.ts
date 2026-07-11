@@ -11,10 +11,12 @@ import {
   GenerateSlotsSchema,
   PublicSlotsQuerySchema,
   ReviewQuerySchema,
+  SetMobileConfigSchema,
   ServiceFilterSchema,
   ServiceParamsSchema,
   SetScheduleSchema,
   SubscriptionCheckoutSchema,
+  TravelEstimateSchema,
   UpdateAppointmentStatusSchema,
   UpdateBarberPhotoSchema,
   UpdateBarberProfileSchema,
@@ -56,6 +58,12 @@ import {
   updateProfile,
 } from '../services/barber/barberService';
 import { listPublicReviews, searchBarbers } from '../services/discovery/barberSearchService';
+import {
+  disableMobileConfig,
+  estimateTravel,
+  getMobileConfig,
+  setMobileConfig,
+} from '../services/mobile/mobileBarberService';
 import { getBarberEarnings } from '../services/payment/paymentService';
 import {
   cancelSubscription,
@@ -83,6 +91,15 @@ barberRouter.get(
   }),
 );
 
+barberRouter.post(
+  '/me/mobile/estimate',
+  requireAuth,
+  requireRoles('BARBER', 'CLIENT'),
+  asyncHandler(async (request, response) => {
+    response.json(await estimateTravel(TravelEstimateSchema.parse(request.body)));
+  }),
+);
+
 barberRouter.use('/me', requireAuth, requireRoles('BARBER'));
 
 barberRouter.get(
@@ -97,6 +114,28 @@ barberRouter.post(
     response
       .status(201)
       .json(await createProfile(userId(request), CreateBarberProfileSchema.parse(request.body)));
+  }),
+);
+
+barberRouter.get(
+  '/me/mobile',
+  asyncHandler(async (request, response) => {
+    response.json(await getMobileConfig(userId(request)));
+  }),
+);
+barberRouter.put(
+  '/me/mobile',
+  requireSubscriptionTier('BASIC'),
+  asyncHandler(async (request, response) => {
+    response.json(
+      await setMobileConfig(userId(request), SetMobileConfigSchema.parse(request.body)),
+    );
+  }),
+);
+barberRouter.post(
+  '/me/mobile/disable',
+  asyncHandler(async (request, response) => {
+    response.json(await disableMobileConfig(userId(request)));
   }),
 );
 barberRouter.patch(

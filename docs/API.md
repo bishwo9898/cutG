@@ -218,6 +218,24 @@ Successful responses return JSON objects with explicit fields. Errors return:
 
 Validation errors include a `details.issues` array from Zod.
 
+## Phase 6 Mobile Barber Routes
+
+| Method   | Path                                           | Access                   | Purpose                                           |
+| -------- | ---------------------------------------------- | ------------------------ | ------------------------------------------------- |
+| `GET`    | `/barbers/me/mobile`                           | Barber                   | Read mobile-service configuration.                |
+| `PUT`    | `/barbers/me/mobile`                           | Barber, BASIC+ to enable | Save radius, origin, fees, and notes.             |
+| `POST`   | `/barbers/me/mobile/disable`                   | Barber                   | Disable mobile service without deleting settings. |
+| `POST`   | `/barbers/me/mobile/estimate`                  | Client or barber         | Calculate distance, driving time, and travel fee. |
+| `GET`    | `/clients/me/addresses`                        | Client                   | List saved addresses.                             |
+| `POST`   | `/clients/me/addresses`                        | Client                   | Geocode and save an address.                      |
+| `PATCH`  | `/clients/me/addresses/:addressId`             | Client                   | Update an owned address.                          |
+| `DELETE` | `/clients/me/addresses/:addressId`             | Client                   | Remove an owned address.                          |
+| `POST`   | `/clients/me/addresses/:addressId/set-default` | Client                   | Set the default address.                          |
+
+`POST /clients/me/appointments` accepts `isMobileService: true` plus exactly one of `clientAddressId` or `clientAddressOneTime`. `GET /barbers` supports `mobileOnly=true`. Public responses never include a barber's private origin coordinates or origin address.
+
+Mobile status transitions are `CONFIRMED -> ON_THE_WAY -> ARRIVED -> IN_PROGRESS -> COMPLETED`. The two travel statuses are rejected for shop appointments. See `docs/MOBILE_BARBER.md` for fee, buffer, Maps, and request details.
+
 ## Route Conventions
 
 - Validate request bodies, params, and query strings with Zod at route boundaries.

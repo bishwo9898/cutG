@@ -3,6 +3,7 @@ import { env } from '../../config/env';
 import { query, withTransaction } from '../../db/queries/barber.queries';
 import { AppError } from '../../middleware/errorHandler';
 import type { AuthenticatedUser } from '../../types/auth';
+import { releaseTravelBufferSlots } from '../mobile/bufferSlotService';
 
 import { createPaymentIntent, createRefund } from './stripeService';
 
@@ -89,7 +90,8 @@ export const createAppointmentPaymentIntent = async (clientId: string, appointme
       };
     }
 
-    const totalCents = centsFromMoney(appointment.price_quoted);
+    const totalCents =
+      centsFromMoney(appointment.price_quoted) + Number(appointment.travel_fee_cents ?? 0);
     const platformFeeCents = Math.round((totalCents * env.PLATFORM_FEE_PERCENT) / 100);
     const barberPayoutCents = totalCents - platformFeeCents;
     const intent = await createPaymentIntent({
@@ -219,6 +221,7 @@ export const refundAppointmentPayment = async (
         [row.availability_slot_id],
       );
     }
+    await releaseTravelBufferSlots(appointmentId, trx);
 
     return {
       message: 'Refund issued successfully.',

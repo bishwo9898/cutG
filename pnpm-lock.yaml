@@ -134,6 +134,9 @@ importers:
       '@react-native-community/netinfo':
         specifier: ^11.4.1
         version: 11.5.2(react-native@0.74.5(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0)
+      '@react-native-community/slider':
+        specifier: ^5.2.0
+        version: 5.2.0
       '@react-navigation/bottom-tabs':
         specifier: ^6.6.1
         version: 6.6.1(@react-navigation/native@6.1.18(react-native@0.74.5(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0))(react-native-safe-area-context@4.10.5(react-native@0.74.5(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0))(react-native-screens@3.31.1(react-native@0.74.5(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0))(react-native@0.74.5(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0)
@@ -222,6 +225,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.4.0(react-hook-form@7.81.0(react@19.2.0))
+      '@react-google-maps/api':
+        specifier: ^2.20.8
+        version: 2.20.8(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@tanstack/react-query':
         specifier: ^5.90.21
         version: 5.101.2(react@19.2.0)
@@ -1800,7 +1806,7 @@ packages:
       {
         integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==,
       }
-    engines: { '0': node >=0.10.0 }
+    engines: { node: '>=0.10.0' }
 
   '@expo/cli@0.18.31':
     resolution:
@@ -1959,6 +1965,18 @@ packages:
         integrity: sha512-XQ3cU+Q8Uqmrbf2e0cIC/QN43sTBSC8KF12u29Mb47tWrt2hAgBXSgpZMj4Ao8Uk0iJcU99QsOCaIL8934obCg==,
       }
     engines: { node: ^14.17.0 || ^16.13.0 || >=18.0.0, npm: '>=6.14.13' }
+
+  '@googlemaps/js-api-loader@1.16.8':
+    resolution:
+      {
+        integrity: sha512-CROqqwfKotdO6EBjZO/gQGVTbeDps5V7Mt9+8+5Q+jTg5CRMi3Ii/L9PmV3USROrt2uWxtGzJHORmByxyo9pSQ==,
+      }
+
+  '@googlemaps/markerclusterer@2.5.3':
+    resolution:
+      {
+        integrity: sha512-x7lX0R5yYOoiNectr10wLgCBasNcXFHiADIBdmn7jQllF2B5ENQw5XtZK+hIw4xnV0Df0xhN4LN98XqA5jaiOw==,
+      }
 
   '@graphql-typed-document-node/core@3.2.0':
     resolution:
@@ -2498,6 +2516,27 @@ packages:
     peerDependencies:
       react: ^16.8 || ^17.0 || ^18.0
 
+  '@react-google-maps/api@2.20.8':
+    resolution:
+      {
+        integrity: sha512-wtLYFtCGXK3qbIz1H5to3JxbosPnKsvjDKhqGylXUb859EskhzR7OpuNt0LqdLarXUtZCJTKzPn3BNaekNIahg==,
+      }
+    peerDependencies:
+      react: ^16.8 || ^17 || ^18 || ^19
+      react-dom: ^16.8 || ^17 || ^18 || ^19
+
+  '@react-google-maps/infobox@2.20.0':
+    resolution:
+      {
+        integrity: sha512-03PJHjohhaVLkX6+NHhlr8CIlvUxWaXhryqDjyaZ8iIqqix/nV8GFdz9O3m5OsjtxtNho09F/15j14yV0nuyLQ==,
+      }
+
+  '@react-google-maps/marker-clusterer@2.20.0':
+    resolution:
+      {
+        integrity: sha512-tieX9Va5w1yP88vMgfH1pHTacDQ9TgDTjox3tLlisKDXRQWdjw+QeVVghhf5XqqIxXHgPdcGwBvKY6UP+SIvLw==,
+      }
+
   '@react-native-community/cli-clean@13.6.9':
     resolution:
       {
@@ -2580,6 +2619,12 @@ packages:
     peerDependencies:
       react: '*'
       react-native: '>=0.59'
+
+  '@react-native-community/slider@5.2.0':
+    resolution:
+      {
+        integrity: sha512-484sH8aWEaSjxaZ7HT3YZ8CKDcNes2synko1vdEz5DFEdvKAduxKJTj22L/qBMD7rtIkfbX69DMzWDAGbOAV6w==,
+      }
 
   '@react-native/assets-registry@0.74.87':
     resolution:
@@ -3351,6 +3396,12 @@ packages:
     resolution:
       {
         integrity: sha512-6C8nqWur3j98U6+lXDfTUWIfgvZU+EumvpHKcYjujKH7woYyLj2sUmff0tRhrqM7BohUw7Pz3ZB1jj2gW9Fvmg==,
+      }
+
+  '@types/google.maps@3.58.1':
+    resolution:
+      {
+        integrity: sha512-X9QTSvGJ0nCfMzYOnaVs/k6/4L+7F5uCS+4iUmkLEls6J9S/Phv+m/i3mDeyc49ZBgwab3EFO1HEoBY7k98EGQ==,
       }
 
   '@types/hammerjs@2.0.46':
@@ -7206,6 +7257,12 @@ packages:
         integrity: sha512-EKI/M/yqPncGUUh44xz0PxSidXFr/+r0pA70+gIYhjv+et7yxM+s29Y+VGDkovRofQem0fs7Uvf4+YmAdyRduA==,
       }
 
+  kdbush@4.1.0:
+    resolution:
+      {
+        integrity: sha512-e9vurzrXJQrFX6ckpHP3bvj5l+9CnYzkxDNnNQ1h2QTqdWsUAJgXiKdGNcOa1EY85dU8KbQ+z/FdQdB7P+9yfQ==,
+      }
+
   keyv@4.5.4:
     resolution:
       {
@@ -9924,6 +9981,12 @@ packages:
       }
     engines: { node: '>=14.18.0' }
 
+  supercluster@8.0.1:
+    resolution:
+      {
+        integrity: sha512-IiOea5kJ9iqzD2t7QJq/cREyLHTtSmUT6gQsweojg9WH2sYJqZK9SswTu6jrscO6D1G5v5vYZ9ru/eq85lXeZQ==,
+      }
+
   supertest@7.2.2:
     resolution:
       {
@@ -12466,6 +12529,13 @@ snapshots:
 
   '@faker-js/faker@8.4.1': {}
 
+  '@googlemaps/js-api-loader@1.16.8': {}
+
+  '@googlemaps/markerclusterer@2.5.3':
+    dependencies:
+      fast-deep-equal: 3.1.3
+      supercluster: 8.0.1
+
   '@graphql-typed-document-node/core@3.2.0(graphql@15.8.0)':
     dependencies:
       graphql: 15.8.0
@@ -12764,6 +12834,21 @@ snapshots:
       '@radix-ui/react-compose-refs': 1.0.0(react@18.2.0)
       react: 18.2.0
 
+  '@react-google-maps/api@2.20.8(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      '@googlemaps/js-api-loader': 1.16.8
+      '@googlemaps/markerclusterer': 2.5.3
+      '@react-google-maps/infobox': 2.20.0
+      '@react-google-maps/marker-clusterer': 2.20.0
+      '@types/google.maps': 3.58.1
+      invariant: 2.2.4
+      react: 19.2.0
+      react-dom: 19.2.0(react@19.2.0)
+
+  '@react-google-maps/infobox@2.20.0': {}
+
+  '@react-google-maps/marker-clusterer@2.20.0': {}
+
   '@react-native-community/cli-clean@13.6.9':
     dependencies:
       '@react-native-community/cli-tools': 13.6.9
@@ -12915,6 +13000,8 @@ snapshots:
     dependencies:
       react: 18.2.0
       react-native: 0.74.5(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.2.0)
+
+  '@react-native-community/slider@5.2.0': {}
 
   '@react-native/assets-registry@0.74.87': {}
 
@@ -13472,6 +13559,8 @@ snapshots:
       '@types/serve-static': 1.15.10
 
   '@types/geojson@7946.0.16': {}
+
+  '@types/google.maps@3.58.1': {}
 
   '@types/hammerjs@2.0.46': {}
 
@@ -16022,6 +16111,8 @@ snapshots:
       jwa: 2.0.1
       safe-buffer: 5.2.1
 
+  kdbush@4.1.0: {}
+
   keyv@4.5.4:
     dependencies:
       json-buffer: 3.0.1
@@ -17729,6 +17820,10 @@ snapshots:
       qs: 6.15.3
     transitivePeerDependencies:
       - supports-color
+
+  supercluster@8.0.1:
+    dependencies:
+      kdbush: 4.1.0
 
   supertest@7.2.2:
     dependencies:

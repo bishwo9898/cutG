@@ -13,13 +13,16 @@ import { SUBSCRIPTION_TIERS, type SubscriptionTierName } from '../../config/subs
 import { query, withTransaction, type DatabaseExecutor } from '../../db/queries/barber.queries';
 import { AppError } from '../../middleware/errorHandler';
 import { datesBetween, dayName, generateDaySlots, isoDayOfWeek } from '../../utils/slotGenerator';
+import { releaseTravelBufferSlots } from '../mobile/bufferSlotService';
 
 type Row = Record<string, unknown>;
 type AppointmentFilters = z.infer<typeof AppointmentFilterSchema>;
 
 export const BARBER_ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
   PENDING: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['IN_PROGRESS', 'CANCELLED', 'NO_SHOW'],
+  CONFIRMED: ['IN_PROGRESS', 'ON_THE_WAY', 'CANCELLED', 'NO_SHOW'],
+  ON_THE_WAY: ['ARRIVED'],
+  ARRIVED: ['IN_PROGRESS'],
   IN_PROGRESS: ['COMPLETED'],
 };
 
@@ -471,20 +474,47 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
   return {
     appointments: rows.map((row) => ({
       id: row.id,
+      barberId: row.barber_id,
+      clientId: row.client_id,
+      serviceId: row.service_id,
       scheduledAt: dateTime(row.scheduled_at),
+      scheduledDate: dateTime(row.scheduled_at).slice(0, 10),
+      startTime: dateTime(row.scheduled_at).slice(11, 16),
       durationMinutes: row.duration_minutes,
       status: row.status,
       paymentStatus: row.payment_status,
       priceQuoted: Number(row.price_quoted),
+      price: Number(row.price_quoted),
       service: { id: row.service_id, name: row.service_name },
+      serviceName: row.service_name,
       client: {
         id: row.client_id,
         firstName: row.first_name,
         lastName: row.last_name,
         phone: row.phone,
       },
+      clientName: `${String(row.first_name)} ${String(row.last_name)}`,
+      clientPhone: row.phone,
       clientNotes: row.client_notes,
       barberNotes: row.barber_notes,
+      isMobileService: row.is_mobile_service === true,
+      serviceAddress:
+        row.is_mobile_service === true
+          ? {
+              addressLine1: row.service_address_line1,
+              city: row.service_address_city,
+              state: row.service_address_state,
+              zipCode: row.service_address_zip,
+              latitude: numberOrNull(row.service_latitude),
+              longitude: numberOrNull(row.service_longitude),
+            }
+          : null,
+      distanceMiles: numberOrNull(row.distance_miles),
+      estimatedTravelMinutes: row.estimated_travel_minutes,
+      travelFeeCents: Number(row.travel_fee_cents ?? 0),
+      travelFee: Number(row.travel_fee_cents ?? 0) / 100,
+      barberDepartedAt: row.barber_departed_at === null ? null : dateTime(row.barber_departed_at),
+      barberArrivedAt: row.barber_arrived_at === null ? null : dateTime(row.barber_arrived_at),
     })),
     pagination: {
       page: filters.page,
@@ -512,6 +542,24 @@ export const updateAppointmentStatus = async (
     if (appointment === undefined)
       throw new AppError(404, 'Appointment not found.', 'APPOINTMENT_NOT_FOUND');
     const current = String(appointment.status);
+    if (['ON_THE_WAY', 'ARRIVED'].includes(nextStatus) && appointment.is_mobile_service !== true) {
+      throw new AppError(
+        400,
+        'This status is only available for mobile appointments.',
+        'INVALID_STATUS_FOR_APPOINTMENT_TYPE',
+      );
+    }
+    if (
+      appointment.is_mobile_service === true &&
+      current === 'CONFIRMED' &&
+      nextStatus === 'IN_PROGRESS'
+    ) {
+      throw new AppError(
+        400,
+        'Start the journey and mark arrival before beginning a mobile service.',
+        'INVALID_STATUS_TRANSITION',
+      );
+    }
     if (!(BARBER_ALLOWED_TRANSITIONS[current] ?? []).includes(nextStatus)) {
       throw new AppError(
         400,
@@ -526,7 +574,11 @@ export const updateAppointmentStatus = async (
           ? 'completed_at'
           : nextStatus === 'CANCELLED'
             ? 'cancelled_at'
-            : null;
+            : nextStatus === 'ON_THE_WAY'
+              ? 'barber_departed_at'
+              : nextStatus === 'ARRIVED'
+                ? 'barber_arrived_at'
+                : null;
     const values: unknown[] = [nextStatus, notes ?? appointment.barber_notes, appointmentId];
     const timestampSet = timestampColumn === null ? '' : `, ${timestampColumn}=CURRENT_TIMESTAMP`;
     const updated = await query<Row>(
@@ -540,6 +592,16 @@ export const updateAppointmentStatus = async (
         [appointment.availability_slot_id],
       );
     }
+    if (nextStatus === 'CANCELLED') await releaseTravelBufferSlots(appointmentId, client);
+    if (nextStatus === 'ON_THE_WAY' || nextStatus === 'ARRIVED') {
+      const message =
+        nextStatus === 'ON_THE_WAY' ? 'Your barber is on the way!' : 'Your barber has arrived!';
+      await client.query(
+        `INSERT INTO notifications (user_id,type,title,message,related_data)
+         VALUES ($1,'APPOINTMENT_REMINDER',$2::text,$2::text,$3::jsonb)`,
+        [appointment.client_id, message, JSON.stringify({ appointmentId })],
+      );
+    }
     return {
       id: updated[0]?.id,
       status: updated[0]?.status,
@@ -548,7 +610,14 @@ export const updateAppointmentStatus = async (
   });
 
 export const getPublicProfile = async (barberId: string) => {
-  const rows = await query<Row>('SELECT * FROM barber_profiles WHERE id=$1', [barberId]);
+  const rows = await query<Row>(
+    `SELECT bp.*,mc.is_enabled AS mobile_enabled,mc.service_radius_miles,mc.fee_structure,
+      mc.base_fee_cents,mc.per_mile_rate_cents,mc.mobile_service_notes
+     FROM barber_profiles bp
+     LEFT JOIN mobile_barber_config mc ON mc.barber_id=bp.id AND mc.is_enabled=true
+     WHERE bp.id=$1`,
+    [barberId],
+  );
   const row = rows[0];
   if (row === undefined) throw profileNotFound();
   return {
@@ -563,6 +632,18 @@ export const getPublicProfile = async (barberId: string) => {
     state: row.state,
     subscriptionTier: row.subscription_tier,
     isVerified: row.is_verified,
+    mobileService:
+      row.mobile_enabled === true
+        ? {
+            isEnabled: true,
+            serviceRadiusMiles: Number(row.service_radius_miles),
+            travelFeeStructure: row.fee_structure,
+            baseFee: Number(row.base_fee_cents) / 100,
+            perMileRate:
+              row.fee_structure === 'per_mile' ? Number(row.per_mile_rate_cents) / 100 : null,
+            notes: row.mobile_service_notes,
+          }
+        : null,
   };
 };
 
@@ -591,7 +672,8 @@ export const getPublicSlots = async (barberId: string, startDate: string, endDat
   await getPublicProfile(barberId);
   const rows = await query<Row>(
     `SELECT * FROM availability_slots
-     WHERE barber_id=$1 AND slot_date BETWEEN $2 AND $3 AND status IN ('AVAILABLE','BOOKED')
+     WHERE barber_id=$1 AND slot_date BETWEEN $2 AND $3
+       AND status IN ('AVAILABLE','BOOKED') AND is_travel_buffer=false
      ORDER BY slot_date,start_time`,
     [barberId, startDate, endDate],
   );

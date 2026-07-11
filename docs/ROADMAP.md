@@ -60,14 +60,14 @@ Acceptance criteria:
 
 ## Milestone 4: Client Booking
 
-Status: Planned
+Status: Complete
 
-- [ ] Barber discovery and search API
-- [ ] Public marketplace and barber profile pages
-- [ ] Transactional booking with row-level slot locking
-- [ ] Booking conflict prevention and idempotency
-- [ ] Client appointment history and cancellation policies
-- [ ] Reviews tied to completed appointments
+- [x] Barber discovery and search API
+- [x] Public marketplace and barber profile pages
+- [x] Transactional booking with row-level slot locking
+- [x] Booking conflict prevention
+- [x] Client appointment history and cancellation policies
+- [x] Reviews tied to completed appointments
 
 Acceptance criteria:
 
@@ -78,10 +78,20 @@ Acceptance criteria:
 
 ## Milestone 5: Payments And Mobile
 
-Status: Deferred
+Status: Complete
 
-- [ ] Stripe payment and webhook lifecycle
-- [ ] Subscription billing and self-service plan changes
-- [ ] Mobile application after web contracts stabilize
+- [x] Stripe payment and webhook lifecycle
+- [x] Subscription billing and self-service plan changes
+- [x] Expo mobile application for client and barber workflows
 
-Payments begin only after the booking lifecycle has sustained integration and end-to-end coverage.
+## Milestone 6: Mobile Barber
+
+Status: Complete (July 10, 2026)
+
+- [x] BASIC+ travel-area configuration with native and web maps
+- [x] Client saved addresses and address selection during booking
+- [x] Distance/time estimates, separate travel fees, and Stripe total integration
+- [x] Atomic preceding travel buffers and mobile lifecycle states
+- [x] Mobile-only discovery and sanitized public configuration
+
+Next: Phase 7 GPS streaming, WebSocket updates, and push notifications.

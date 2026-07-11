@@ -12,7 +12,7 @@ import { listFromResponse } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
 
 export default function SearchResultsScreen(): React.ReactElement {
-  const params = useLocalSearchParams<{ category?: string }>();
+  const params = useLocalSearchParams<{ category?: string; mobileOnly?: string }>();
   const [text, setText] = useState('');
   const [debounced, setDebounced] = useState('');
 
@@ -21,7 +21,12 @@ export default function SearchResultsScreen(): React.ReactElement {
     return (): void => clearTimeout(id);
   }, [text]);
 
-  const results = useBarberSearch({ category: params.category, limit: 24, q: debounced });
+  const results = useBarberSearch({
+    category: params.category,
+    mobileOnly: params.mobileOnly === 'true' ? true : undefined,
+    limit: 24,
+    q: debounced,
+  });
   const barbers = listFromResponse(results.data ?? {});
 
   return (
@@ -42,8 +47,9 @@ export default function SearchResultsScreen(): React.ReactElement {
       <View style={styles.filterBox}>
         <Text style={styles.filterTitle}>Filters</Text>
         <Text style={styles.muted}>
-          Category chips, rating, max price, and verified-only filters are scaffolded for native
-          bottom sheet refinement.
+          {params.mobileOnly === 'true'
+            ? 'Showing mobile barbers'
+            : (params.category ?? 'All services')}
         </Text>
       </View>
       {barbers.length === 0 && !results.isLoading ? (

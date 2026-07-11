@@ -33,6 +33,7 @@ const EnvSchema = z.object({
   STRIPE_PRICE_PREMIUM_ANNUAL: z.string().min(1).default('price_premium_annual_test'),
   STRIPE_SUBSCRIPTION_SUCCESS_URL: z.string().min(1).default('cutg://subscription/success'),
   STRIPE_SUBSCRIPTION_CANCEL_URL: z.string().min(1).default('cutg://subscription/cancelled'),
+  GOOGLE_MAPS_API_KEY: z.string().default(''),
   WEB_APP_URL: z.string().url().default('http://localhost:3000'),
   MOBILE_APP_URL: z.string().default('cutg://'),
   ENABLE_ANALYTICS: z.coerce.boolean().default(false),

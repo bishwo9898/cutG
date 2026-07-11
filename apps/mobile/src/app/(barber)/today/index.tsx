@@ -10,11 +10,15 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { useTodayAppointments, useUpdateAppointmentStatus } from '@/hooks/useBarberDashboard';
 import type { AppointmentSummary } from '@/lib/types';
 import { listFromResponse } from '@/lib/types';
+import { openNavigation } from '@/lib/maps';
 import { colors, spacing, typography } from '@/theme';
 
 const nextStatus = (appointment: AppointmentSummary): string | null => {
   if (appointment.status === 'PENDING') return 'CONFIRMED';
-  if (appointment.status === 'CONFIRMED') return 'IN_PROGRESS';
+  if (appointment.status === 'CONFIRMED')
+    return appointment.isMobileService === true ? 'ON_THE_WAY' : 'IN_PROGRESS';
+  if (appointment.status === 'ON_THE_WAY') return 'ARRIVED';
+  if (appointment.status === 'ARRIVED') return 'IN_PROGRESS';
   if (appointment.status === 'IN_PROGRESS') return 'COMPLETED';
   return null;
 };
@@ -61,15 +65,32 @@ export default function TodayScreen(): React.ReactElement {
         const status = nextStatus(appointment);
         return (
           <View key={appointment.id} style={styles.item}>
-            <AppointmentCard appointment={appointment} mode="barber" />
+            <AppointmentCard
+              appointment={appointment}
+              mode="barber"
+              onPrimaryAction={
+                appointment.isMobileService === true && appointment.serviceAddress !== null
+                  ? (): void =>
+                      void openNavigation(
+                        appointment.serviceAddress?.latitude ?? 0,
+                        appointment.serviceAddress?.longitude ?? 0,
+                        appointment.serviceAddress?.addressLine1,
+                      )
+                  : undefined
+              }
+            />
             {status !== null ? (
               <Button
                 title={
                   status === 'CONFIRMED'
                     ? 'Confirm'
-                    : status === 'IN_PROGRESS'
-                      ? 'Start'
-                      : 'Complete'
+                    : status === 'ON_THE_WAY'
+                      ? 'Start journey'
+                      : status === 'ARRIVED'
+                        ? "I've arrived"
+                        : status === 'IN_PROGRESS'
+                          ? 'Start'
+                          : 'Complete'
                 }
                 onPress={() => {
                   void updateStatus.mutateAsync({ id: appointment.id, status });

@@ -104,7 +104,30 @@ export default function AppointmentDetailPage(): React.ReactElement {
           </div>
           <p>{data.barber.businessName}</p>
           <p>{new Date(data.scheduledAt).toLocaleString()}</p>
-          <p>${data.priceQuoted.toFixed(2)}</p>
+          <p>${(data.pricing?.total ?? data.priceQuoted).toFixed(2)}</p>
+          {data.isMobileService === true && data.serviceAddress !== null && (
+            <div className="list-row">
+              <div>
+                <strong>Mobile service</strong>
+                <small style={{ display: 'block' }}>
+                  {data.serviceAddress?.addressLine1}, {data.serviceAddress?.city},{' '}
+                  {data.serviceAddress?.state} {data.serviceAddress?.zipCode}
+                </small>
+                <small style={{ display: 'block' }}>
+                  {data.distanceMiles?.toFixed(1)} miles · about {data.estimatedTravelMinutes} min ·
+                  travel ${(data.travelFee ?? 0).toFixed(2)}
+                </small>
+              </div>
+              <a
+                className="button button-secondary"
+                href={`https://www.google.com/maps/dir/?api=1&destination=${data.serviceAddress?.latitude},${data.serviceAddress?.longitude}`}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Directions
+              </a>
+            </div>
+          )}
           <p>
             <strong>Payment:</strong> {payment.data?.status ?? data.paymentStatus}
           </p>

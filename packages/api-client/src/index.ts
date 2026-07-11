@@ -133,6 +133,24 @@ export const clientApi = {
     client.post<T>('/clients/me/reviews', body),
   paymentHistory: <T>(client: ApiClient, params?: QueryParams): Promise<T> =>
     client.get<T>(`/clients/me/payment-history${toQueryString(params)}`),
+  addresses: <T>(client: ApiClient): Promise<T> => client.get<T>('/clients/me/addresses'),
+  createAddress: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/clients/me/addresses', body),
+  updateAddress: <T>(client: ApiClient, addressId: string, body: unknown): Promise<T> =>
+    client.patch<T>(`/clients/me/addresses/${addressId}`, body),
+  deleteAddress: <T>(client: ApiClient, addressId: string): Promise<T> =>
+    client.delete<T>(`/clients/me/addresses/${addressId}`),
+  setDefaultAddress: <T>(client: ApiClient, addressId: string): Promise<T> =>
+    client.post<T>(`/clients/me/addresses/${addressId}/set-default`),
+};
+
+export const mobileBarberApi = {
+  config: <T>(client: ApiClient): Promise<T> => client.get<T>('/barbers/me/mobile'),
+  updateConfig: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.put<T>('/barbers/me/mobile', body),
+  disable: <T>(client: ApiClient): Promise<T> => client.post<T>('/barbers/me/mobile/disable'),
+  estimate: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/barbers/me/mobile/estimate', body),
 };
 
 export const paymentApi = {

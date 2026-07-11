@@ -94,6 +94,18 @@ export type Appointment = {
   };
   clientNotes: string | null;
   barberNotes: string | null;
+  isMobileService?: boolean;
+  serviceAddress?: {
+    addressLine1: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    latitude: number | null;
+    longitude: number | null;
+  } | null;
+  distanceMiles?: number | null;
+  estimatedTravelMinutes?: number | null;
+  travelFee?: number;
 };
 
 export type ClientAppointment = {
@@ -121,6 +133,19 @@ export type ClientAppointment = {
   };
   slot: PublicSlot | null;
   review: Review | null;
+  isMobileService?: boolean;
+  serviceAddress?: {
+    addressLine1: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    latitude: number;
+    longitude: number;
+  } | null;
+  distanceMiles?: number | null;
+  estimatedTravelMinutes?: number | null;
+  travelFee?: number;
+  pricing?: { serviceFee: number; travelFee: number; total: number };
 };
 
 export type Review = {

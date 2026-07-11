@@ -28,6 +28,7 @@ export const BarberCard = ({ barber, compact = false }: BarberCardProps): React.
               {barber.businessName}
             </Text>
             {barber.isVerified ? <Badge label="Verified" tone="success" /> : null}
+            {barber.mobileService?.isEnabled === true ? <Badge label="Mobile" tone="info" /> : null}
           </View>
           <Text style={styles.meta}>
             {[barber.city, barber.state].filter(Boolean).join(', ') || 'Local barber'}

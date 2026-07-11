@@ -36,6 +36,11 @@ export default function DiscoverScreen(): React.ReactElement {
           onPress={() => router.push('/(client)/discover/search?nearMe=true')}
           variant="secondary"
         />
+        <Button
+          title="Mobile barbers"
+          onPress={() => router.push('/(client)/discover/search?mobileOnly=true')}
+          variant="secondary"
+        />
         {categories.map((category) => (
           <Button
             key={category}

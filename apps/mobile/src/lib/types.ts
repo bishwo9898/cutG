@@ -1,6 +1,13 @@
 export type UserType = 'CLIENT' | 'BARBER' | 'ADMIN';
 export type AppointmentStatus =
-  'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'ON_THE_WAY'
+  | 'ARRIVED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'NO_SHOW';
 export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED';
 export type ServiceCategory = 'haircut' | 'beard' | 'shave' | 'combo' | 'kids' | 'other';
 export type SubscriptionTier = 'FREE' | 'BASIC' | 'PREMIUM';
@@ -56,6 +63,7 @@ export type PublicBarber = {
   serviceCategories: ServiceCategory[];
   nextAvailableSlot: string | null;
   stripeChargesEnabled?: boolean;
+  mobileService?: PublicMobileService | null;
 };
 
 export type BarberProfile = PublicBarber & {
@@ -64,6 +72,55 @@ export type BarberProfile = PublicBarber & {
   yearsOfExperience?: number | null;
   stripeOnboardingComplete?: boolean;
   stripePayoutsEnabled?: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
+};
+
+export type PublicMobileService = {
+  isEnabled: true;
+  serviceRadiusMiles: number;
+  travelFeeStructure: FeeStructure;
+  baseFee: number;
+  perMileRate: number | null;
+  notes: string | null;
+};
+
+export type FeeStructure = 'flat' | 'per_mile' | 'free';
+
+export type MobileBarberConfig = {
+  isEnabled: boolean;
+  serviceRadiusMiles?: number;
+  feeStructure?: FeeStructure;
+  baseFeeCents?: number;
+  perMileRateCents?: number;
+  originLatitude?: number;
+  originLongitude?: number;
+  originAddress?: string | null;
+  mobileServiceNotes?: string | null;
+  suggestedFee: { flat: number; perMile: number; rationale: string };
+};
+
+export type ClientAddress = {
+  id: string;
+  label: string;
+  addressLine1: string;
+  addressLine2?: string | null;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  isDefault: boolean;
+};
+
+export type TravelEstimate = {
+  isWithinRadius: true;
+  distanceMiles: number;
+  estimatedTravelMinutes: number;
+  travelFeeCents: number;
+  travelFee: number;
+  breakdown: { serviceArea: string; feeStructure: FeeStructure; calculation: string };
 };
 
 export type BarberService = {
@@ -118,6 +175,20 @@ export type AppointmentSummary = {
   barberNotes?: string | null;
   address?: string | null;
   hasReview?: boolean;
+  isMobileService?: boolean;
+  serviceAddress?: {
+    addressLine1: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    latitude: number;
+    longitude: number;
+  } | null;
+  distanceMiles?: number | null;
+  estimatedTravelMinutes?: number | null;
+  travelFeeCents?: number;
+  travelFee?: number;
+  pricing?: { serviceFee: number; travelFee: number; total: number };
 };
 
 export type PaymentIntentResponse = {

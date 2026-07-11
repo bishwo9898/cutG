@@ -7,6 +7,13 @@ import type {
 
 import { query, withTransaction, type DatabaseExecutor } from '../../db/queries/barber.queries';
 import { AppError } from '../../middleware/errorHandler';
+import {
+  blockTravelBufferSlots,
+  lockTravelBufferSlots,
+  releaseTravelBufferSlots,
+} from '../mobile/bufferSlotService';
+import { geocodeAddress, getOwnedAddress } from '../mobile/geocodingService';
+import { estimateTravel } from '../mobile/mobileBarberService';
 
 type Row = Record<string, unknown>;
 
@@ -51,14 +58,44 @@ const mapService = (row: Row) => ({
 
 const mapAppointment = (row: Row) => ({
   id: row.id,
+  barberId: row.barber_id,
+  clientId: row.client_id,
+  serviceId: row.service_id,
   scheduledAt: dateTime(row.scheduled_at),
+  scheduledDate: dateTime(row.scheduled_at).slice(0, 10),
+  startTime: time(row.start_time ?? dateTime(row.scheduled_at).slice(11, 16)),
   durationMinutes: row.duration_minutes,
   status: row.status,
   paymentStatus: row.payment_status,
   priceQuoted: money(row.price_quoted),
+  price: money(row.price_quoted),
   clientNotes: row.client_notes,
   barberNotes: row.barber_notes,
+  isMobileService: row.is_mobile_service === true,
+  serviceAddress:
+    row.is_mobile_service === true
+      ? {
+          addressLine1: row.service_address_line1,
+          city: row.service_address_city,
+          state: row.service_address_state,
+          zipCode: row.service_address_zip,
+          latitude: Number(row.service_latitude),
+          longitude: Number(row.service_longitude),
+        }
+      : null,
+  distanceMiles: row.distance_miles === null ? null : Number(row.distance_miles),
+  estimatedTravelMinutes: row.estimated_travel_minutes,
+  travelFeeCents: Number(row.travel_fee_cents ?? 0),
+  travelFee: Number(row.travel_fee_cents ?? 0) / 100,
+  pricing: {
+    serviceFee: money(row.price_quoted),
+    travelFee: Number(row.travel_fee_cents ?? 0) / 100,
+    total: money(row.price_quoted) + Number(row.travel_fee_cents ?? 0) / 100,
+  },
+  barberDepartedAt: row.barber_departed_at === null ? null : dateTime(row.barber_departed_at),
+  barberArrivedAt: row.barber_arrived_at === null ? null : dateTime(row.barber_arrived_at),
   service: mapService(row),
+  serviceName: row.service_name,
   barber: {
     id: row.barber_id,
     businessName: row.business_name,
@@ -66,6 +103,8 @@ const mapAppointment = (row: Row) => ({
     city: row.city,
     address: row.location_address ?? row.address,
   },
+  barberName: row.business_name,
+  barberPhotoUrl: row.profile_photo_url,
   slot:
     row.availability_slot_id === null
       ? null
@@ -205,8 +244,45 @@ export const removeSavedBarber = async (clientId: string, barberId: string) => {
   return { message: 'Barber removed from saved list.' };
 };
 
-export const bookAppointment = async (clientId: string, input: BookAppointmentRequest) =>
-  withTransaction(async (trx) => {
+const prepareMobileBooking = async (clientId: string, input: BookAppointmentRequest) => {
+  if (!input.isMobileService) return null;
+  let address: {
+    id?: string;
+    addressLine1: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    latitude: number;
+    longitude: number;
+  };
+  if (input.clientAddressId !== undefined) {
+    const row = await getOwnedAddress(clientId, input.clientAddressId);
+    address = {
+      id: String(row.id),
+      addressLine1: String(row.address_line1),
+      city: String(row.city),
+      state: String(row.state),
+      zipCode: String(row.zip_code),
+      latitude: Number(row.latitude),
+      longitude: Number(row.longitude),
+    };
+  } else if (input.clientAddressOneTime !== undefined) {
+    const resolved = await geocodeAddress(input.clientAddressOneTime);
+    address = resolved;
+  } else {
+    throw new AppError(400, 'Address required for mobile bookings.', 'MOBILE_ADDRESS_REQUIRED');
+  }
+  const estimate = await estimateTravel({
+    barberId: input.barberId,
+    destinationLatitude: address.latitude,
+    destinationLongitude: address.longitude,
+  });
+  return { address, estimate };
+};
+
+export const bookAppointment = async (clientId: string, input: BookAppointmentRequest) => {
+  const mobile = await prepareMobileBooking(clientId, input);
+  return withTransaction(async (trx) => {
     const barber = await requireActiveBarber(input.barberId, trx);
     const serviceRows = await query<Row>(
       `SELECT * FROM services
@@ -238,11 +314,23 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
       throw new AppError(400, 'Selected slot is too short for this service.', 'SLOT_TOO_SHORT');
     }
 
+    const bufferSlots =
+      mobile === null
+        ? []
+        : await lockTravelBufferSlots(
+            input.barberId,
+            date(slot.slot_date),
+            time(slot.start_time),
+            mobile.estimate.estimatedTravelMinutes,
+            Number(slot.duration_minutes),
+            trx,
+          );
+
     const conflictRows = await query<Row>(
       `SELECT id
        FROM appointments
        WHERE client_id = $1
-         AND status IN ('PENDING','CONFIRMED')
+         AND status IN ('PENDING','CONFIRMED','ON_THE_WAY','ARRIVED','IN_PROGRESS')
          AND scheduled_at < ($2::timestamp + ($3::int * interval '1 minute'))
          AND (scheduled_at + (duration_minutes * interval '1 minute')) > $2::timestamp
        LIMIT 1`,
@@ -260,8 +348,11 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
     const appointmentRows = await query<Row>(
       `INSERT INTO appointments
         (client_id,barber_id,service_id,availability_slot_id,scheduled_at,duration_minutes,status,
-         payment_status,price_quoted,location_address,location_latitude,location_longitude,client_notes)
-       VALUES ($1,$2,$3,$4,$5,$6,'PENDING','PENDING',$7,$8,$9,$10,$11)
+         payment_status,price_quoted,location_address,location_latitude,location_longitude,client_notes,
+         is_mobile_service,client_address_id,service_latitude,service_longitude,service_address_line1,
+         service_address_city,service_address_state,service_address_zip,travel_fee_cents,
+         estimated_travel_minutes,distance_miles)
+       VALUES ($1,$2,$3,$4,$5,$6,'PENDING','PENDING',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
        RETURNING *`,
       [
         clientId,
@@ -271,13 +362,31 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
         slot.scheduled_at,
         service.duration_minutes,
         service.price,
-        barber.address ??
-          [barber.city, barber.state]
-            .filter((value): value is string => typeof value === 'string' && value.length > 0)
-            .join(', '),
-        barber.latitude,
-        barber.longitude,
+        mobile === null
+          ? (barber.address ??
+            [barber.city, barber.state]
+              .filter((value): value is string => typeof value === 'string' && value.length > 0)
+              .join(', '))
+          : [
+              mobile.address.addressLine1,
+              mobile.address.city,
+              mobile.address.state,
+              mobile.address.zipCode,
+            ].join(', '),
+        mobile?.address.latitude ?? barber.latitude,
+        mobile?.address.longitude ?? barber.longitude,
         input.clientNotes ?? null,
+        mobile !== null,
+        mobile?.address.id ?? null,
+        mobile?.address.latitude ?? null,
+        mobile?.address.longitude ?? null,
+        mobile?.address.addressLine1 ?? null,
+        mobile?.address.city ?? null,
+        mobile?.address.state ?? null,
+        mobile?.address.zipCode ?? null,
+        mobile?.estimate.travelFeeCents ?? 0,
+        mobile?.estimate.estimatedTravelMinutes ?? null,
+        mobile?.estimate.distanceMiles ?? null,
       ],
       trx,
     );
@@ -289,6 +398,7 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
        WHERE id = $2 AND status = 'AVAILABLE'`,
       [appointment.id, input.availabilitySlotId],
     );
+    await blockTravelBufferSlots(String(appointment.id), bufferSlots, trx);
     await trx.query(
       `INSERT INTO notifications (user_id,type,title,message,related_data)
        VALUES
@@ -306,8 +416,9 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
       [appointment.id, clientId],
       trx,
     );
-    return mapAppointment(rows[0] as Row);
+    return { ...mapAppointment(rows[0] as Row), bufferSlotsBlocked: bufferSlots.length };
   });
+};
 
 export const listClientAppointments = async (clientId: string, filters: ClientAppointmentQuery) => {
   const values: unknown[] = [clientId];
@@ -378,6 +489,7 @@ export const cancelClientAppointment = async (clientId: string, appointmentId: s
       );
       slotFreed = true;
     }
+    await releaseTravelBufferSlots(appointmentId, trx);
     const barberRows = await query<Row>(
       'SELECT user_id FROM barber_profiles WHERE id = $1',
       [appointment.barber_id],
