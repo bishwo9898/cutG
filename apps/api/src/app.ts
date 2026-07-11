@@ -1,4 +1,4 @@
-import express, { type Express } from 'express';
+import express, { json, raw, type Express } from 'express';
 import helmet from 'helmet';
 
 import { corsMiddleware } from './middleware/cors';
@@ -12,14 +12,10 @@ export const createApp = (): Express => {
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(corsMiddleware);
-  app.post(
-    '/webhooks/stripe',
-    express.raw({ type: 'application/json' }),
-    (request, response, next) => {
-      void stripeWebhookHandler(request, response).catch(next);
-    },
-  );
-  app.use(express.json({ limit: '1mb' }));
+  app.post('/webhooks/stripe', raw({ type: 'application/json' }), (request, response, next) => {
+    void stripeWebhookHandler(request, response).catch(next);
+  });
+  app.use(json({ limit: '1mb' }));
   app.use(requestLogger);
   app.use(routes);
   app.use(notFoundHandler);

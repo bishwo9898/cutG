@@ -1,12 +1,12 @@
 import { resolve } from 'node:path';
 
-import dotenv from 'dotenv';
+import { config as loadEnv } from 'dotenv';
 import { z } from 'zod';
 
 import { DEFAULT_HOST, DEFAULT_PORT } from './constants';
 
-dotenv.config({ path: resolve(__dirname, '../../../..', '.env') });
-dotenv.config();
+loadEnv({ path: resolve(__dirname, '../../../..', '.env') });
+loadEnv();
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

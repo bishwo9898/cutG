@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 import type { UserType } from '@barber-saas/shared-types';
-import jwt, { type SignOptions } from 'jsonwebtoken';
+import {
+  sign,
+  verify,
+  type JwtPayload as JsonWebTokenPayload,
+  type SignOptions,
+} from 'jsonwebtoken';
 
 import { env } from '../../config/env';
 import { AppError } from '../../middleware/errorHandler';
@@ -99,7 +104,7 @@ const createToken = (
   };
 
   return {
-    token: jwt.sign(payload, env.JWT_SECRET, signOptions),
+    token: sign(payload, env.JWT_SECRET, signOptions),
     jti,
     expiresAt: createExpiresAt(expiresInSeconds),
     expiresIn: expiresInSeconds,
@@ -132,7 +137,7 @@ export const createAccessToken = (subject: TokenSubject): IssuedToken => {
   );
 };
 
-const isJwtPayload = (payload: string | jwt.JwtPayload): payload is JwtPayload => {
+const isJwtPayload = (payload: string | JsonWebTokenPayload): payload is JwtPayload => {
   return (
     typeof payload !== 'string' &&
     typeof payload.sub === 'string' &&
@@ -150,7 +155,7 @@ const isJwtPayload = (payload: string | jwt.JwtPayload): payload is JwtPayload =
 
 export const verifyToken = (token: string, expectedType: JwtTokenType): JwtPayload => {
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET);
+    const payload = verify(token, env.JWT_SECRET);
 
     if (!isJwtPayload(payload) || payload.type !== expectedType) {
       throw new AppError(401, 'Token type is invalid.', 'INVALID_TOKEN');
