@@ -3,9 +3,9 @@
 import { clientApi } from '@barber-saas/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Home, MapPin, Plus, Trash2 } from 'lucide-react';
-import Link from 'next/link';
 import { useState } from 'react';
 
+import { ClientHeader } from '@/components/client-header';
 import { Notice } from '@/components/notice';
 import { browserApi } from '@/lib/browser-api';
 import type { ClientAddress } from '@/lib/contracts';
@@ -45,14 +45,7 @@ export default function ClientAddressesPage(): React.ReactElement {
 
   return (
     <main className="market-page narrow-page">
-      <header className="market-nav">
-        <Link className="brand-lockup dark" href="/client">
-          <span className="brand-mark">cG</span>cutG
-        </Link>
-        <nav>
-          <Link href="/client/profile">Profile</Link>
-        </nav>
-      </header>
+      <ClientHeader />
       <section className="market-section">
         <div className="section-title">
           <div>

@@ -192,6 +192,11 @@ a {
   font-size: 12px;
 }
 
+.field-help {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .button {
   min-height: 42px;
   display: inline-flex;
@@ -352,6 +357,57 @@ a {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.client-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  width: 100%;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 28px;
+  border-bottom: 1px solid var(--line);
+  padding: 0 max(20px, calc((100% - 1180px) / 2));
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.client-primary-nav,
+.client-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.client-primary-nav {
+  justify-content: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.client-primary-nav a {
+  min-height: 72px;
+  display: inline-flex;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  padding-top: 2px;
+}
+
+.client-primary-nav .client-nav-active {
+  border-bottom-color: var(--brand);
+  color: var(--brand-dark);
+  font-weight: 800;
+}
+
+.client-header-actions {
+  justify-content: flex-end;
+  font-size: 14px;
+}
+
+.client-mobile-nav {
+  display: none;
 }
 
 .brand-lockup.dark {
@@ -2001,6 +2057,15 @@ a {
   .landing-map-scene {
     min-height: 280px;
   }
+
+  .client-header {
+    gap: 16px;
+  }
+
+  .client-primary-nav,
+  .client-header-actions {
+    gap: 12px;
+  }
 }
 
 @media (max-width: 760px) {
@@ -2010,6 +2075,52 @@ a {
 
   .landing-nav {
     min-height: 64px;
+  }
+
+  .market-page {
+    padding-bottom: 66px;
+  }
+
+  .client-header {
+    min-height: 60px;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 16px;
+  }
+
+  .client-primary-nav,
+  .client-header-actions .button {
+    display: none;
+  }
+
+  .client-header-actions {
+    margin-left: auto;
+  }
+
+  .client-mobile-nav {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 50;
+    min-height: 62px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: 1px solid var(--line);
+    background: white;
+  }
+
+  .client-mobile-nav a {
+    min-width: 0;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 4px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .client-mobile-nav .client-nav-active {
+    color: var(--brand);
+    background: #f1f8f5;
   }
 
   .landing-nav nav a:not(.button) {

@@ -4,7 +4,6 @@ import { PasswordSchema, RegisterRequestSchema } from '@barber-saas/shared-types
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -36,7 +35,6 @@ const schema = RegisterRequestSchema.extend({
 type FormValues = z.infer<typeof schema>;
 
 export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactElement {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const isBarber = role === 'BARBER';
   const {
@@ -50,25 +48,29 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
 
   const submit = async (values: FormValues): Promise<void> => {
     setError(null);
-    const response = await fetch('/api/backend/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: values.email,
-        firstName: values.firstName,
-        lastName: values.lastName,
-        password: values.password,
-        userType: role,
-      }),
-    });
-    const body = (await response.json()) as { message?: string };
-    if (!response.ok) {
-      setError(body.message ?? 'We could not create your account.');
-      return;
+    try {
+      const response = await fetch('/api/backend/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: values.email,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          password: values.password,
+          userType: role,
+        }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) {
+        setError(body.message ?? 'We could not create your account.');
+        return;
+      }
+      window.location.assign(
+        `/verify-email?email=${encodeURIComponent(values.email)}&role=${role.toLowerCase()}`,
+      );
+    } catch {
+      setError('The registration service could not be reached. Check that the API is running.');
     }
-    router.push(
-      `/verify-email?email=${encodeURIComponent(values.email)}&role=${role.toLowerCase()}`,
-    );
   };
 
   return (
@@ -122,6 +124,21 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
             )}
           </div>
           <div className="field">
+            <label htmlFor={`${role}-register-password`}>Password</label>
+            <input
+              id={`${role}-register-password`}
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              {...register('password')}
+            />
+            {errors.password?.message !== undefined ? (
+              <span className="field-error">{errors.password.message}</span>
+            ) : (
+              <span className="field-help">Use at least 12 characters.</span>
+            )}
+          </div>
+          <div className="field">
             <label htmlFor={`${role}-confirm-password`}>Confirm password</label>
             <input
               id={`${role}-confirm-password`}
@@ -143,19 +160,6 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
           {errors.acceptedTerms?.message !== undefined && (
             <span className="field-error">{errors.acceptedTerms.message}</span>
           )}
-          <div className="field">
-            <label htmlFor={`${role}-register-password`}>Password</label>
-            <input
-              id={`${role}-register-password`}
-              className="input"
-              type="password"
-              autoComplete="new-password"
-              {...register('password')}
-            />
-            <span className="field-error">
-              {errors.password?.message ?? 'Use at least 12 characters.'}
-            </span>
-          </div>
           <button
             className="button button-primary button-full"
             disabled={isSubmitting}

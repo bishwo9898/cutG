@@ -252,6 +252,7 @@ Phase 7 adds:
 
 - Public marketing landing page with client/barber CTAs, mobile-service positioning, featured barbers, plan preview, and SEO metadata
 - Canonical `/barber/*` and `/client/*` portals with distinct auth copy, role-locked registration, protected routing, wrong-role handling, and legacy `308` redirects
+- Cross-role account switching through auth pages, stale-role-cookie recovery, full-navigation login handoff, and explicit network/error feedback
 - Five-step web mobile booking with appointment type, saved/one-time address, Places autocomplete, travel estimate, mobile-aware slots, and fee breakdown
 - Web saved-address management and polled mobile appointment timeline with destination map
 - Native appointment-type selection, connected address/estimate flow, mobile-compatible slot filtering, fee-aware confirmation/payment, timeline polling, and native destination map
@@ -414,6 +415,7 @@ Current state:
 - Barber dashboard home, profile, services, availability, appointments, and public-preview screens
 - Client marketplace homepage, search, barber profile, booking flow, appointments, appointment detail, and saved barbers
 - Public conversion-focused landing page at `/` and client saved-address management
+- Shared client portal navigation with consistent desktop active states and a stable mobile bottom bar
 - Barber payment setup, earnings, and subscription management pages
 - Responsive Mobile Service settings with Places address autocomplete, current-location permission, reverse geocoding, draggable origin, editable radius, travel fees, and client notes
 - Browser-side forms and state for profile/service/schedule workflows

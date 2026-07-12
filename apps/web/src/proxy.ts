@@ -39,11 +39,18 @@ export function proxy(request: NextRequest): NextResponse {
 
   const role = roleOf(request);
   const hasSession = request.cookies.has('barber_access') || request.cookies.has('barber_refresh');
+  const isAuthRoute =
+    pathname === '/barber/login' ||
+    pathname === '/barber/register' ||
+    pathname === '/barber/forgot-password' ||
+    pathname === '/client/login' ||
+    pathname === '/client/register' ||
+    pathname === '/client/forgot-password';
 
-  if (role === 'BARBER' && pathname.startsWith('/client')) {
+  if (hasSession && !isAuthRoute && role === 'BARBER' && pathname.startsWith('/client')) {
     return NextResponse.redirect(new URL('/barber/dashboard', request.url));
   }
-  if (role === 'CLIENT' && pathname.startsWith('/barber')) {
+  if (hasSession && !isAuthRoute && role === 'CLIENT' && pathname.startsWith('/barber')) {
     return NextResponse.redirect(new URL('/client', request.url));
   }
 

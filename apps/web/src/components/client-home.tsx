@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { ClientHeader } from '@/components/client-header';
 import { BarberCard } from '@/components/client-ui';
 import { browserApi } from '@/lib/browser-api';
 import type { Pagination, PublicBarber } from '@/lib/contracts';
@@ -34,21 +35,7 @@ export function ClientHome(): React.ReactElement {
 
   return (
     <main className="market-page">
-      <header className="market-nav">
-        <Link className="brand-lockup dark" href="/client">
-          <span className="brand-mark">cG</span>
-          cutG
-        </Link>
-        <nav>
-          <Link href="/client/barbers">Find barbers</Link>
-          <Link href="/client/appointments">Appointments</Link>
-          <Link href="/client/saved">Saved</Link>
-          <Link href="/barber/login">Barber portal</Link>
-          <Link className="button button-primary" href="/client/login">
-            Client sign in
-          </Link>
-        </nav>
-      </header>
+      <ClientHeader />
 
       <section className="market-hero">
         <div>

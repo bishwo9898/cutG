@@ -6,6 +6,7 @@ import { CalendarDays, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
+import { ClientHeader } from '@/components/client-header';
 import { ReviewCard, SlotPicker, StarRating } from '@/components/client-ui';
 import { Notice } from '@/components/notice';
 import { browserApi } from '@/lib/browser-api';
@@ -61,18 +62,7 @@ export default function BarberProfilePage(): React.ReactElement {
 
   return (
     <main className="market-page">
-      <header className="market-nav">
-        <Link className="brand-lockup dark" href="/client">
-          <span className="brand-mark">cG</span>
-          cutG
-        </Link>
-        <nav>
-          <Link href="/client/barbers">Find barbers</Link>
-          <Link className="button button-primary" href={`/client/barbers/${barberId}/book`}>
-            Book now
-          </Link>
-        </nav>
-      </header>
+      <ClientHeader />
 
       <section className="profile-hero">
         <div

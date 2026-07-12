@@ -140,6 +140,7 @@ export const refreshSession = async (): Promise<string | null> => {
   if (!response.ok) {
     cookieStore.delete(ACCESS_COOKIE);
     cookieStore.delete(REFRESH_COOKIE);
+    cookieStore.delete(ROLE_COOKIE);
     return null;
   }
 

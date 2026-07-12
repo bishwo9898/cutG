@@ -2,21 +2,14 @@
 
 import Link from 'next/link';
 
+import { ClientHeader } from '@/components/client-header';
 import { useUser } from '@/hooks/use-user';
 
 export default function ClientProfilePage(): React.ReactElement {
   const { data: user } = useUser();
   return (
     <main className="market-page narrow-page">
-      <header className="market-nav">
-        <Link className="brand-lockup dark" href="/client">
-          <span className="brand-mark">cG</span>cutG
-        </Link>
-        <nav>
-          <Link href="/client/profile/addresses">Saved addresses</Link>
-          <Link href="/client/appointments">Appointments</Link>
-        </nav>
-      </header>
+      <ClientHeader />
       <section className="summary-panel">
         <p className="eyebrow">Client profile</p>
         <h1>{user === undefined ? 'Your profile' : `${user.firstName} ${user.lastName}`}</h1>

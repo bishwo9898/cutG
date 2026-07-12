@@ -4,6 +4,7 @@ import { clientApi } from '@barber-saas/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 
+import { ClientHeader } from '@/components/client-header';
 import { Notice } from '@/components/notice';
 import { useUser } from '@/hooks/use-user';
 import { browserApi } from '@/lib/browser-api';
@@ -48,16 +49,7 @@ export default function SavedBarbersPage(): React.ReactElement {
 
   return (
     <main className="market-page">
-      <header className="market-nav">
-        <Link className="brand-lockup dark" href="/client">
-          <span className="brand-mark">cG</span>
-          cutG
-        </Link>
-        <nav>
-          <Link href="/client/barbers">Find barbers</Link>
-          <Link href="/client/appointments">Appointments</Link>
-        </nav>
-      </header>
+      <ClientHeader />
       <section className="market-section">
         <div className="section-title">
           <div>

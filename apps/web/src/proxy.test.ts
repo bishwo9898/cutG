@@ -47,4 +47,20 @@ describe('dual portal proxy', () => {
         .status,
     ).toBe(200);
   });
+
+  it('allows users to open the other role auth flow to switch accounts', () => {
+    expect(proxy(request('/barber/login', 'barber_access=token; cutg_role=CLIENT')).status).toBe(
+      200,
+    );
+    expect(proxy(request('/client/register', 'barber_access=token; cutg_role=BARBER')).status).toBe(
+      200,
+    );
+  });
+
+  it('ignores stale role metadata when no token session remains', () => {
+    expect(proxy(request('/barber/login', 'cutg_role=CLIENT')).status).toBe(200);
+    expect(proxy(request('/barber/dashboard', 'cutg_role=BARBER')).headers.get('location')).toBe(
+      'http://localhost:3000/barber/login?next=%2Fbarber%2Fdashboard',
+    );
+  });
 });

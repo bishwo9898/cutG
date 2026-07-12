@@ -3,10 +3,10 @@
 import { barberDiscoveryApi } from '@barber-saas/api-client';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 
+import { ClientHeader } from '@/components/client-header';
 import { BarberCard } from '@/components/client-ui';
 import { browserApi } from '@/lib/browser-api';
 import type { Pagination, PublicBarber } from '@/lib/contracts';
@@ -39,16 +39,7 @@ function BarberSearchPageContent(): React.ReactElement {
 
   return (
     <main className="market-page">
-      <header className="market-nav">
-        <Link className="brand-lockup dark" href="/client">
-          <span className="brand-mark">cG</span>
-          cutG
-        </Link>
-        <nav>
-          <Link href="/client/appointments">Appointments</Link>
-          <Link href="/client/saved">Saved</Link>
-        </nav>
-      </header>
+      <ClientHeader />
       <section className="market-shell">
         <aside className="filter-panel">
           <h2>Search</h2>

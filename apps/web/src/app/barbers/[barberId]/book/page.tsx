@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { ClientHeader } from '@/components/client-header';
 import { BookingSteps, SlotPicker } from '@/components/client-ui';
 import { Notice } from '@/components/notice';
 import { useUser } from '@/hooks/use-user';
@@ -225,14 +226,7 @@ export default function BookBarberPage(): React.ReactElement {
 
   return (
     <main className="market-page">
-      <header className="market-nav">
-        <Link className="brand-lockup dark" href="/client">
-          <span className="brand-mark">cG</span>cutG
-        </Link>
-        <nav>
-          <Link href={`/client/barbers/${barberId}`}>Barber profile</Link>
-        </nav>
-      </header>
+      <ClientHeader />
       <section className="booking-shell mobile-booking-shell">
         <div className="section-title">
           <div>

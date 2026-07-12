@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { BriefcaseBusiness, LogIn, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -20,7 +20,6 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const {
@@ -32,18 +31,29 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
 
   const submit = async (values: FormValues): Promise<void> => {
     setError(null);
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...values, expectedUserType: role }),
-    });
-    const body = (await response.json()) as { message?: string };
-    if (!response.ok) {
-      setError(body.message ?? 'Sign in failed.');
-      return;
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...values, expectedUserType: role }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) {
+        setError(body.message ?? 'Sign in failed. Check your email and password.');
+        return;
+      }
+      const requestedNext = searchParams.get('next');
+      const portalPrefix = isBarber ? '/barber' : '/client';
+      const destination =
+        requestedNext?.startsWith(portalPrefix) === true
+          ? requestedNext
+          : isBarber
+            ? '/barber/dashboard'
+            : '/client';
+      window.location.assign(destination);
+    } catch {
+      setError('The sign-in service could not be reached. Check that the API is running.');
     }
-    router.push(searchParams.get('next') ?? (isBarber ? '/barber/dashboard' : '/client'));
-    router.refresh();
   };
 
   return (

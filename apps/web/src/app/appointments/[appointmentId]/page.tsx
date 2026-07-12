@@ -4,10 +4,10 @@ import { clientApi, paymentApi } from '@barber-saas/api-client';
 import { GoogleMap, LoadScript, MarkerF } from '@react-google-maps/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Car, CheckCircle2, Circle, MapPin } from 'lucide-react';
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
+import { ClientHeader } from '@/components/client-header';
 import { AppointmentStatusBadge, StarRating } from '@/components/client-ui';
 import { Notice } from '@/components/notice';
 import { browserApi } from '@/lib/browser-api';
@@ -101,15 +101,7 @@ export default function AppointmentDetailPage(): React.ReactElement {
 
   return (
     <main className="market-page narrow-page">
-      <header className="market-nav">
-        <Link className="brand-lockup dark" href="/client">
-          <span className="brand-mark">cG</span>
-          cutG
-        </Link>
-        <nav>
-          <Link href="/client/appointments">Appointments</Link>
-        </nav>
-      </header>
+      <ClientHeader />
       {data === undefined ? (
         <p className="muted">Loading appointment...</p>
       ) : (

@@ -22,7 +22,11 @@ The Next.js BFF stores access and refresh tokens in HTTP-only cookies and stores
 - Unauthenticated client account requests redirect to `/client/login`.
 - A client session entering `/barber/*` redirects to `/client`.
 - A barber session entering `/client/*` redirects to `/barber/dashboard`.
+- Login, registration, and password-recovery pages remain reachable across roles so a person can deliberately switch accounts without first clearing cookies.
+- Stale role metadata without an access or refresh token is ignored and cannot block either auth portal.
 - API middleware still verifies the signed JWT and required role for every protected API operation.
+
+Successful login performs a full browser navigation after the BFF sets HTTP-only cookies. Auth forms handle unavailable or unreadable API responses explicitly instead of leaving a submit button with no visible outcome.
 
 ## Legacy Redirects
 
