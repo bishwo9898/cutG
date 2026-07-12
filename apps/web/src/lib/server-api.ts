@@ -5,12 +5,15 @@ import { cookies } from 'next/headers';
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:4000';
 const ACCESS_COOKIE = 'barber_access';
 const REFRESH_COOKIE = 'barber_refresh';
+const ROLE_COOKIE = 'cutg_role';
+
+type SessionRole = 'CLIENT' | 'BARBER' | 'ADMIN';
 
 type TokenPair = {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
-  user: unknown;
+  user: { userType: SessionRole };
 };
 
 const cookieOptions = {
@@ -71,6 +74,7 @@ export const apiRequest = async (
 
 export const createSession = async (
   input: unknown,
+  expectedUserType?: Exclude<SessionRole, 'ADMIN'>,
 ): Promise<{ response: Response; body: unknown }> => {
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
     method: 'POST',
@@ -82,12 +86,29 @@ export const createSession = async (
 
   if (response.ok) {
     const tokens = body as TokenPair;
+    if (expectedUserType !== undefined && tokens.user.userType !== expectedUserType) {
+      return {
+        response: new Response(null, { status: 403 }),
+        body: {
+          status: 'error',
+          code: 'ACCOUNT_TYPE_MISMATCH',
+          message:
+            expectedUserType === 'BARBER'
+              ? 'This is a client account. Use client sign in instead.'
+              : 'This is a barber account. Use barber sign in instead.',
+        },
+      };
+    }
     const cookieStore = await cookies();
     cookieStore.set(ACCESS_COOKIE, tokens.accessToken, {
       ...cookieOptions,
       maxAge: tokens.expiresIn,
     });
     cookieStore.set(REFRESH_COOKIE, tokens.refreshToken, {
+      ...cookieOptions,
+      maxAge: 30 * 24 * 60 * 60,
+    });
+    cookieStore.set(ROLE_COOKIE, tokens.user.userType, {
       ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60,
     });
@@ -134,4 +155,5 @@ export const clearSession = async (): Promise<void> => {
   const cookieStore = await cookies();
   cookieStore.delete(ACCESS_COOKIE);
   cookieStore.delete(REFRESH_COOKIE);
+  cookieStore.delete(ROLE_COOKIE);
 };

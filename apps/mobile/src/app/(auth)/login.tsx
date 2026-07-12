@@ -22,6 +22,7 @@ type LoginForm = z.infer<typeof LoginFormSchema>;
 
 export default function LoginScreen(): React.ReactElement {
   const params = useLocalSearchParams<{ role?: string }>();
+  const expectedRole = params.role === 'BARBER' ? 'BARBER' : 'CLIENT';
   const setAuth = useAuthStore((state) => state.setAuth);
   const { control, formState, handleSubmit, setError } = useForm<LoginForm>({
     defaultValues: {
@@ -34,6 +35,15 @@ export default function LoginScreen(): React.ReactElement {
   const onSubmit = async (values: LoginForm): Promise<void> => {
     try {
       const response = await mobileApi.auth.login(values);
+      if (response.user.userType !== expectedRole) {
+        setError('root', {
+          message:
+            expectedRole === 'BARBER'
+              ? 'This is a client account. Use client sign in instead.'
+              : 'This is a barber account. Use barber sign in instead.',
+        });
+        return;
+      }
       await setAuth(response.user, response.accessToken, response.refreshToken);
       router.replace(
         response.user.userType === 'BARBER' ? '/(barber)/today' : '/(client)/discover',
@@ -45,7 +55,13 @@ export default function LoginScreen(): React.ReactElement {
 
   return (
     <Screen>
-      <ScreenHeader showBack title="Sign in" subtitle="Use a client or barber account." />
+      <ScreenHeader
+        showBack
+        title={expectedRole === 'BARBER' ? 'Barber sign in' : 'Client sign in'}
+        subtitle={
+          expectedRole === 'BARBER' ? 'Open your business workspace.' : 'Manage your bookings.'
+        }
+      />
       <Controller
         control={control}
         name="email"
@@ -89,9 +105,16 @@ export default function LoginScreen(): React.ReactElement {
         variant="ghost"
       />
       <Button
-        title="Create an account"
-        onPress={() => router.push('/(auth)/role-select')}
+        title={`Create ${expectedRole === 'BARBER' ? 'barber' : 'client'} account`}
+        onPress={() => router.push('/(auth)/register?role=' + expectedRole)}
         variant="secondary"
+      />
+      <Button
+        title={expectedRole === 'BARBER' ? 'Client sign in' : 'Barber sign in'}
+        onPress={() =>
+          router.replace('/(auth)/login?role=' + (expectedRole === 'BARBER' ? 'CLIENT' : 'BARBER'))
+        }
+        variant="ghost"
       />
     </Screen>
   );

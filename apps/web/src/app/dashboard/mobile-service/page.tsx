@@ -1,8 +1,15 @@
 'use client';
 
-import { CircleF, GoogleMap, LoadScript, MarkerF } from '@react-google-maps/api';
+import {
+  Autocomplete,
+  CircleF,
+  GoogleMap,
+  LoadScript,
+  MarkerF,
+  type Libraries,
+} from '@react-google-maps/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MapPin, Save } from 'lucide-react';
+import { LocateFixed, MapPin, Navigation, Save } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Notice } from '@/components/notice';
@@ -25,6 +32,7 @@ type MobileConfig = {
 };
 
 const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
+const mapsLibraries: Libraries = ['places'];
 
 export default function MobileServicePage(): React.ReactElement {
   const queryClient = useQueryClient();
@@ -39,10 +47,14 @@ export default function MobileServicePage(): React.ReactElement {
   const [latitude, setLatitude] = useState(40.6782);
   const [longitude, setLongitude] = useState(-73.9442);
   const [originAddress, setOriginAddress] = useState('');
+  const [originResolved, setOriginResolved] = useState(false);
   const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState(false);
   const [mapLoadError, setMapLoadError] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
   const circle = useRef<google.maps.Circle | null>(null);
+  const autocomplete = useRef<google.maps.places.Autocomplete | null>(null);
 
   useEffect(() => {
     if (config.data === undefined) return;
@@ -59,6 +71,9 @@ export default function MobileServicePage(): React.ReactElement {
     setLatitude(config.data.originLatitude ?? 40.6782);
     setLongitude(config.data.originLongitude ?? -73.9442);
     setOriginAddress(config.data.originAddress ?? '');
+    setOriginResolved(
+      config.data.originAddress !== null && config.data.originAddress !== undefined,
+    );
     setNotes(config.data.mobileServiceNotes ?? '');
   }, [config.data]);
 
@@ -67,13 +82,64 @@ export default function MobileServicePage(): React.ReactElement {
     const previousHandler = mapsWindow.gm_authFailure;
     mapsWindow.gm_authFailure = (): void => setMapLoadError(true);
     return (): void => {
-      if (previousHandler === undefined) {
-        delete mapsWindow.gm_authFailure;
-      } else {
-        mapsWindow.gm_authFailure = previousHandler;
-      }
+      if (previousHandler === undefined) delete mapsWindow.gm_authFailure;
+      else mapsWindow.gm_authFailure = previousHandler;
     };
   }, []);
+
+  const setOrigin = (lat: number, lng: number, address?: string): void => {
+    setLatitude(lat);
+    setLongitude(lng);
+    setOriginResolved(address !== undefined);
+    if (address !== undefined) setOriginAddress(address);
+    setLocationError(null);
+  };
+
+  const reverseGeocode = (lat: number, lng: number): void => {
+    setOrigin(lat, lng);
+    const geocoder = new google.maps.Geocoder();
+    void geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      const address = results?.[0]?.formatted_address;
+      if (status === google.maps.GeocoderStatus.OK && address !== undefined) {
+        setOrigin(lat, lng, address);
+      } else setLocationError('The location was selected, but its street address was not found.');
+    });
+  };
+
+  const selectAutocompletePlace = (): void => {
+    const place = autocomplete.current?.getPlace();
+    const lat = place?.geometry?.location?.lat();
+    const lng = place?.geometry?.location?.lng();
+    if (lat === undefined || lng === undefined) {
+      setLocationError('Select an address from the suggestions.');
+      return;
+    }
+    setOrigin(lat, lng, place?.formatted_address ?? place?.name);
+  };
+
+  const useCurrentLocation = (): void => {
+    setLocationError(null);
+    if (!('geolocation' in navigator)) {
+      setLocationError('Location access is not available in this browser.');
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setLocating(false);
+        reverseGeocode(coords.latitude, coords.longitude);
+      },
+      (geolocationError) => {
+        setLocating(false);
+        setLocationError(
+          geolocationError.code === geolocationError.PERMISSION_DENIED
+            ? 'Location permission was denied. Allow it in your browser settings and try again.'
+            : 'Your current location could not be determined.',
+        );
+      },
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
+    );
+  };
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -96,49 +162,116 @@ export default function MobileServicePage(): React.ReactElement {
 
   if (config.isPending) return <LoadingState />;
   const suggestion = config.data?.suggestedFee;
+  const selectedSuggestion = feeStructure === 'per_mile' ? suggestion?.perMile : suggestion?.flat;
+  const feeIsValid = feeStructure === 'free' || (Number.isFinite(Number(fee)) && Number(fee) >= 0);
 
   return (
-    <main className="page">
-      <div className="page-header">
+    <main className="page mobile-service-page">
+      <div className="page-header mobile-service-heading">
         <div>
+          <span className="eyebrow">Business settings</span>
           <h1>Mobile service</h1>
-          <p>Set where you travel and how clients are charged.</p>
+          <p>Control where you travel and how each visit is priced.</p>
         </div>
-        <label className="toggle-row">
-          <span>{enabled ? 'Enabled' : 'Disabled'}</span>
+        <label className="service-toggle">
+          <span className="service-toggle-copy">
+            <strong>{enabled ? 'Accepting mobile visits' : 'Mobile visits paused'}</strong>
+            <small>Your saved settings remain available.</small>
+          </span>
           <input
+            aria-label="Enable mobile service"
             type="checkbox"
             checked={enabled}
             onChange={(event) => setEnabled(event.target.checked)}
           />
+          <span className="toggle-track" aria-hidden="true" />
         </label>
       </div>
+
       {mutation.isError && <Notice>{errorMessage(mutation.error)}</Notice>}
       {saved && <Notice tone="success">Mobile service settings saved.</Notice>}
-      <div className="two-column">
-        <section className="panel">
-          <div className="panel-header">
-            <h2>Service area</h2>
+
+      <div className="mobile-service-layout">
+        <section className="panel service-area-panel">
+          <div className="panel-header service-panel-header">
+            <div>
+              <h2>Service area</h2>
+              <p className="panel-description">Your origin anchors the travel radius.</p>
+            </div>
+            <span className="radius-badge">{radius} mi</span>
           </div>
-          <div className="panel-body form-stack">
+          <div className="panel-body service-area-body">
             {mapsKey.length > 0 ? (
               <LoadScript
                 googleMapsApiKey={mapsKey}
+                libraries={mapsLibraries}
                 onError={() => setMapLoadError(true)}
                 onLoad={() => setMapLoadError(false)}
               >
+                <div className="origin-controls">
+                  <Autocomplete
+                    onLoad={(instance) => {
+                      autocomplete.current = instance;
+                    }}
+                    onPlaceChanged={selectAutocompletePlace}
+                    onUnmount={() => {
+                      autocomplete.current = null;
+                    }}
+                    options={{
+                      componentRestrictions: { country: 'us' },
+                      fields: ['formatted_address', 'geometry', 'name'],
+                      types: ['address'],
+                    }}
+                  >
+                    <div className="input-with-icon origin-input">
+                      <MapPin size={18} />
+                      <input
+                        aria-label="Origin address"
+                        autoComplete="off"
+                        id="originAddress"
+                        placeholder="Search for your starting address"
+                        value={originAddress}
+                        onChange={(event) => {
+                          setOriginAddress(event.target.value);
+                          setOriginResolved(false);
+                        }}
+                      />
+                    </div>
+                  </Autocomplete>
+                  <button
+                    className="button button-secondary location-button"
+                    disabled={locating}
+                    onClick={useCurrentLocation}
+                    type="button"
+                  >
+                    <LocateFixed size={17} />
+                    {locating ? 'Locating...' : 'Use my location'}
+                  </button>
+                </div>
+                {locationError !== null && <Notice>{locationError}</Notice>}
                 <GoogleMap
                   center={{ lat: latitude, lng: longitude }}
                   mapContainerClassName="mobile-service-map"
+                  onClick={(event) => {
+                    const lat = event.latLng?.lat();
+                    const lng = event.latLng?.lng();
+                    if (lat !== undefined && lng !== undefined) reverseGeocode(lat, lng);
+                  }}
                   zoom={10}
-                  options={{ streetViewControl: false, mapTypeControl: false }}
+                  options={{
+                    fullscreenControl: false,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    zoomControl: true,
+                  }}
                 >
                   <MarkerF
                     draggable
                     position={{ lat: latitude, lng: longitude }}
                     onDragEnd={(event) => {
-                      setLatitude(event.latLng?.lat() ?? latitude);
-                      setLongitude(event.latLng?.lng() ?? longitude);
+                      const lat = event.latLng?.lat();
+                      const lng = event.latLng?.lng();
+                      if (lat !== undefined && lng !== undefined) reverseGeocode(lat, lng);
                     }}
                   />
                   <CircleF
@@ -146,10 +279,11 @@ export default function MobileServicePage(): React.ReactElement {
                     radius={radius * 1609.344}
                     options={{
                       editable: true,
-                      fillColor: '#e94560',
-                      fillOpacity: 0.15,
-                      strokeColor: '#e94560',
-                      strokeOpacity: 0.8,
+                      fillColor: '#13795b',
+                      fillOpacity: 0.16,
+                      strokeColor: '#13795b',
+                      strokeOpacity: 0.9,
+                      strokeWeight: 2,
                     }}
                     onLoad={(instance) => {
                       circle.current = instance;
@@ -173,131 +307,140 @@ export default function MobileServicePage(): React.ReactElement {
             )}
             {mapLoadError && (
               <Notice>
-                Google Maps could not load. Check that Maps JavaScript API and billing are enabled,
-                and allow http://localhost:3000/* in this key's website restrictions.
+                Google Maps could not load. Enable Maps JavaScript, Places, and Geocoding APIs, then
+                allow http://localhost:3000/* in this key's website restrictions.
               </Notice>
             )}
-            <div className="field">
-              <label htmlFor="radius">Service radius: {radius} miles</label>
+            <div className="radius-control">
+              <div className="radius-control-copy">
+                <Navigation size={17} />
+                <div>
+                  <strong>Travel radius</strong>
+                  <small>Maximum distance from your origin</small>
+                </div>
+              </div>
+              <output htmlFor="radius">{radius} miles</output>
               <input
+                aria-label="Service radius in miles"
                 id="radius"
                 type="range"
                 min={1}
                 max={50}
+                step={0.5}
                 value={radius}
                 onChange={(event) => setRadius(Number(event.target.value))}
               />
             </div>
-            <div className="field">
-              <label htmlFor="originAddress">Origin address</label>
-              <div className="input-with-icon">
-                <MapPin size={17} />
-                <input
-                  id="originAddress"
-                  value={originAddress}
-                  onChange={(event) => setOriginAddress(event.target.value)}
-                />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="field">
-                <label htmlFor="latitude">Latitude</label>
-                <input
-                  className="input"
-                  id="latitude"
-                  type="number"
-                  step="any"
-                  value={latitude}
-                  onChange={(event) => setLatitude(Number(event.target.value))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="longitude">Longitude</label>
-                <input
-                  className="input"
-                  id="longitude"
-                  type="number"
-                  step="any"
-                  value={longitude}
-                  onChange={(event) => setLongitude(Number(event.target.value))}
-                />
-              </div>
+            <div className="coordinate-row">
+              <span>Origin coordinates</span>
+              <code>
+                {latitude.toFixed(5)}, {longitude.toFixed(5)}
+              </code>
             </div>
           </div>
         </section>
-        <section className="panel">
-          <div className="panel-header">
-            <h2>Travel fee</h2>
-          </div>
-          <div className="panel-body form-stack">
-            <div className="segmented" role="group" aria-label="Travel fee structure">
-              {(['flat', 'per_mile', 'free'] as const).map((structure) => (
-                <button
-                  key={structure}
-                  className={feeStructure === structure ? 'is-active' : ''}
-                  type="button"
-                  onClick={() => setFeeStructure(structure)}
-                >
-                  {structure === 'per_mile'
-                    ? 'Per mile'
-                    : structure[0]?.toUpperCase() + structure.slice(1)}
-                </button>
-              ))}
-            </div>
-            {feeStructure !== 'free' && (
-              <div className="field">
-                <label htmlFor="fee">
-                  {feeStructure === 'flat' ? 'Flat fee ($)' : 'Rate per mile ($)'}
-                </label>
-                <input
-                  className="input"
-                  id="fee"
-                  min={0}
-                  step="0.01"
-                  type="number"
-                  value={fee}
-                  onChange={(event) => setFee(event.target.value)}
-                />
+
+        <aside className="mobile-service-sidebar">
+          <section className="panel">
+            <div className="panel-header service-panel-header">
+              <div>
+                <h2>Travel fee</h2>
+                <p className="panel-description">Added to the service price.</p>
               </div>
-            )}
-            {suggestion !== undefined && feeStructure !== 'free' && (
-              <button
-                className="button button-secondary"
-                type="button"
-                onClick={() =>
-                  setFee(
-                    String(
-                      (feeStructure === 'per_mile' ? suggestion.perMile : suggestion.flat) / 100,
-                    ),
-                  )
-                }
+            </div>
+            <div className="panel-body form-stack">
+              <div
+                className="segmented fee-segments"
+                role="group"
+                aria-label="Travel fee structure"
               >
-                Use suggested $
-                {(feeStructure === 'per_mile' ? suggestion.perMile : suggestion.flat) / 100}
-              </button>
-            )}
-            <div className="field">
-              <label htmlFor="notes">Notes for clients</label>
-              <textarea
-                className="textarea"
-                id="notes"
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-              />
+                {(['flat', 'per_mile', 'free'] as const).map((structure) => (
+                  <button
+                    key={structure}
+                    className={feeStructure === structure ? 'is-active' : ''}
+                    type="button"
+                    onClick={() => setFeeStructure(structure)}
+                  >
+                    {structure === 'per_mile'
+                      ? 'Per mile'
+                      : structure[0]?.toUpperCase() + structure.slice(1)}
+                  </button>
+                ))}
+              </div>
+              {feeStructure !== 'free' && (
+                <div className="field">
+                  <label htmlFor="fee">
+                    {feeStructure === 'flat' ? 'Flat fee' : 'Rate per mile'}
+                  </label>
+                  <div className="money-input">
+                    <span>$</span>
+                    <input
+                      id="fee"
+                      min={0}
+                      step="0.01"
+                      type="number"
+                      value={fee}
+                      onChange={(event) => setFee(event.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+              {selectedSuggestion !== undefined && feeStructure !== 'free' && (
+                <div className="suggestion-row">
+                  <div>
+                    <strong>Suggested ${(selectedSuggestion / 100).toFixed(2)}</strong>
+                    <small>{suggestion?.rationale}</small>
+                  </div>
+                  <button
+                    className="button button-ghost"
+                    type="button"
+                    onClick={() => setFee(String(selectedSuggestion / 100))}
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
-          <div className="panel-header" style={{ justifyContent: 'flex-end' }}>
-            <button
-              className="button button-primary"
-              disabled={mutation.isPending}
-              onClick={() => mutation.mutate()}
-              type="button"
-            >
-              <Save size={17} />
-              {mutation.isPending ? 'Saving...' : 'Save settings'}
-            </button>
-          </div>
-        </section>
+          </section>
+
+          <section className="panel">
+            <div className="panel-header service-panel-header">
+              <div>
+                <h2>Client notes</h2>
+                <p className="panel-description">Shown before clients confirm.</p>
+              </div>
+            </div>
+            <div className="panel-body form-stack">
+              <div className="field">
+                <label htmlFor="notes">Visit requirements</label>
+                <textarea
+                  className="textarea mobile-notes"
+                  id="notes"
+                  maxLength={1000}
+                  placeholder="Equipment, lighting, parking, or space requirements"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                />
+                <small className="field-hint">{notes.length}/1000</small>
+              </div>
+            </div>
+          </section>
+
+          <button
+            className="button button-primary button-full save-mobile-settings"
+            disabled={
+              mutation.isPending ||
+              originAddress.trim().length === 0 ||
+              !originResolved ||
+              !feeIsValid
+            }
+            onClick={() => mutation.mutate()}
+            type="button"
+          >
+            <Save size={17} />
+            {mutation.isPending ? 'Saving...' : 'Save mobile settings'}
+          </button>
+        </aside>
       </div>
     </main>
   );

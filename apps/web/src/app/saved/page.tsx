@@ -39,7 +39,7 @@ export default function SavedBarbersPage(): React.ReactElement {
     return (
       <main className="market-page narrow-page">
         <Notice>Sign in with a client account to view saved barbers.</Notice>
-        <Link className="button button-primary" href="/login">
+        <Link className="button button-primary" href="/login/client">
           Sign in
         </Link>
       </main>

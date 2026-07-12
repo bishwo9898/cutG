@@ -146,7 +146,7 @@ export default function BookBarberPage(): React.ReactElement {
                     {booking.isPending ? 'Booking...' : 'Confirm appointment'}
                   </button>
                 ) : (
-                  <Link className="button button-primary button-full" href="/login">
+                  <Link className="button button-primary button-full" href="/login/client">
                     Sign in to book
                   </Link>
                 )}

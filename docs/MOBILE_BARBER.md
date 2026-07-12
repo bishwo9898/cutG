@@ -1,6 +1,6 @@
 # Mobile Barber
 
-Last updated: July 10, 2026
+Last updated: July 11, 2026
 
 Phase 6 adds on-demand mobile service to cutG. BASIC and PREMIUM barbers can define a travel area and fee, clients can manage service addresses, and mobile appointments reserve travel time before the booked slot.
 
@@ -28,6 +28,19 @@ Phase 6 adds on-demand mobile service to cutG. BASIC and PREMIUM barbers can def
 - `mobile_service_notes`: public preparation notes.
 
 FREE barbers can retain a disabled configuration but cannot enable the feature. The service enforces the tier in addition to route authentication.
+
+### Web Configuration Experience
+
+The barber dashboard at `/dashboard/mobile-service` keeps the origin address, coordinates, marker, radius circle, and radius slider synchronized:
+
+- Typing in the origin field opens Google Places address suggestions.
+- Selecting a suggestion moves the map and service-area circle to that address.
+- Clicking the map or dragging the marker updates the coordinates and reverse-geocodes the address field.
+- **Use my location** requests browser location permission, centers the map on the device position, and reverse-geocodes it into the origin field.
+- Location denial and Google Maps loading failures produce actionable messages without discarding existing settings.
+- Fee structure, travel fee, public visit notes, enabled state, and service area are saved together through `PUT /barbers/me/mobile`.
+
+Browser geolocation requires a secure context. HTTPS is required in production; `http://localhost` is permitted during local development.
 
 ## Travel Estimates
 
@@ -102,7 +115,7 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
 
 - Server key: enable Geocoding API and Distance Matrix API; restrict by production server IP.
 - Mobile key: enable Places API and Maps SDK for Android/iOS; restrict to `com.cutg.mobile` and signing identifiers.
-- Web key: enable Maps JavaScript API; restrict by allowed HTTP referrers.
+- Web key: enable Maps JavaScript API, Places API, and Geocoding API; restrict by allowed HTTP referrers.
 
 Use three distinct keys. For local web development, allow `http://localhost:3000/*` and optionally `http://127.0.0.1:3000/*` on the web key. A key with HTTP-referrer restrictions cannot call server-side Geocoding or Places REST endpoints.
 

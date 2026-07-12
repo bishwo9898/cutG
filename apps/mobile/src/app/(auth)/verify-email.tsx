@@ -11,8 +11,9 @@ import { errorMessage } from '@/lib/errors';
 import { colors, typography } from '@/theme';
 
 export default function VerifyEmailScreen(): React.ReactElement {
-  const params = useLocalSearchParams<{ email?: string }>();
+  const params = useLocalSearchParams<{ email?: string; role?: string }>();
   const email = params.email ?? '';
+  const role = params.role === 'BARBER' ? 'BARBER' : 'CLIENT';
   const [code, setCode] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -22,7 +23,7 @@ export default function VerifyEmailScreen(): React.ReactElement {
     setMessage(null);
     try {
       await mobileApi.auth.verifyEmail(email, code);
-      router.replace('/(auth)/login');
+      router.replace('/(auth)/login?role=' + role);
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
@@ -54,7 +55,7 @@ export default function VerifyEmailScreen(): React.ReactElement {
       />
       <Button
         title="Back to sign in"
-        onPress={() => router.replace('/(auth)/login')}
+        onPress={() => router.replace('/(auth)/login?role=' + role)}
         variant="ghost"
       />
     </Screen>

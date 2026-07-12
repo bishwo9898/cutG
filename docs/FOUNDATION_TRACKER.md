@@ -1,6 +1,6 @@
 # Foundation Tracker
 
-Last updated: July 10, 2026
+Last updated: July 11, 2026
 
 This document tracks what has been built so far from the Phase 0 foundation plan and what still needs to be configured locally before the next phase.
 
@@ -396,11 +396,14 @@ Current state:
 
 - Next.js 16 App Router with TypeScript and Tailwind CSS
 - HTTP-only cookie authentication through Next.js route handlers
+- Separate client and barber login and registration flows under `/login/client`, `/login/barber`, `/register/client`, and `/register/barber`
+- Role-aware HTTP-only session metadata and protected-route redirects; backend role authorization remains authoritative
 - Client/barber registration, verification, login, and password recovery
 - Responsive protected dashboard shell
 - Barber dashboard home, profile, services, availability, appointments, and public-preview screens
 - Client marketplace homepage, search, barber profile, booking flow, appointments, appointment detail, and saved barbers
 - Barber payment setup, earnings, and subscription management pages
+- Responsive Mobile Service settings with Places address autocomplete, current-location permission, reverse geocoding, draggable origin, editable radius, travel fees, and client notes
 - Browser-side forms and state for profile/service/schedule workflows
 - Browser-side forms and state for client booking, cancellation, saved barbers, and reviews
 - Browser-side payment-intent, refund, Connect onboarding, and subscription checkout actions
@@ -428,6 +431,7 @@ Current state:
 - Deep link scheme `cutg://` in `apps/mobile/app.json`
 - Dark cutG design tokens and reusable React Native components
 - SecureStore auth state with access-token and refresh-token persistence
+- Role-specific mobile login copy and account-role verification before tokens are stored
 - Token-aware API wrapper using `packages/api-client` and automatic refresh retry on `401`
 - TanStack Query hooks for public barber discovery, client appointments, payments, barber dashboard, earnings, and subscriptions
 - Client routes for discover/search, public barber profiles, booking, Stripe payment, appointments, saved barbers, and profile settings
@@ -729,6 +733,8 @@ The foundation through Phase 6, including web and native Mobile Barber flows, is
 - `GET /health` is database-aware; if it returns `database.status = "error"`, check `DATABASE_URL`, Docker health, and port conflicts first.
 - `pnpm dev` starts both the API and the web app through `concurrently`.
 - Frontend URL: `http://localhost:3000`.
+- Client sign in: `http://localhost:3000/login/client`; barber sign in: `http://localhost:3000/login/barber`.
+- The web Mobile Service map needs Maps JavaScript, Places, and Geocoding enabled on `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; restart `pnpm dev` after changing public env values.
 - Mobile app: `pnpm --filter @barber-saas/mobile dev`; use `ios` or `android` scripts for simulators.
 - API URL: `http://localhost:4000`.
 - Stop active dev servers with `Ctrl+C` in the terminal running `make dev` or `pnpm dev`.

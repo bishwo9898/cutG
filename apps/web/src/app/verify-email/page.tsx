@@ -14,6 +14,7 @@ import { Notice } from '@/components/notice';
 function VerifyEmailForm(): React.ReactElement {
   const searchParams = useSearchParams();
   const email = searchParams.get('email') ?? '';
+  const role = searchParams.get('role') === 'barber' ? 'barber' : 'client';
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
   const {
     register,
@@ -93,7 +94,7 @@ function VerifyEmailForm(): React.ReactElement {
           </button>
         </form>
         <p className="auth-footer">
-          <Link className="text-link" href="/login">
+          <Link className="text-link" href={`/login/${role}`}>
             Return to sign in
           </Link>
         </p>

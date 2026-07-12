@@ -44,7 +44,9 @@ export default function RegisterScreen(): React.ReactElement {
         password: values.password,
         userType,
       });
-      router.push('/(auth)/verify-email?email=' + encodeURIComponent(values.email));
+      router.push(
+        '/(auth)/verify-email?email=' + encodeURIComponent(values.email) + '&role=' + userType,
+      );
     } catch (error) {
       setError('root', { message: errorMessage(error) });
     }

@@ -42,8 +42,9 @@ export default function HomePage(): React.ReactElement {
         <nav>
           <Link href="/barbers">Find barbers</Link>
           <Link href="/appointments">Appointments</Link>
-          <Link className="button button-primary" href="/login">
-            Sign in
+          <Link href="/login/barber">Barber portal</Link>
+          <Link className="button button-primary" href="/login/client">
+            Client sign in
           </Link>
         </nav>
       </header>
