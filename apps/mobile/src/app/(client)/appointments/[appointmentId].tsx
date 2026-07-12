@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -15,6 +16,7 @@ import {
   useClientAppointment,
   useCreateReview,
 } from '@/hooks/useAppointments';
+import { useAppointmentStatus } from '@/hooks/useAppointmentStatus';
 import { usePaymentStatus } from '@/hooks/usePayments';
 import { errorMessage } from '@/lib/errors';
 import { colors, spacing, typography } from '@/theme';
@@ -22,6 +24,7 @@ import { colors, spacing, typography } from '@/theme';
 export default function ClientAppointmentDetailScreen(): React.ReactElement {
   const { appointmentId = '' } = useLocalSearchParams<{ appointmentId?: string }>();
   const appointment = useClientAppointment(appointmentId);
+  const statusUpdates = useAppointmentStatus(appointmentId, appointment.data?.scheduledDate);
   const payment = usePaymentStatus(appointmentId);
   const cancelAppointment = useCancelAppointment();
   const review = useCreateReview();
@@ -50,14 +53,7 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
   };
 
   const item = appointment.data;
-  const mobileTimeline = [
-    'PENDING',
-    'CONFIRMED',
-    'ON_THE_WAY',
-    'ARRIVED',
-    'IN_PROGRESS',
-    'COMPLETED',
-  ];
+  const timeline = statusUpdates.data;
 
   return (
     <Screen
@@ -87,20 +83,69 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
                 {item.serviceAddress?.addressLine1}, {item.serviceAddress?.city},{' '}
                 {item.serviceAddress?.state}
               </Text>
+              {timeline?.currentStatus === 'ON_THE_WAY' ? (
+                <View style={styles.travelBanner}>
+                  <Text style={styles.travelTitle}>Your barber is on the way</Text>
+                  <Text style={styles.meta}>
+                    {timeline.departedAt === null
+                      ? 'Journey started'
+                      : `Departed ${new Date(timeline.departedAt).toLocaleTimeString()}`}
+                  </Text>
+                </View>
+              ) : null}
+              {timeline?.currentStatus === 'ARRIVED' ? (
+                <View style={styles.travelBanner}>
+                  <Text style={styles.travelTitle}>Your barber has arrived</Text>
+                  <Text style={styles.meta}>
+                    {timeline.arrivedAt === null
+                      ? 'Ready for your service'
+                      : `Arrived ${new Date(timeline.arrivedAt).toLocaleTimeString()}`}
+                  </Text>
+                </View>
+              ) : null}
               <View style={styles.timeline}>
-                {mobileTimeline.map((status) => {
-                  const reached =
-                    mobileTimeline.indexOf(status) <= mobileTimeline.indexOf(item.status);
-                  return (
+                {(timeline?.timeline ?? []).map((entry) => (
+                  <View key={entry.status} style={styles.timelineRow}>
                     <Text
-                      key={status}
-                      style={[styles.timelineItem, reached && styles.timelineReached]}
+                      style={[
+                        styles.timelineMarker,
+                        (entry.done || entry.active) && styles.timelineReached,
+                      ]}
                     >
-                      {status.replaceAll('_', ' ')}
+                      {entry.done ? '✓' : entry.active ? '●' : '○'}
                     </Text>
-                  );
-                })}
+                    <View style={styles.timelineCopy}>
+                      <Text style={[styles.timelineItem, entry.active && styles.timelineActive]}>
+                        {entry.label}
+                      </Text>
+                      {entry.at !== null ? (
+                        <Text style={styles.timelineTime}>
+                          {new Date(entry.at).toLocaleString()}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
               </View>
+              {item.serviceAddress?.latitude != null && item.serviceAddress.longitude != null ? (
+                <MapView
+                  style={styles.map}
+                  initialRegion={{
+                    latitude: item.serviceAddress.latitude,
+                    longitude: item.serviceAddress.longitude,
+                    latitudeDelta: 0.025,
+                    longitudeDelta: 0.025,
+                  }}
+                >
+                  <Marker
+                    coordinate={{
+                      latitude: item.serviceAddress.latitude,
+                      longitude: item.serviceAddress.longitude,
+                    }}
+                    title="Mobile appointment"
+                  />
+                </MapView>
+              ) : null}
               <Text style={styles.meta}>
                 Service: ${(item.pricing?.serviceFee ?? item.price).toFixed(2)}
               </Text>
@@ -168,6 +213,7 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
+  map: { borderRadius: 8, height: 210, marginTop: spacing.md, width: '100%' },
   message: {
     ...typography.bodySmall,
     color: colors.textSecondary,
@@ -193,5 +239,19 @@ const styles = StyleSheet.create({
   },
   timeline: { gap: spacing.xs, marginTop: spacing.md },
   timelineItem: { ...typography.caption, color: colors.textMuted, textTransform: 'capitalize' },
+  timelineActive: { color: colors.info },
+  timelineCopy: { flex: 1 },
+  timelineMarker: { ...typography.body, color: colors.textMuted, width: 22 },
+  timelineRow: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.sm },
   timelineReached: { color: colors.info },
+  timelineTime: { ...typography.caption, color: colors.textMuted },
+  travelBanner: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.info,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: spacing.md,
+    padding: spacing.md,
+  },
+  travelTitle: { ...typography.h3, color: colors.info },
 });

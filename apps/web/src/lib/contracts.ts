@@ -42,6 +42,27 @@ export type PublicBarber = {
   lowestServicePrice: number | null;
   serviceCategories: string[];
   nextAvailableSlot: string | null;
+  stripeChargesEnabled?: boolean;
+  mobileService?: PublicMobileService | null;
+};
+
+export type PublicMobileService = {
+  isEnabled: true;
+  serviceRadiusMiles: number;
+  travelFeeStructure: 'flat' | 'per_mile' | 'free';
+  baseFee: number;
+  perMileRate: number | null;
+  notes: string | null;
+};
+
+export type PublicMobileConfig = {
+  isEnabled: boolean;
+  serviceRadiusMiles?: number;
+  feeStructure?: 'flat' | 'per_mile' | 'free';
+  baseFee?: number;
+  perMileRate?: number | null;
+  mobileServiceNotes?: string | null;
+  originCity?: string | null;
 };
 
 export type BarberService = {
@@ -66,6 +87,44 @@ export type PublicSlot = {
   startTime: string;
   endTime: string;
   isAvailable: boolean;
+  availableForMobile?: boolean;
+};
+
+export type ClientAddress = {
+  id: string;
+  label: string;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  isDefault: boolean;
+};
+
+export type TravelEstimate = {
+  isWithinRadius: true;
+  distanceMiles: number;
+  estimatedTravelMinutes: number;
+  travelFeeCents: number;
+  travelFee: number;
+};
+
+export type AppointmentTimeline = {
+  appointmentId: string;
+  isMobileService: boolean;
+  currentStatus: string;
+  departedAt: string | null;
+  arrivedAt: string | null;
+  timeline: Array<{
+    status: string;
+    label: string;
+    at: string | null;
+    done: boolean;
+    active: boolean;
+  }>;
 };
 
 export type ScheduleEntry = {

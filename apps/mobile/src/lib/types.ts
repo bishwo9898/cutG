@@ -137,12 +137,30 @@ export type BarberService = {
 export type AvailabilitySlot = {
   id: string;
   barberId: string;
-  slotDate: string;
+  slotDate?: string;
+  date?: string;
   startTime: string;
   endTime: string;
-  durationMinutes: number;
-  status: 'AVAILABLE' | 'BOOKED' | 'BLOCKED';
+  durationMinutes?: number;
+  status?: 'AVAILABLE' | 'BOOKED' | 'BLOCKED';
+  isAvailable?: boolean;
   appointment?: AppointmentSummary | null;
+  availableForMobile?: boolean;
+};
+
+export type AppointmentTimeline = {
+  appointmentId: string;
+  isMobileService: boolean;
+  currentStatus: AppointmentStatus;
+  departedAt: string | null;
+  arrivedAt: string | null;
+  timeline: Array<{
+    status: AppointmentStatus;
+    label: string;
+    at: string | null;
+    done: boolean;
+    active: boolean;
+  }>;
 };
 
 export type Review = {

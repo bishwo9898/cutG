@@ -160,7 +160,22 @@ export const UpdateAppointmentStatusSchema = z.object({
   notes: z.string().trim().max(1000).optional(),
 });
 
-export const PublicSlotsQuerySchema = z.object({
-  date: DateStringSchema.optional(),
-  days: z.coerce.number().int().min(1).max(30).default(7),
-});
+export const PublicSlotsQuerySchema = z
+  .object({
+    date: DateStringSchema.optional(),
+    days: z.coerce.number().int().min(1).max(30).default(7),
+    mobileService: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true')
+      .optional(),
+    travelMinutes: z.coerce.number().int().min(1).max(240).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.mobileService === true && value.travelMinutes === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['travelMinutes'],
+        message: 'travelMinutes is required for mobile slot filtering',
+      });
+    }
+  });

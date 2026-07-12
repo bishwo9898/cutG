@@ -23,6 +23,7 @@ type Profile = {
   state: string | null;
   subscriptionTier: string;
   isVerified: boolean;
+  mobileService: { isEnabled: true; baseFee: number; notes: string | null } | null;
 };
 type Services = { services: PublicService[] };
 type Slots = { slots: PublicSlot[] };
@@ -61,13 +62,13 @@ export default function BarberProfilePage(): React.ReactElement {
   return (
     <main className="market-page">
       <header className="market-nav">
-        <Link className="brand-lockup dark" href="/">
+        <Link className="brand-lockup dark" href="/client">
           <span className="brand-mark">cG</span>
           cutG
         </Link>
         <nav>
-          <Link href="/barbers">Find barbers</Link>
-          <Link className="button button-primary" href={`/barbers/${barberId}/book`}>
+          <Link href="/client/barbers">Find barbers</Link>
+          <Link className="button button-primary" href={`/client/barbers/${barberId}/book`}>
             Book now
           </Link>
         </nav>
@@ -85,6 +86,9 @@ export default function BarberProfilePage(): React.ReactElement {
         />
         <div>
           <p className="eyebrow">{profile.data.isVerified ? 'Verified barber' : 'Barber'}</p>
+          {profile.data.mobileService?.isEnabled === true && (
+            <span className="mobile-badge">Mobile service available</span>
+          )}
           <h1>{profile.data.businessName}</h1>
           <div className="rating-row">
             <StarRating value={Math.round(profile.data.averageRating)} />
@@ -97,7 +101,7 @@ export default function BarberProfilePage(): React.ReactElement {
           </p>
           {profile.data.bio !== null && <p>{profile.data.bio}</p>}
           <div className="button-row">
-            <Link className="button button-primary" href={`/barbers/${barberId}/book`}>
+            <Link className="button button-primary" href={`/client/barbers/${barberId}/book`}>
               Book now
             </Link>
             <button

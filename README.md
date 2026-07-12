@@ -22,6 +22,14 @@ make dev
 
 Open the frontend at [http://localhost:3000](http://localhost:3000). The API runs at [http://localhost:4000](http://localhost:4000). Start mobile separately with `pnpm --filter @barber-saas/mobile dev`.
 
+Web entry points:
+
+- Public landing: [http://localhost:3000](http://localhost:3000)
+- Client marketplace: [http://localhost:3000/client](http://localhost:3000/client)
+- Client sign in: [http://localhost:3000/client/login](http://localhost:3000/client/login)
+- Barber dashboard: [http://localhost:3000/barber/dashboard](http://localhost:3000/barber/dashboard)
+- Barber sign in: [http://localhost:3000/barber/login](http://localhost:3000/barber/login)
+
 Health check:
 
 ```bash
@@ -99,4 +107,4 @@ Google Maps keys are optional during local development because Phase 6 has deter
 
 ## Documentation
 
-Start with [docs/FOUNDATION_TRACKER.md](docs/FOUNDATION_TRACKER.md) for the current build status, then read [docs/SETUP.md](docs/SETUP.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DATABASE.md](docs/DATABASE.md), [docs/MOBILE.md](docs/MOBILE.md), and [docs/MOBILE_BARBER.md](docs/MOBILE_BARBER.md).
+Start with [docs/FOUNDATION_TRACKER.md](docs/FOUNDATION_TRACKER.md) for the current build status, then read [docs/PORTALS.md](docs/PORTALS.md), [docs/SETUP.md](docs/SETUP.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DATABASE.md](docs/DATABASE.md), [docs/MOBILE.md](docs/MOBILE.md), and [docs/MOBILE_BARBER.md](docs/MOBILE_BARBER.md).

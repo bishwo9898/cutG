@@ -25,6 +25,7 @@ import {
   cancelClientAppointment,
   createClientReview,
   getClientAppointment,
+  getAppointmentStatusUpdates,
   getClientProfile,
   listClientAppointments,
   listSavedBarbers,
@@ -142,6 +143,14 @@ clientRouter.get(
         ClientAppointmentQuerySchema.parse(request.query),
       ),
     );
+  }),
+);
+
+clientRouter.get(
+  '/me/appointments/:appointmentId/status-updates',
+  asyncHandler(async (request, response) => {
+    const { appointmentId } = ClientAppointmentParamsSchema.parse(request.params);
+    response.json(await getAppointmentStatusUpdates(userId(request), appointmentId));
   }),
 );
 

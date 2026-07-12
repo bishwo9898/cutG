@@ -19,20 +19,20 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@/hooks/use-user';
 
 const navItems = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/dashboard/services', label: 'Services', icon: Scissors },
-  { href: '/dashboard/availability', label: 'Availability', icon: CalendarDays },
-  { href: '/dashboard/mobile-service', label: 'Mobile service', icon: MapPinned },
-  { href: '/dashboard/appointments', label: 'Appointments', icon: Store },
-  { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
-  { href: '/dashboard/earnings', label: 'Earnings', icon: DollarSign },
-  { href: '/dashboard/subscription', label: 'Subscription', icon: BadgeCheck },
-  { href: '/dashboard/profile', label: 'Profile', icon: UserRound },
-  { href: '/dashboard/preview', label: 'Public preview', icon: ExternalLink },
+  { href: '/barber/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { href: '/barber/dashboard/services', label: 'Services', icon: Scissors },
+  { href: '/barber/dashboard/availability', label: 'Availability', icon: CalendarDays },
+  { href: '/barber/dashboard/mobile-service', label: 'Mobile service', icon: MapPinned },
+  { href: '/barber/dashboard/appointments', label: 'Appointments', icon: Store },
+  { href: '/barber/dashboard/payments', label: 'Payments', icon: CreditCard },
+  { href: '/barber/dashboard/earnings', label: 'Earnings', icon: DollarSign },
+  { href: '/barber/dashboard/subscription', label: 'Subscription', icon: BadgeCheck },
+  { href: '/barber/dashboard/profile', label: 'Profile', icon: UserRound },
+  { href: '/barber/dashboard/preview', label: 'Public preview', icon: ExternalLink },
 ];
 
 const isActive = (pathname: string, href: string): boolean =>
-  href === '/dashboard' ? pathname === href : pathname.startsWith(href);
+  href === '/barber/dashboard' ? pathname === href : pathname.startsWith(href);
 
 export function DashboardShell({ children }: { children: React.ReactNode }): React.ReactElement {
   const pathname = usePathname();
@@ -46,14 +46,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }): Rea
 
   const logout = async (): Promise<void> => {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.replace('/login');
+    router.replace('/barber/login');
     router.refresh();
   };
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Link className="brand-lockup" href="/dashboard">
+        <Link className="brand-lockup" href="/barber/dashboard">
           <span className="brand-mark">
             <Scissors size={19} />
           </span>
@@ -92,7 +92,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }): Rea
       </aside>
       <div className="main">
         <header className="topbar">
-          <Link className="brand-lockup" href="/dashboard">
+          <Link className="brand-lockup" href="/barber/dashboard">
             <Scissors size={17} />
             cutG
           </Link>

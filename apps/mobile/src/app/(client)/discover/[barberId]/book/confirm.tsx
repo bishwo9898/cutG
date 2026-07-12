@@ -13,21 +13,35 @@ import { errorMessage } from '@/lib/errors';
 import { listFromResponse } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
 
+type OneTimeAddress = {
+  addressLine1: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country?: string;
+};
+
 export default function ConfirmBookingScreen(): React.ReactElement {
-  const {
-    barberId = '',
-    serviceId = '',
-    slotId = '',
-    date = '',
-  } = useLocalSearchParams<{
+  const params = useLocalSearchParams<{
     barberId?: string;
     serviceId?: string;
     slotId?: string;
     date?: string;
+    appointmentType?: string;
+    addressId?: string;
+    address?: string;
+    travelMinutes?: string;
+    travelFee?: string;
   }>();
+  const barberId = params.barberId ?? '';
+  const serviceId = params.serviceId ?? '';
+  const slotId = params.slotId ?? '';
+  const date = params.date ?? '';
+  const isMobile = params.appointmentType === 'mobile';
+  const oneTimeAddress =
+    params.address === undefined ? null : (JSON.parse(params.address) as OneTimeAddress);
   const [notes, setNotes] = useState('');
   const [payAtShop, setPayAtShop] = useState(false);
-  const [mobileVisit, setMobileVisit] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const profile = useBarberProfile(barberId);
   const services = useBarberServices(barberId);
@@ -36,34 +50,37 @@ export default function ConfirmBookingScreen(): React.ReactElement {
   const service = listFromResponse(services.data ?? {}).find((item) => item.id === serviceId);
   const slot = listFromResponse(slots.data ?? {}).find((item) => item.id === slotId);
   const canPayOnline = profile.data?.stripeChargesEnabled === true;
+  const travelFee = isMobile ? Number(params.travelFee ?? 0) : 0;
+  const total = (service?.price ?? 0) + travelFee;
 
   const confirm = async (): Promise<void> => {
     setError(null);
     try {
-      if (mobileVisit) {
-        const query = new URLSearchParams({
-          serviceId,
-          slotId,
-          notes,
-          payAtShop: String(payAtShop || !canPayOnline),
-        });
-        router.push(`/(client)/discover/${barberId}/book/address?${query.toString()}`);
-        return;
-      }
       const appointment = await book.mutateAsync({
         barberId,
         serviceId,
         availabilitySlotId: slotId,
         clientNotes: notes || undefined,
-        isMobileService: false,
+        isMobileService: isMobile,
+        ...(isMobile
+          ? params.addressId !== undefined
+            ? { clientAddressId: params.addressId }
+            : {
+                clientAddressOneTime: {
+                  addressLine1: oneTimeAddress?.addressLine1 ?? '',
+                  city: oneTimeAddress?.city ?? '',
+                  state: oneTimeAddress?.state ?? '',
+                  zipCode: oneTimeAddress?.zipCode ?? '',
+                  country: oneTimeAddress?.country ?? 'US',
+                },
+              }
+          : {}),
       });
       if (canPayOnline && !payAtShop) {
         router.replace(
-          '/(client)/discover/' + barberId + '/book/payment?appointmentId=' + appointment.id,
+          `/(client)/discover/${barberId}/book/payment?appointmentId=${appointment.id}&total=${total.toFixed(2)}`,
         );
-      } else {
-        router.replace('/(client)/appointments/' + appointment.id);
-      }
+      } else router.replace('/(client)/appointments/' + appointment.id);
     } catch (caught) {
       setError(errorMessage(caught));
     }
@@ -71,36 +88,54 @@ export default function ConfirmBookingScreen(): React.ReactElement {
 
   return (
     <Screen>
-      <ScreenHeader showBack title="Step 3 of 3" subtitle="Confirm your appointment." />
+      <ScreenHeader
+        showBack
+        title="Review booking"
+        subtitle="Confirm the details before payment."
+      />
       <Card>
+        {isMobile ? <Text style={styles.mobileLabel}>Mobile appointment</Text> : null}
         <Text style={styles.title}>{profile.data?.businessName ?? 'Barber'}</Text>
         <Text style={styles.meta}>
-          {service?.name ?? 'Service'} ·{' '}
-          {service === undefined ? '' : '$' + service.price.toFixed(2)}
+          {service?.name ?? 'Service'} · {service?.durationMinutes ?? 0} min
         </Text>
         <Text style={styles.meta}>
           {date} at {slot?.startTime ?? 'Selected time'}
         </Text>
+        {isMobile && oneTimeAddress !== null ? (
+          <Text style={styles.address}>
+            Barber travels to {oneTimeAddress.addressLine1}, {oneTimeAddress.city},{' '}
+            {oneTimeAddress.state}
+          </Text>
+        ) : isMobile ? (
+          <Text style={styles.address}>Barber travels to your saved address.</Text>
+        ) : null}
+        <View style={styles.divider} />
+        <View style={styles.priceRow}>
+          <Text style={styles.meta}>Service fee</Text>
+          <Text style={styles.value}>${(service?.price ?? 0).toFixed(2)}</Text>
+        </View>
+        {isMobile ? (
+          <View style={styles.priceRow}>
+            <Text style={styles.meta}>Travel fee</Text>
+            <Text style={styles.value}>${travelFee.toFixed(2)}</Text>
+          </View>
+        ) : null}
+        <View style={styles.priceRow}>
+          <Text style={styles.total}>Total</Text>
+          <Text style={styles.total}>${total.toFixed(2)}</Text>
+        </View>
       </Card>
       <Input
-        label="Notes for barber"
+        label="Notes for your barber"
         onChangeText={setNotes}
         value={notes}
         placeholder="Optional"
         multiline
       />
-      {profile.data?.mobileService?.isEnabled === true ? (
-        <View style={styles.payRow}>
-          <View style={styles.payText}>
-            <Text style={styles.title}>Mobile visit</Text>
-            <Text style={styles.meta}>This barber comes to your address.</Text>
-          </View>
-          <Switch value={mobileVisit} onValueChange={setMobileVisit} />
-        </View>
-      ) : null}
       <View style={styles.payRow}>
         <View style={styles.payText}>
-          <Text style={styles.title}>Pay at shop</Text>
+          <Text style={styles.title}>Pay at appointment</Text>
           <Text style={styles.meta}>
             {canPayOnline
               ? 'Skip card payment for now.'
@@ -117,11 +152,11 @@ export default function ConfirmBookingScreen(): React.ReactElement {
       <Button
         disabled={book.isPending}
         title={
-          mobileVisit
-            ? 'Choose address'
+          book.isPending
+            ? 'Confirming...'
             : canPayOnline && !payAtShop
-              ? 'Confirm & Pay'
-              : 'Confirm Pay at Shop'
+              ? `Confirm & Pay $${total.toFixed(2)}`
+              : 'Confirm appointment'
         }
         onPress={() => {
           void confirm();
@@ -132,14 +167,11 @@ export default function ConfirmBookingScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  error: {
-    ...typography.bodySmall,
-    color: colors.error,
-  },
-  meta: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
+  address: { ...typography.bodySmall, color: colors.info, marginTop: spacing.md },
+  divider: { backgroundColor: colors.border, height: 1, marginVertical: spacing.md },
+  error: { ...typography.bodySmall, color: colors.error },
+  meta: { ...typography.body, color: colors.textSecondary },
+  mobileLabel: { ...typography.label, color: colors.info, marginBottom: spacing.sm },
   payRow: {
     alignItems: 'center',
     backgroundColor: colors.surface,
@@ -148,11 +180,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
   },
-  payText: {
-    flex: 1,
-  },
-  title: {
-    ...typography.h3,
-    color: colors.textPrimary,
-  },
+  payText: { flex: 1 },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
+  title: { ...typography.h3, color: colors.textPrimary },
+  total: { ...typography.h3, color: colors.gold },
+  value: { ...typography.body, color: colors.textPrimary },
 });

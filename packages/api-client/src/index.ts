@@ -106,6 +106,8 @@ export const barberDiscoveryApi = {
     client.get<T>(`/barbers${toQueryString(params)}`),
   getProfile: <T>(client: ApiClient, barberId: string): Promise<T> =>
     client.get<T>(`/barbers/${barberId}`),
+  getMobileConfig: <T>(client: ApiClient, barberId: string): Promise<T> =>
+    client.get<T>(`/barbers/${barberId}/mobile`),
   getServices: <T>(client: ApiClient, barberId: string): Promise<T> =>
     client.get<T>(`/barbers/${barberId}/services`),
   getSlots: <T>(client: ApiClient, barberId: string, params?: QueryParams): Promise<T> =>
@@ -127,6 +129,8 @@ export const clientApi = {
     client.get<T>(`/clients/me/appointments${toQueryString(params)}`),
   appointment: <T>(client: ApiClient, appointmentId: string): Promise<T> =>
     client.get<T>(`/clients/me/appointments/${appointmentId}`),
+  appointmentStatusUpdates: <T>(client: ApiClient, appointmentId: string): Promise<T> =>
+    client.get<T>(`/clients/me/appointments/${appointmentId}/status-updates`),
   cancelAppointment: <T>(client: ApiClient, appointmentId: string): Promise<T> =>
     client.delete<T>(`/clients/me/appointments/${appointmentId}`),
   createReview: <T>(client: ApiClient, body: unknown): Promise<T> =>

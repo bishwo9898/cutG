@@ -1,22 +1,39 @@
 'use client';
 
-import {
-  PasswordSchema,
-  RegisterRequestSchema,
-  type RegisterRequest,
-} from '@barber-saas/shared-types';
+import { PasswordSchema, RegisterRequestSchema } from '@barber-saas/shared-types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
 import { AuthShell } from '@/components/auth-shell';
 import { Notice } from '@/components/notice';
 
 type AuthRole = 'CLIENT' | 'BARBER';
-const schema = RegisterRequestSchema.extend({ password: PasswordSchema });
+const schema = RegisterRequestSchema.extend({
+  password: PasswordSchema,
+  confirmPassword: z.string(),
+  acceptedTerms: z.boolean(),
+}).superRefine((value, context) => {
+  if (value.password !== value.confirmPassword) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['confirmPassword'],
+      message: 'Passwords must match.',
+    });
+  }
+  if (value.userType === 'BARBER' && !value.acceptedTerms) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['acceptedTerms'],
+      message: 'Accept the Barber Terms to continue.',
+    });
+  }
+});
+type FormValues = z.infer<typeof schema>;
 
 export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactElement {
   const router = useRouter();
@@ -26,17 +43,23 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterRequest>({
+  } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { userType: role },
+    defaultValues: { userType: role, confirmPassword: '', acceptedTerms: false },
   });
 
-  const submit = async (values: RegisterRequest): Promise<void> => {
+  const submit = async (values: FormValues): Promise<void> => {
     setError(null);
     const response = await fetch('/api/backend/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...values, userType: role }),
+      body: JSON.stringify({
+        email: values.email,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        password: values.password,
+        userType: role,
+      }),
     });
     const body = (await response.json()) as { message?: string };
     if (!response.ok) {
@@ -99,6 +122,28 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
             )}
           </div>
           <div className="field">
+            <label htmlFor={`${role}-confirm-password`}>Confirm password</label>
+            <input
+              id={`${role}-confirm-password`}
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              {...register('confirmPassword')}
+            />
+            {errors.confirmPassword?.message !== undefined && (
+              <span className="field-error">{errors.confirmPassword.message}</span>
+            )}
+          </div>
+          {isBarber && (
+            <label className="checkbox-row">
+              <input type="checkbox" {...register('acceptedTerms')} />I agree to the cutG Barber
+              Terms of Service.
+            </label>
+          )}
+          {errors.acceptedTerms?.message !== undefined && (
+            <span className="field-error">{errors.acceptedTerms.message}</span>
+          )}
+          <div className="field">
             <label htmlFor={`${role}-register-password`}>Password</label>
             <input
               id={`${role}-register-password`}
@@ -124,13 +169,13 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
         </form>
         <div className="auth-switcher">
           <span>{isBarber ? 'Need a client account?' : 'Joining as a barber?'}</span>
-          <Link className="text-link" href={isBarber ? '/register/client' : '/register/barber'}>
+          <Link className="text-link" href={isBarber ? '/client/register' : '/barber/register'}>
             Switch account type
           </Link>
         </div>
         <p className="auth-footer">
           Already have an account?{' '}
-          <Link className="text-link" href={isBarber ? '/login/barber' : '/login/client'}>
+          <Link className="text-link" href={isBarber ? '/barber/login' : '/client/login'}>
             Sign in
           </Link>
         </p>

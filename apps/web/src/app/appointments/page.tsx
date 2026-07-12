@@ -26,7 +26,7 @@ export default function ClientAppointmentsPage(): React.ReactElement {
     return (
       <main className="market-page narrow-page">
         <Notice>Sign in with a client account to view appointments.</Notice>
-        <Link className="button button-primary" href="/login/client">
+        <Link className="button button-primary" href="/client/login">
           Sign in
         </Link>
       </main>
@@ -36,13 +36,13 @@ export default function ClientAppointmentsPage(): React.ReactElement {
   return (
     <main className="market-page">
       <header className="market-nav">
-        <Link className="brand-lockup dark" href="/">
+        <Link className="brand-lockup dark" href="/client">
           <span className="brand-mark">cG</span>
           cutG
         </Link>
         <nav>
-          <Link href="/barbers">Find barbers</Link>
-          <Link href="/saved">Saved</Link>
+          <Link href="/client/barbers">Find barbers</Link>
+          <Link href="/client/saved">Saved</Link>
         </nav>
       </header>
       <section className="market-section">

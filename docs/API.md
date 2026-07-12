@@ -18,6 +18,7 @@ POST /auth/forgot-password
 POST /auth/reset-password
 GET /barbers
 GET /barbers/:barberId/reviews
+GET /barbers/:barberId/mobile
 GET /clients/me
 GET /clients/me/saved-barbers
 POST /clients/me/saved-barbers
@@ -25,6 +26,7 @@ DELETE /clients/me/saved-barbers/:barberId
 POST /clients/me/appointments
 GET /clients/me/appointments
 GET /clients/me/appointments/:appointmentId
+GET /clients/me/appointments/:appointmentId/status-updates
 DELETE /clients/me/appointments/:appointmentId
 POST /clients/me/reviews
 GET /clients/me/payment-history
@@ -46,37 +48,38 @@ POST /barbers/me/subscription/resume
 All `/barbers/me/*` routes require a bearer token for a `BARBER` account. Public routes use the
 `barber_profiles.id` UUID. Invalid Zod input returns HTTP `422`.
 
-| Method   | Path                                             | Purpose                              |
-| -------- | ------------------------------------------------ | ------------------------------------ |
-| `GET`    | `/barbers/me`                                    | Read the current barber profile.     |
-| `POST`   | `/barbers/me/profile`                            | Create a profile once.               |
-| `PATCH`  | `/barbers/me/profile`                            | Update profile fields.               |
-| `POST`   | `/barbers/me/photo`                              | Store a validated photo URL.         |
-| `POST`   | `/barbers/me/services`                           | Create a tier-limited service.       |
-| `GET`    | `/barbers/me/services`                           | List/filter owned services.          |
-| `GET`    | `/barbers/me/services/:serviceId`                | Read an owned service.               |
-| `PATCH`  | `/barbers/me/services/:serviceId`                | Update an owned service.             |
-| `DELETE` | `/barbers/me/services/:serviceId`                | Soft-delete an owned service.        |
-| `GET`    | `/barbers/me/schedule`                           | Read the weekly schedule.            |
-| `PUT`    | `/barbers/me/schedule`                           | Replace the weekly schedule.         |
-| `GET`    | `/barbers/me/slots`                              | List a date range of slots.          |
-| `POST`   | `/barbers/me/slots/generate`                     | Idempotently generate slots.         |
-| `POST`   | `/barbers/me/blocked-dates`                      | Block a local calendar date.         |
-| `DELETE` | `/barbers/me/blocked-dates/:date`                | Unblock and regenerate a date.       |
-| `GET`    | `/barbers/me/appointments`                       | List paginated appointments.         |
-| `PATCH`  | `/barbers/me/appointments/:appointmentId/status` | Apply an allowed status transition.  |
-| `POST`   | `/barbers/me/stripe/connect`                     | Start Stripe Connect onboarding.     |
-| `GET`    | `/barbers/me/stripe/status`                      | Read Connect onboarding status.      |
-| `GET`    | `/barbers/me/earnings`                           | Read earnings and payout summaries.  |
-| `GET`    | `/barbers/me/subscription`                       | Read current subscription status.    |
-| `POST`   | `/barbers/me/subscription/checkout`              | Create Stripe subscription checkout. |
-| `POST`   | `/barbers/me/subscription/cancel`                | Cancel renewal at period end.        |
-| `POST`   | `/barbers/me/subscription/resume`                | Resume renewal.                      |
-| `GET`    | `/barbers`                                       | Search public barber marketplace.    |
-| `GET`    | `/barbers/:barberId`                             | Read a sanitized public profile.     |
-| `GET`    | `/barbers/:barberId/services`                    | List active public services.         |
-| `GET`    | `/barbers/:barberId/slots`                       | List safe public availability.       |
-| `GET`    | `/barbers/:barberId/reviews`                     | List public barber reviews.          |
+| Method   | Path                                             | Purpose                               |
+| -------- | ------------------------------------------------ | ------------------------------------- |
+| `GET`    | `/barbers/me`                                    | Read the current barber profile.      |
+| `POST`   | `/barbers/me/profile`                            | Create a profile once.                |
+| `PATCH`  | `/barbers/me/profile`                            | Update profile fields.                |
+| `POST`   | `/barbers/me/photo`                              | Store a validated photo URL.          |
+| `POST`   | `/barbers/me/services`                           | Create a tier-limited service.        |
+| `GET`    | `/barbers/me/services`                           | List/filter owned services.           |
+| `GET`    | `/barbers/me/services/:serviceId`                | Read an owned service.                |
+| `PATCH`  | `/barbers/me/services/:serviceId`                | Update an owned service.              |
+| `DELETE` | `/barbers/me/services/:serviceId`                | Soft-delete an owned service.         |
+| `GET`    | `/barbers/me/schedule`                           | Read the weekly schedule.             |
+| `PUT`    | `/barbers/me/schedule`                           | Replace the weekly schedule.          |
+| `GET`    | `/barbers/me/slots`                              | List a date range of slots.           |
+| `POST`   | `/barbers/me/slots/generate`                     | Idempotently generate slots.          |
+| `POST`   | `/barbers/me/blocked-dates`                      | Block a local calendar date.          |
+| `DELETE` | `/barbers/me/blocked-dates/:date`                | Unblock and regenerate a date.        |
+| `GET`    | `/barbers/me/appointments`                       | List paginated appointments.          |
+| `PATCH`  | `/barbers/me/appointments/:appointmentId/status` | Apply an allowed status transition.   |
+| `POST`   | `/barbers/me/stripe/connect`                     | Start Stripe Connect onboarding.      |
+| `GET`    | `/barbers/me/stripe/status`                      | Read Connect onboarding status.       |
+| `GET`    | `/barbers/me/earnings`                           | Read earnings and payout summaries.   |
+| `GET`    | `/barbers/me/subscription`                       | Read current subscription status.     |
+| `POST`   | `/barbers/me/subscription/checkout`              | Create Stripe subscription checkout.  |
+| `POST`   | `/barbers/me/subscription/cancel`                | Cancel renewal at period end.         |
+| `POST`   | `/barbers/me/subscription/resume`                | Resume renewal.                       |
+| `GET`    | `/barbers`                                       | Search public barber marketplace.     |
+| `GET`    | `/barbers/:barberId`                             | Read a sanitized public profile.      |
+| `GET`    | `/barbers/:barberId/services`                    | List active public services.          |
+| `GET`    | `/barbers/:barberId/slots`                       | List safe public availability.        |
+| `GET`    | `/barbers/:barberId/reviews`                     | List public barber reviews.           |
+| `GET`    | `/barbers/:barberId/mobile`                      | Read sanitized mobile-service policy. |
 
 Dates use `YYYY-MM-DD`; times use local `HH:MM`. Private slot ranges accept `startDate` and
 `endDate`, inclusively, with at most a 30-day difference. Appointment lists support `status`,
@@ -88,18 +91,19 @@ location, Stripe fields, metadata, and client information.
 All `/clients/me/*` routes require a bearer token for a `CLIENT` account. Barbers and admins receive
 `403` from these routes.
 
-| Method   | Path                                      | Purpose                                      |
-| -------- | ----------------------------------------- | -------------------------------------------- |
-| `GET`    | `/clients/me`                             | Read the authenticated client profile.       |
-| `GET`    | `/clients/me/saved-barbers`               | List saved/favorite barbers.                 |
-| `POST`   | `/clients/me/saved-barbers`               | Save a barber by `barber_profiles.id`.       |
-| `DELETE` | `/clients/me/saved-barbers/:barberId`     | Remove a saved barber.                       |
-| `POST`   | `/clients/me/appointments`                | Book an available slot atomically.           |
-| `GET`    | `/clients/me/appointments`                | List paginated client appointments.          |
-| `GET`    | `/clients/me/appointments/:appointmentId` | Read one client-owned appointment.           |
-| `DELETE` | `/clients/me/appointments/:appointmentId` | Cancel a pending/confirmed appointment.      |
-| `POST`   | `/clients/me/reviews`                     | Review a completed client-owned appointment. |
-| `GET`    | `/clients/me/payment-history`             | List client payment history.                 |
+| Method   | Path                                                     | Purpose                                      |
+| -------- | -------------------------------------------------------- | -------------------------------------------- |
+| `GET`    | `/clients/me`                                            | Read the authenticated client profile.       |
+| `GET`    | `/clients/me/saved-barbers`                              | List saved/favorite barbers.                 |
+| `POST`   | `/clients/me/saved-barbers`                              | Save a barber by `barber_profiles.id`.       |
+| `DELETE` | `/clients/me/saved-barbers/:barberId`                    | Remove a saved barber.                       |
+| `POST`   | `/clients/me/appointments`                               | Book an available slot atomically.           |
+| `GET`    | `/clients/me/appointments`                               | List paginated client appointments.          |
+| `GET`    | `/clients/me/appointments/:appointmentId`                | Read one client-owned appointment.           |
+| `GET`    | `/clients/me/appointments/:appointmentId/status-updates` | Read the owned appointment timeline.         |
+| `DELETE` | `/clients/me/appointments/:appointmentId`                | Cancel a pending/confirmed appointment.      |
+| `POST`   | `/clients/me/reviews`                                    | Review a completed client-owned appointment. |
+| `GET`    | `/clients/me/payment-history`                            | List client payment history.                 |
 
 ### Public Barber Search
 
@@ -235,6 +239,19 @@ Validation errors include a `details.issues` array from Zod.
 `POST /clients/me/appointments` accepts `isMobileService: true` plus exactly one of `clientAddressId` or `clientAddressOneTime`. `GET /barbers` supports `mobileOnly=true`. Public responses never include a barber's private origin coordinates or origin address.
 
 Mobile status transitions are `CONFIRMED -> ON_THE_WAY -> ARRIVED -> IN_PROGRESS -> COMPLETED`. The two travel statuses are rejected for shop appointments. See `docs/MOBILE_BARBER.md` for fee, buffer, Maps, and request details.
+
+## Phase 7 Booking Support
+
+`GET /barbers/:barberId/mobile` is public and returns only booking-safe policy fields. Disabled or missing configurations return `{ "isEnabled": false }`; enabled responses include radius, fee structure, display fees, public notes, and origin city. Precise origin coordinates and street address remain private.
+
+`GET /barbers/:barberId/slots` accepts the existing `date` and `days` query values plus:
+
+- `mobileService=true`
+- `travelMinutes=1..240` (required when mobile filtering is enabled)
+
+Mobile-aware responses add `availableForMobile` to every returned slot. The value uses the same capped buffer count and preceding-slot calculation as transactional booking. It is advisory; booking locks and validates the rows again.
+
+`GET /clients/me/appointments/:appointmentId/status-updates` requires a client token and scopes the appointment by the authenticated client. It returns `currentStatus`, `departedAt`, `arrivedAt`, and a timeline. Mobile timelines contain booked, confirmed, on-the-way, arrived, in-progress, and completed stages.
 
 ## Route Conventions
 

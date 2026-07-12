@@ -1,12 +1,12 @@
 # Foundation Tracker
 
-Last updated: July 11, 2026
+Last updated: July 12, 2026
 
 This document tracks what has been built so far from the Phase 0 foundation plan and what still needs to be configured locally before the next phase.
 
 ## Current Status
 
-Phase 0 foundation, Phase 1 authentication, Phase 2 barber management, Phase 3 client discovery/booking, Phase 4 payments/subscriptions, Phase 5 Expo React Native, and Phase 6 Mobile Barber are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, Expo application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
+Phase 0 foundation through Phase 7 dual portals and complete Mobile Barber booking are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, Expo application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
 
 Verified commands:
 
@@ -248,6 +248,17 @@ Phase 6 adds:
 - Expo and web settings, maps, address, booking, navigation, and status interfaces
 - Migration `006_mobile_barber.ts`
 
+Phase 7 adds:
+
+- Public marketing landing page with client/barber CTAs, mobile-service positioning, featured barbers, plan preview, and SEO metadata
+- Canonical `/barber/*` and `/client/*` portals with distinct auth copy, role-locked registration, protected routing, wrong-role handling, and legacy `308` redirects
+- Five-step web mobile booking with appointment type, saved/one-time address, Places autocomplete, travel estimate, mobile-aware slots, and fee breakdown
+- Web saved-address management and polled mobile appointment timeline with destination map
+- Native appointment-type selection, connected address/estimate flow, mobile-compatible slot filtering, fee-aware confirmation/payment, timeline polling, and native destination map
+- Public mobile policy, advisory mobile-slot availability, and client appointment timeline API endpoints
+- Shared API-client methods and typed web/native response models
+- Portal architecture documentation in `docs/PORTALS.md`
+
 Seed accounts use password `password123`:
 
 - `barber1@example.com`
@@ -396,12 +407,13 @@ Current state:
 
 - Next.js 16 App Router with TypeScript and Tailwind CSS
 - HTTP-only cookie authentication through Next.js route handlers
-- Separate client and barber login and registration flows under `/login/client`, `/login/barber`, `/register/client`, and `/register/barber`
+- Canonical client and barber auth under `/client/*` and `/barber/*`
 - Role-aware HTTP-only session metadata and protected-route redirects; backend role authorization remains authoritative
 - Client/barber registration, verification, login, and password recovery
 - Responsive protected dashboard shell
 - Barber dashboard home, profile, services, availability, appointments, and public-preview screens
 - Client marketplace homepage, search, barber profile, booking flow, appointments, appointment detail, and saved barbers
+- Public conversion-focused landing page at `/` and client saved-address management
 - Barber payment setup, earnings, and subscription management pages
 - Responsive Mobile Service settings with Places address autocomplete, current-location permission, reverse geocoding, draggable origin, editable radius, travel fees, and client notes
 - Browser-side forms and state for profile/service/schedule workflows
@@ -435,6 +447,7 @@ Current state:
 - Token-aware API wrapper using `packages/api-client` and automatic refresh retry on `401`
 - TanStack Query hooks for public barber discovery, client appointments, payments, barber dashboard, earnings, and subscriptions
 - Client routes for discover/search, public barber profiles, booking, Stripe payment, appointments, saved barbers, and profile settings
+- Five-step native mobile-booking flow and polled status timeline with destination map
 - Barber routes for today, schedule, appointment lists/details, services, earnings, subscription, Stripe Connect, and profile settings
 - Stripe React Native `CardField` payment screen wired to `/payments/create-intent`
 - React Native Maps, Expo Location, Expo Image Picker, Expo Notifications, and Expo Linking dependencies configured
@@ -589,6 +602,7 @@ Generated output:
 | `docs/DEPLOYMENT.md`         | Deployment notes and production expectations.         |
 | `docs/MOBILE.md`             | Expo mobile setup, flows, Stripe, and limitations.    |
 | `docs/MOBILE_BARBER.md`      | Mobile service, maps, addresses, fees, and buffers.   |
+| `docs/PORTALS.md`            | Canonical web portals, redirects, and role routing.   |
 | `docs/FOUNDATION_TRACKER.md` | This running tracker of what exists so far.           |
 | `docs/ROADMAP.md`            | Forward-looking product and engineering plan.         |
 
@@ -719,10 +733,10 @@ Expected health state:
 
 ## Next Phase Readiness
 
-The foundation through Phase 6, including web and native Mobile Barber flows, is ready for continued implementation. The remaining natural steps are:
+The foundation through Phase 7, including dual web portals and complete web/native Mobile Barber booking flows, is ready for continued implementation. The remaining natural steps are:
 
 - Complete simulator/device QA and live Stripe/Google Maps acceptance testing with restricted keys
-- Phase 7: realtime GPS tracking, WebSockets, and push notifications
+- Phase 8: realtime GPS tracking, WebSockets, and push notifications
 - Later phases: S3 uploads, travel analytics, and AI-assisted near-term availability
 
 ## Known Local Notes
@@ -733,7 +747,8 @@ The foundation through Phase 6, including web and native Mobile Barber flows, is
 - `GET /health` is database-aware; if it returns `database.status = "error"`, check `DATABASE_URL`, Docker health, and port conflicts first.
 - `pnpm dev` starts both the API and the web app through `concurrently`.
 - Frontend URL: `http://localhost:3000`.
-- Client sign in: `http://localhost:3000/login/client`; barber sign in: `http://localhost:3000/login/barber`.
+- Client sign in: `http://localhost:3000/client/login`; barber sign in: `http://localhost:3000/barber/login`.
+- Client marketplace: `http://localhost:3000/client`; barber dashboard: `http://localhost:3000/barber/dashboard`.
 - The web Mobile Service map needs Maps JavaScript, Places, and Geocoding enabled on `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; restart `pnpm dev` after changing public env values.
 - Mobile app: `pnpm --filter @barber-saas/mobile dev`; use `ios` or `android` scripts for simulators.
 - API URL: `http://localhost:4000`.
@@ -782,6 +797,7 @@ GET /barbers/:barberId
 GET /barbers/:barberId/services
 GET /barbers/:barberId/slots
 GET /barbers/:barberId/reviews
+GET /barbers/:barberId/mobile
 GET /clients/me
 GET /clients/me/saved-barbers
 POST /clients/me/saved-barbers
@@ -789,6 +805,7 @@ DELETE /clients/me/saved-barbers/:barberId
 POST /clients/me/appointments
 GET /clients/me/appointments
 GET /clients/me/appointments/:appointmentId
+GET /clients/me/appointments/:appointmentId/status-updates
 DELETE /clients/me/appointments/:appointmentId
 POST /clients/me/reviews
 GET /clients/me/payment-history

@@ -11,7 +11,7 @@ export default function SubscriptionSuccessPage(): React.ReactElement {
           <p className="subtitle">
             Stripe is confirming your subscription. Webhooks will sync the final status.
           </p>
-          <Link className="button button-primary" href="/dashboard/subscription">
+          <Link className="button button-primary" href="/barber/dashboard/subscription">
             Back to subscription
           </Link>
         </div>

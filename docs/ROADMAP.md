@@ -94,4 +94,14 @@ Status: Complete (July 10, 2026)
 - [x] Atomic preceding travel buffers and mobile lifecycle states
 - [x] Mobile-only discovery and sanitized public configuration
 
-Next: Phase 7 GPS streaming, WebSocket updates, and push notifications.
+## Milestone 7: Dual Portals And Complete Mobile Booking
+
+Status: Complete (July 12, 2026)
+
+- [x] Public landing page and canonical barber/client web portals
+- [x] Role-specific authentication and compatibility redirects
+- [x] Web and native five-step mobile booking
+- [x] Mobile-aware availability previews
+- [x] Polled appointment travel-status timelines and destination maps
+
+Next: Phase 8 GPS streaming, WebSocket updates, and push notifications.

@@ -59,6 +59,32 @@ export const getMobileConfig = async (userId: string) => {
   return mapMobileConfig(rows[0]);
 };
 
+export const getPublicMobileConfig = async (barberId: string) => {
+  const profiles = await query<Row>('SELECT city,state FROM barber_profiles WHERE id = $1', [
+    barberId,
+  ]);
+  if (profiles[0] === undefined) {
+    throw new AppError(404, 'Barber profile does not exist.', 'BARBER_PROFILE_NOT_FOUND');
+  }
+  const rows = await query<Row>(
+    'SELECT * FROM mobile_barber_config WHERE barber_id = $1 AND is_enabled = true',
+    [barberId],
+  );
+  const config = rows[0];
+  if (config === undefined) return { isEnabled: false };
+  const profile = profiles[0];
+  return {
+    isEnabled: true,
+    serviceRadiusMiles: Number(config.service_radius_miles),
+    feeStructure: config.fee_structure,
+    baseFee: Number(config.base_fee_cents) / 100,
+    perMileRate:
+      config.fee_structure === 'per_mile' ? Number(config.per_mile_rate_cents) / 100 : null,
+    mobileServiceNotes: config.mobile_service_notes,
+    originCity: [profile.city, profile.state].filter(Boolean).join(', ') || null,
+  };
+};
+
 export const setMobileConfig = async (userId: string, input: SetMobileConfigRequest) => {
   const profile = await profileForUser(userId);
   if (input.isEnabled && profile.subscription_tier === 'FREE') {

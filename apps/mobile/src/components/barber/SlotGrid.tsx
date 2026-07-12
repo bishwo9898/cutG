@@ -18,7 +18,11 @@ export const SlotGrid = ({
 }: SlotGridProps): React.ReactElement => (
   <View style={styles.grid}>
     {slots.map((slot) => {
-      const disabled = slot.status !== 'AVAILABLE' || slot.durationMinutes < minDuration;
+      const start = new Date(`2000-01-01T${slot.startTime}:00`).getTime();
+      const end = new Date(`2000-01-01T${slot.endTime}:00`).getTime();
+      const duration = slot.durationMinutes ?? (end - start) / 60_000;
+      const available = slot.isAvailable ?? slot.status === 'AVAILABLE';
+      const disabled = !available || duration < minDuration;
       const selected = slot.id === selectedSlotId;
       return (
         <Pressable

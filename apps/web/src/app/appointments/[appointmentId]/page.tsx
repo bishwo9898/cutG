@@ -1,7 +1,9 @@
 'use client';
 
 import { clientApi, paymentApi } from '@barber-saas/api-client';
+import { GoogleMap, LoadScript, MarkerF } from '@react-google-maps/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Car, CheckCircle2, Circle, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
@@ -9,7 +11,9 @@ import { useState } from 'react';
 import { AppointmentStatusBadge, StarRating } from '@/components/client-ui';
 import { Notice } from '@/components/notice';
 import { browserApi } from '@/lib/browser-api';
-import type { ClientAppointment, Review } from '@/lib/contracts';
+import type { AppointmentTimeline, ClientAppointment, Review } from '@/lib/contracts';
+
+const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
 type PaymentStatus = {
   status: string;
@@ -35,6 +39,17 @@ export default function AppointmentDetailPage(): React.ReactElement {
   const appointment = useQuery({
     queryKey: ['client-appointment', appointmentId],
     queryFn: () => clientApi.appointment<ClientAppointment>(browserApi, appointmentId),
+  });
+  const timeline = useQuery({
+    queryKey: ['appointment-status-updates', appointmentId],
+    queryFn: () =>
+      clientApi.appointmentStatusUpdates<AppointmentTimeline>(browserApi, appointmentId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.currentStatus;
+      return status !== undefined && ['CONFIRMED', 'ON_THE_WAY', 'ARRIVED'].includes(status)
+        ? 30_000
+        : false;
+    },
   });
   const payment = useQuery({
     queryKey: ['appointment-payment', appointmentId],
@@ -74,6 +89,7 @@ export default function AppointmentDetailPage(): React.ReactElement {
     },
   });
   const data = appointment.data;
+  const serviceAddress = data?.serviceAddress;
   const canCancel =
     data !== undefined &&
     ['PENDING', 'CONFIRMED'].includes(data.status) &&
@@ -86,18 +102,44 @@ export default function AppointmentDetailPage(): React.ReactElement {
   return (
     <main className="market-page narrow-page">
       <header className="market-nav">
-        <Link className="brand-lockup dark" href="/">
+        <Link className="brand-lockup dark" href="/client">
           <span className="brand-mark">cG</span>
           cutG
         </Link>
         <nav>
-          <Link href="/appointments">Appointments</Link>
+          <Link href="/client/appointments">Appointments</Link>
         </nav>
       </header>
       {data === undefined ? (
         <p className="muted">Loading appointment...</p>
       ) : (
         <section className="summary-panel">
+          {data.isMobileService === true && timeline.data?.currentStatus === 'ON_THE_WAY' && (
+            <div className="mobile-status-banner">
+              <Car size={21} />
+              <div>
+                <strong>Your barber is on the way</strong>
+                <span>
+                  {timeline.data.departedAt === null
+                    ? 'Journey started'
+                    : `Departed ${new Date(timeline.data.departedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
+                </span>
+              </div>
+            </div>
+          )}
+          {data.isMobileService === true && timeline.data?.currentStatus === 'ARRIVED' && (
+            <div className="mobile-status-banner arrived">
+              <MapPin size={21} />
+              <div>
+                <strong>Your barber has arrived</strong>
+                <span>
+                  {timeline.data.arrivedAt === null
+                    ? 'Ready for your service'
+                    : `Arrived ${new Date(timeline.data.arrivedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
+                </span>
+              </div>
+            </div>
+          )}
           <div className="card-title-row">
             <h1>{data.service.name}</h1>
             <AppointmentStatusBadge status={data.status} />
@@ -105,13 +147,13 @@ export default function AppointmentDetailPage(): React.ReactElement {
           <p>{data.barber.businessName}</p>
           <p>{new Date(data.scheduledAt).toLocaleString()}</p>
           <p>${(data.pricing?.total ?? data.priceQuoted).toFixed(2)}</p>
-          {data.isMobileService === true && data.serviceAddress !== null && (
+          {data.isMobileService === true && serviceAddress != null && (
             <div className="list-row">
               <div>
                 <strong>Mobile service</strong>
                 <small style={{ display: 'block' }}>
-                  {data.serviceAddress?.addressLine1}, {data.serviceAddress?.city},{' '}
-                  {data.serviceAddress?.state} {data.serviceAddress?.zipCode}
+                  {serviceAddress.addressLine1}, {serviceAddress.city}, {serviceAddress.state}{' '}
+                  {serviceAddress.zipCode}
                 </small>
                 <small style={{ display: 'block' }}>
                   {data.distanceMiles?.toFixed(1)} miles · about {data.estimatedTravelMinutes} min ·
@@ -120,12 +162,59 @@ export default function AppointmentDetailPage(): React.ReactElement {
               </div>
               <a
                 className="button button-secondary"
-                href={`https://www.google.com/maps/dir/?api=1&destination=${data.serviceAddress?.latitude},${data.serviceAddress?.longitude}`}
+                href={`https://www.google.com/maps/dir/?api=1&destination=${serviceAddress.latitude},${serviceAddress.longitude}`}
                 rel="noreferrer"
                 target="_blank"
               >
                 Directions
               </a>
+            </div>
+          )}
+          {data.isMobileService === true && timeline.data !== undefined && (
+            <div className="appointment-timeline">
+              <h2>Appointment status</h2>
+              {timeline.data.timeline.map((item) => (
+                <div
+                  className={`timeline-row${item.active ? ' is-current' : ''}`}
+                  key={item.status}
+                >
+                  {item.done ? <CheckCircle2 size={19} /> : <Circle size={19} />}
+                  <div>
+                    <strong>{item.label}</strong>
+                    {item.at !== null && <small>{new Date(item.at).toLocaleString()}</small>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {data.isMobileService === true && serviceAddress != null && mapsKey.length > 0 && (
+            <div className="appointment-map">
+              <LoadScript googleMapsApiKey={mapsKey}>
+                <GoogleMap
+                  center={{ lat: serviceAddress.latitude, lng: serviceAddress.longitude }}
+                  mapContainerClassName="appointment-map-canvas"
+                  zoom={14}
+                  options={{
+                    fullscreenControl: false,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                  }}
+                >
+                  <MarkerF
+                    position={{
+                      lat: serviceAddress.latitude,
+                      lng: serviceAddress.longitude,
+                    }}
+                  />
+                </GoogleMap>
+              </LoadScript>
+              <div className="appointment-map-label">
+                <MapPin size={17} />
+                <span>
+                  <strong>{data.barber.businessName}</strong>
+                  <small>Mobile service destination</small>
+                </span>
+              </div>
             </div>
           )}
           <p>

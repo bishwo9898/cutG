@@ -39,7 +39,7 @@ export default function PreviewPage(): React.ReactElement {
           <h1>Public profile preview</h1>
           <p>This is the client-facing shape of your business.</p>
         </div>
-        <Link className="button button-secondary" href="/dashboard/profile">
+        <Link className="button button-secondary" href="/barber/dashboard/profile">
           Edit profile
         </Link>
       </div>

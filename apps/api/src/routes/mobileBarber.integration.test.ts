@@ -21,6 +21,9 @@ type AddressBody = { id: string; label: string };
 type AddressListBody = { addresses: unknown[] };
 type EstimateBody = { travelFee: number };
 type AppointmentBody = { id: string; status: string };
+type MobileConfigBody = { isEnabled: boolean; baseFee: number; originCity: string | null };
+type PublicSlotsBody = { slots: Array<{ startTime: string; availableForMobile: boolean }> };
+type TimelineBody = { timeline: unknown[]; currentStatus: string; arrivedAt: string | null };
 
 beforeAll(async () => {
   await resetTestDatabase();
@@ -72,6 +75,14 @@ describe('Phase 6 mobile barber API', () => {
     const searchBody = search.body as SearchBody;
     expect(searchBody.barbers).toHaveLength(1);
     expect(searchBody.barbers[0]).toHaveProperty('mobileService.baseFee', 15);
+
+    const publicConfig = await request(app).get(`/barbers/${barberId}/mobile`);
+    expect(publicConfig.status).toBe(200);
+    expect(publicConfig.body as MobileConfigBody).toMatchObject({
+      isEnabled: true,
+      baseFee: 15,
+    });
+    expect(publicConfig.body).not.toHaveProperty('originLatitude');
   });
 
   it('geocodes, defaults, lists, and updates owned client addresses', async () => {
@@ -111,6 +122,21 @@ describe('Phase 6 mobile barber API', () => {
       [barberId],
     );
     slotId = slots.rows[0]?.id ?? '';
+
+    const publicSlots = await request(app).get(
+      `/barbers/${barberId}/slots?date=2026-08-03&days=1&mobileService=true&travelMinutes=14`,
+    );
+    expect(publicSlots.status).toBe(200);
+    const publicSlotsBody = publicSlots.body as PublicSlotsBody;
+    expect(
+      publicSlotsBody.slots.every((slot) => typeof slot.availableForMobile === 'boolean'),
+    ).toBe(true);
+    expect(publicSlotsBody.slots.find((slot) => slot.startTime === '09:00')).toMatchObject({
+      availableForMobile: false,
+    });
+    expect(publicSlotsBody.slots.find((slot) => slot.startTime === '10:00')).toMatchObject({
+      availableForMobile: true,
+    });
 
     const estimate = await request(app)
       .post('/barbers/me/mobile/estimate')
@@ -163,5 +189,13 @@ describe('Phase 6 mobile barber API', () => {
       .set('Authorization', `Bearer ${barberToken}`)
       .send({ status: 'ARRIVED' });
     expect((arrived.body as AppointmentBody).status).toBe('ARRIVED');
+
+    const timeline = await request(app)
+      .get(`/clients/me/appointments/${appointmentId}/status-updates`)
+      .set('Authorization', `Bearer ${clientToken}`);
+    expect(timeline.status).toBe(200);
+    expect(timeline.body as TimelineBody).toMatchObject({ currentStatus: 'ARRIVED' });
+    expect((timeline.body as TimelineBody).timeline).toHaveLength(6);
+    expect((timeline.body as TimelineBody).arrivedAt).not.toBeNull();
   });
 });

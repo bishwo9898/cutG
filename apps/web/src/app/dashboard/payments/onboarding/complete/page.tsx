@@ -9,7 +9,7 @@ export default function StripeOnboardingCompletePage(): React.ReactElement {
         </div>
         <div className="panel-body form-stack">
           <p className="subtitle">Stripe will confirm your charges and payout status shortly.</p>
-          <Link className="button button-primary" href="/dashboard/payments">
+          <Link className="button button-primary" href="/barber/dashboard/payments">
             Back to payments
           </Link>
         </div>

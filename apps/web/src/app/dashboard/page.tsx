@@ -51,7 +51,7 @@ export default function DashboardPage(): React.ReactElement {
             title="Your barber profile is ready to be shaped"
             detail="Add your business name, location, experience, and a short introduction."
             action={
-              <Link className="button button-primary" href="/dashboard/profile">
+              <Link className="button button-primary" href="/barber/dashboard/profile">
                 <UserRoundPlus size={17} />
                 Create profile
               </Link>
@@ -86,7 +86,7 @@ export default function DashboardPage(): React.ReactElement {
           <h1>{profile.data.businessName}</h1>
           <p>Here is the shape of your business today.</p>
         </div>
-        <Link className="button button-secondary" href="/dashboard/preview">
+        <Link className="button button-secondary" href="/barber/dashboard/preview">
           View public profile
         </Link>
       </div>
@@ -124,7 +124,7 @@ export default function DashboardPage(): React.ReactElement {
         <div className="panel">
           <div className="panel-header">
             <h2>Upcoming appointments</h2>
-            <Link className="text-link" href="/dashboard/appointments">
+            <Link className="text-link" href="/barber/dashboard/appointments">
               View all
             </Link>
           </div>
@@ -178,7 +178,7 @@ export default function DashboardPage(): React.ReactElement {
                 {profile.data.subscriptionTier} plan · {activeServices} active services
               </p>
             </div>
-            <Link className="button button-secondary" href="/dashboard/availability">
+            <Link className="button button-secondary" href="/barber/dashboard/availability">
               Set availability
             </Link>
           </div>

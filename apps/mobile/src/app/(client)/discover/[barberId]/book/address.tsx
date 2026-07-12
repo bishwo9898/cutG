@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete';
 import type { SelectedPlace } from '@/components/ui/PlacesAutocomplete';
-import { useBookAppointment } from '@/hooks/useAppointments';
 import { useBarberServices } from '@/hooks/useBarbers';
 import { useClientAddresses, useCreateAddress, useTravelEstimate } from '@/hooks/useMobileBarber';
 import { errorMessage } from '@/lib/errors';
@@ -21,16 +20,13 @@ export default function SelectAddressScreen(): React.ReactElement {
   const params = useLocalSearchParams<{
     barberId?: string;
     serviceId?: string;
-    slotId?: string;
-    notes?: string;
-    payAtShop?: string;
+    appointmentType?: string;
   }>();
   const barberId = params.barberId ?? '';
   const addresses = useClientAddresses();
   const services = useBarberServices(barberId);
   const estimate = useTravelEstimate();
   const createAddress = useCreateAddress();
-  const book = useBookAppointment();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [oneTime, setOneTime] = useState<SelectedPlace | null>(null);
   const [saveAddress, setSaveAddress] = useState(false);
@@ -75,33 +71,15 @@ export default function SelectAddressScreen(): React.ReactElement {
         });
         addressId = saved.id;
       }
-      const appointment = await book.mutateAsync({
-        barberId,
+      const destinationParams = new URLSearchParams({
         serviceId: params.serviceId ?? '',
-        availabilitySlotId: params.slotId ?? '',
-        clientNotes: params.notes || undefined,
-        isMobileService: true,
-        ...(addressId !== undefined
-          ? { clientAddressId: addressId }
-          : oneTime === null
-            ? {}
-            : {
-                clientAddressOneTime: {
-                  addressLine1: oneTime.addressLine1,
-                  city: oneTime.city,
-                  state: oneTime.state,
-                  zipCode: oneTime.zipCode,
-                  country: 'US',
-                },
-              }),
+        appointmentType: 'mobile',
+        travelMinutes: String(travel?.estimatedTravelMinutes ?? 0),
+        travelFee: String(travel?.travelFee ?? 0),
       });
-      if (params.payAtShop !== 'true') {
-        router.replace(
-          `/(client)/discover/${barberId}/book/payment?appointmentId=${appointment.id}`,
-        );
-      } else {
-        router.replace('/(client)/appointments/' + appointment.id);
-      }
+      if (addressId !== undefined) destinationParams.set('addressId', addressId);
+      else if (oneTime !== null) destinationParams.set('address', JSON.stringify(oneTime));
+      router.push(`/(client)/discover/${barberId}/book/slot?${destinationParams.toString()}`);
     } catch (caught) {
       setError(errorMessage(caught));
     }
@@ -166,7 +144,7 @@ export default function SelectAddressScreen(): React.ReactElement {
       ) : null}
       {error !== null ? <Text style={styles.error}>{error}</Text> : null}
       <Button
-        disabled={estimate.isPending || travel === undefined || book.isPending}
+        disabled={estimate.isPending || travel === undefined}
         title="Continue"
         onPress={() => void submit()}
       />

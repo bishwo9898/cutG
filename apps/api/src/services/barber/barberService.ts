@@ -13,6 +13,7 @@ import { SUBSCRIPTION_TIERS, type SubscriptionTierName } from '../../config/subs
 import { query, withTransaction, type DatabaseExecutor } from '../../db/queries/barber.queries';
 import { AppError } from '../../middleware/errorHandler';
 import { datesBetween, dayName, generateDaySlots, isoDayOfWeek } from '../../utils/slotGenerator';
+import { calculateTravelBufferSlots, getTravelBufferSlotTimes } from '../../utils/travelBuffer';
 import { releaseTravelBufferSlots } from '../mobile/bufferSlotService';
 
 type Row = Record<string, unknown>;
@@ -632,6 +633,7 @@ export const getPublicProfile = async (barberId: string) => {
     state: row.state,
     subscriptionTier: row.subscription_tier,
     isVerified: row.is_verified,
+    stripeChargesEnabled: row.stripe_charges_enabled === true,
     mobileService:
       row.mobile_enabled === true
         ? {
@@ -668,7 +670,12 @@ export const getPublicOfferings = async (barberId: string) => {
   };
 };
 
-export const getPublicSlots = async (barberId: string, startDate: string, endDate: string) => {
+export const getPublicSlots = async (
+  barberId: string,
+  startDate: string,
+  endDate: string,
+  travelMinutes?: number,
+) => {
   await getPublicProfile(barberId);
   const rows = await query<Row>(
     `SELECT * FROM availability_slots
@@ -677,13 +684,49 @@ export const getPublicSlots = async (barberId: string, startDate: string, endDat
      ORDER BY slot_date,start_time`,
     [barberId, startDate, endDate],
   );
+  const inventory =
+    travelMinutes === undefined
+      ? []
+      : await query<Row>(
+          `SELECT * FROM availability_slots
+           WHERE barber_id=$1 AND slot_date BETWEEN ($2::date - INTERVAL '1 day') AND $3::date
+           ORDER BY slot_date,start_time`,
+          [barberId, startDate, endDate],
+        );
+  const inventoryByTime = new Map(
+    inventory.map((slotRow) => [`${date(slotRow.slot_date)}:${time(slotRow.start_time)}`, slotRow]),
+  );
   return {
-    slots: rows.map((row) => ({
-      id: row.id,
-      date: date(row.slot_date),
-      startTime: time(row.start_time),
-      endTime: time(row.end_time),
-      isAvailable: row.status === 'AVAILABLE',
-    })),
+    slots: rows.map((row) => {
+      const isAvailable = row.status === 'AVAILABLE';
+      const durationMinutes = Number(row.duration_minutes);
+      const required =
+        travelMinutes === undefined
+          ? []
+          : getTravelBufferSlotTimes(
+              date(row.slot_date),
+              time(row.start_time),
+              calculateTravelBufferSlots(travelMinutes, durationMinutes),
+              durationMinutes,
+            );
+      const availableForMobile =
+        travelMinutes === undefined
+          ? undefined
+          : isAvailable &&
+            required.every((requiredSlot) => {
+              const candidate = inventoryByTime.get(
+                `${requiredSlot.date}:${requiredSlot.startTime}`,
+              );
+              return candidate?.status === 'AVAILABLE' && candidate.is_travel_buffer !== true;
+            });
+      return {
+        id: row.id,
+        date: date(row.slot_date),
+        startTime: time(row.start_time),
+        endTime: time(row.end_time),
+        isAvailable,
+        ...(availableForMobile === undefined ? {} : { availableForMobile }),
+      };
+    }),
   };
 };

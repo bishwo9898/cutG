@@ -49,7 +49,7 @@ export function BarberCard({
 }): React.ReactElement {
   return (
     <article className="market-card">
-      <Link href={`/barbers/${barber.id}`}>
+      <Link href={`/client/barbers/${barber.id}`}>
         <div
           className="barber-photo"
           style={{
@@ -62,7 +62,12 @@ export function BarberCard({
         <div className="card-body">
           <div className="card-title-row">
             <h3>{barber.businessName}</h3>
-            {showSave && <Heart size={18} />}
+            <span className="card-title-actions">
+              {barber.mobileService?.isEnabled === true && (
+                <span className="mobile-badge">Mobile</span>
+              )}
+              {showSave && <Heart size={18} />}
+            </span>
           </div>
           <p className="muted">
             {[barber.city, barber.state].filter(Boolean).join(', ') || 'Location coming soon'}
@@ -136,10 +141,16 @@ export function ReviewCard({ review }: { review: Review }): React.ReactElement {
   );
 }
 
-export function BookingSteps({ currentStep }: { currentStep: 1 | 2 | 3 }): React.ReactElement {
+export function BookingSteps({
+  currentStep,
+  labels = ['Service', 'Time', 'Confirm'],
+}: {
+  currentStep: number;
+  labels?: string[];
+}): React.ReactElement {
   return (
     <div className="steps">
-      {['Service', 'Time', 'Confirm'].map((label, index) => (
+      {labels.map((label, index) => (
         <span className={currentStep === index + 1 ? 'is-active' : ''} key={label}>
           {label}
         </span>
@@ -163,7 +174,7 @@ export function AppointmentCard({
         <p className="muted">{appointment.barber.businessName}</p>
         <p>{new Date(appointment.scheduledAt).toLocaleString()}</p>
         <p className="card-meta">${appointment.priceQuoted.toFixed(2)}</p>
-        <Link className="button button-secondary" href={`/appointments/${appointment.id}`}>
+        <Link className="button button-secondary" href={`/client/appointments/${appointment.id}`}>
           View
         </Link>
       </div>

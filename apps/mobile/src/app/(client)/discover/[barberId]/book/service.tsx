@@ -19,7 +19,7 @@ export default function SelectServiceScreen(): React.ReactElement {
         void services.refetch();
       }}
     >
-      <ScreenHeader showBack title="Step 1 of 3" subtitle="Choose a service." />
+      <ScreenHeader showBack title="Choose a service" subtitle="Step 1" />
       {list.length === 0 && !services.isLoading ? (
         <EmptyState
           title="No active services"
@@ -31,7 +31,7 @@ export default function SelectServiceScreen(): React.ReactElement {
           key={service.id}
           service={service}
           onPress={() =>
-            router.push('/(client)/discover/' + barberId + '/book/slot?serviceId=' + service.id)
+            router.push('/(client)/discover/' + barberId + '/book/type?serviceId=' + service.id)
           }
         />
       ))}

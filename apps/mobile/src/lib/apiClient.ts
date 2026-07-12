@@ -28,6 +28,7 @@ import { useAuthStore } from '@/store/authStore';
 
 import type {
   AppointmentSummary,
+  AppointmentTimeline,
   AuthUser,
   AvailabilitySlot,
   BarberProfile,
@@ -148,6 +149,8 @@ export const mobileApi = {
       withAuth((client) => clientApi.appointments(client, params)),
     appointment: (appointmentId: string): Promise<AppointmentSummary> =>
       withAuth((client) => clientApi.appointment(client, appointmentId)),
+    appointmentStatusUpdates: (appointmentId: string): Promise<AppointmentTimeline> =>
+      withAuth((client) => clientApi.appointmentStatusUpdates(client, appointmentId)),
     cancelAppointment: (appointmentId: string): Promise<AppointmentSummary> =>
       withAuth((client) => clientApi.cancelAppointment(client, appointmentId)),
     createReview: (body: CreateReviewRequest): Promise<Review> =>

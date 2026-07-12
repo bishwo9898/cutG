@@ -12,7 +12,10 @@ import { errorMessage } from '@/lib/errors';
 import { colors, spacing, typography } from '@/theme';
 
 export default function PaymentScreen(): React.ReactElement {
-  const { appointmentId = '' } = useLocalSearchParams<{ appointmentId?: string }>();
+  const { appointmentId = '', total } = useLocalSearchParams<{
+    appointmentId?: string;
+    total?: string;
+  }>();
   const { confirmPayment } = useStripe();
   const createIntent = useCreatePaymentIntent();
   const [cardComplete, setCardComplete] = useState(false);
@@ -38,6 +41,7 @@ export default function PaymentScreen(): React.ReactElement {
       <ScreenHeader showBack title="Payment" subtitle="Use Stripe test card 4242 4242 4242 4242." />
       <Card>
         <Text style={styles.title}>Secure card payment</Text>
+        {total !== undefined ? <Text style={styles.amount}>Total ${total}</Text> : null}
         <Text style={styles.meta}>
           Payment state is finalized by Stripe webhooks after confirmation.
         </Text>
@@ -76,6 +80,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     height: 52,
     padding: spacing.sm,
+  },
+  amount: {
+    ...typography.h2,
+    color: colors.gold,
+    marginTop: spacing.sm,
   },
   error: {
     ...typography.bodySmall,

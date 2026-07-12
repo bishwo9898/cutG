@@ -42,7 +42,7 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
       setError(body.message ?? 'Sign in failed.');
       return;
     }
-    router.push(searchParams.get('next') ?? (isBarber ? '/dashboard' : '/'));
+    router.push(searchParams.get('next') ?? (isBarber ? '/barber/dashboard' : '/client'));
     router.refresh();
   };
 
@@ -86,7 +86,10 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
             )}
           </div>
           <div className="split-link">
-            <Link className="text-link" href="/forgot-password">
+            <Link
+              className="text-link"
+              href={isBarber ? '/barber/forgot-password' : '/client/forgot-password'}
+            >
               Forgot password?
             </Link>
           </div>
@@ -101,13 +104,13 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
         </form>
         <div className="auth-switcher">
           <span>{isBarber ? 'Looking for a barber?' : 'Running a barber business?'}</span>
-          <Link className="text-link" href={isBarber ? '/login/client' : '/login/barber'}>
+          <Link className="text-link" href={isBarber ? '/client/login' : '/barber/login'}>
             {isBarber ? 'Client sign in' : 'Barber sign in'}
           </Link>
         </div>
         <p className="auth-footer">
           New to cutG?{' '}
-          <Link className="text-link" href={isBarber ? '/register/barber' : '/register/client'}>
+          <Link className="text-link" href={isBarber ? '/barber/register' : '/client/register'}>
             Create your account
           </Link>
         </p>

@@ -94,7 +94,7 @@ function VerifyEmailForm(): React.ReactElement {
           </button>
         </form>
         <p className="auth-footer">
-          <Link className="text-link" href={`/login/${role}`}>
+          <Link className="text-link" href={`/${role}/login`}>
             Return to sign in
           </Link>
         </p>

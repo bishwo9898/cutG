@@ -9,7 +9,7 @@ export default function StripeOnboardingRefreshPage(): React.ReactElement {
         </div>
         <div className="panel-body form-stack">
           <p className="subtitle">Create a fresh onboarding link to keep setting up payouts.</p>
-          <Link className="button button-primary" href="/dashboard/payments">
+          <Link className="button button-primary" href="/barber/dashboard/payments">
             Return to payments
           </Link>
         </div>

@@ -62,6 +62,7 @@ import {
   disableMobileConfig,
   estimateTravel,
   getMobileConfig,
+  getPublicMobileConfig,
   setMobileConfig,
 } from '../services/mobile/mobileBarberService';
 import { getBarberEarnings } from '../services/payment/paymentService';
@@ -321,6 +322,13 @@ barberRouter.get(
   }),
 );
 barberRouter.get(
+  '/:barberId/mobile',
+  asyncHandler(async (request, response) => {
+    const { barberId } = UuidParamsSchema.parse(request.params);
+    response.json(await getPublicMobileConfig(barberId));
+  }),
+);
+barberRouter.get(
   '/:barberId',
   asyncHandler(async (request, response) => {
     const { barberId } = UuidParamsSchema.parse(request.params);
@@ -341,7 +349,12 @@ barberRouter.get(
     const options = PublicSlotsQuerySchema.parse(request.query);
     const startDate = options.date ?? new Date().toISOString().slice(0, 10);
     response.json(
-      await getPublicSlots(barberId, startDate, addDaysToDate(startDate, options.days - 1)),
+      await getPublicSlots(
+        barberId,
+        startDate,
+        addDaysToDate(startDate, options.days - 1),
+        options.mobileService === true ? options.travelMinutes : undefined,
+      ),
     );
   }),
 );

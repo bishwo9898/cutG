@@ -34,19 +34,19 @@ function BarberSearchPageContent(): React.ReactElement {
     if (city.trim()) next.set('city', city.trim());
     if (category) next.set('category', category);
     if (maxPrice.trim()) next.set('maxPrice', maxPrice.trim());
-    router.push(`/barbers?${next.toString()}`);
+    router.push(`/client/barbers?${next.toString()}`);
   };
 
   return (
     <main className="market-page">
       <header className="market-nav">
-        <Link className="brand-lockup dark" href="/">
+        <Link className="brand-lockup dark" href="/client">
           <span className="brand-mark">cG</span>
           cutG
         </Link>
         <nav>
-          <Link href="/appointments">Appointments</Link>
-          <Link href="/saved">Saved</Link>
+          <Link href="/client/appointments">Appointments</Link>
+          <Link href="/client/saved">Saved</Link>
         </nav>
       </header>
       <section className="market-shell">

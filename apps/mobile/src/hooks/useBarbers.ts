@@ -39,10 +39,15 @@ export const useBarberServices = (barberId: string): UseQueryResult<Paginated<Ba
 export const useBarberSlots = (
   barberId: string,
   date?: string,
+  options: BarberSearchParams = {},
 ): UseQueryResult<Paginated<AvailabilitySlot>> =>
   useQuery({
-    queryKey: ['barbers', barberId, 'slots', date],
-    queryFn: () => mobileApi.discovery.slots(barberId, date === undefined ? undefined : { date }),
+    queryKey: ['barbers', barberId, 'slots', date, options],
+    queryFn: () =>
+      mobileApi.discovery.slots(barberId, {
+        ...(date === undefined ? {} : { date }),
+        ...options,
+      }),
     enabled: barberId.length > 0,
     staleTime: 30_000,
   });

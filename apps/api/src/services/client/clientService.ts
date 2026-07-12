@@ -459,6 +459,57 @@ export const getClientAppointment = async (clientId: string, appointmentId: stri
   return mapAppointment(row);
 };
 
+export const getAppointmentStatusUpdates = async (clientId: string, appointmentId: string) => {
+  const rows = await query<Row>(
+    `SELECT id,status,is_mobile_service,created_at,confirmed_at,barber_departed_at,
+            barber_arrived_at,completed_at,updated_at
+     FROM appointments WHERE id=$1 AND client_id=$2`,
+    [appointmentId, clientId],
+  );
+  const appointment = rows[0];
+  if (appointment === undefined) {
+    throw new AppError(404, 'Appointment not found.', 'APPOINTMENT_NOT_FOUND');
+  }
+  const isMobileService = appointment.is_mobile_service === true;
+  const definitions = [
+    { status: 'PENDING', label: 'Booked', column: 'created_at' },
+    { status: 'CONFIRMED', label: 'Confirmed by barber', column: 'confirmed_at' },
+    ...(isMobileService
+      ? [
+          { status: 'ON_THE_WAY', label: 'Barber on the way', column: 'barber_departed_at' },
+          { status: 'ARRIVED', label: 'Barber arrived', column: 'barber_arrived_at' },
+        ]
+      : []),
+    { status: 'IN_PROGRESS', label: 'Service in progress', column: null },
+    { status: 'COMPLETED', label: 'Completed', column: 'completed_at' },
+  ];
+  const currentStatus = String(appointment.status);
+  const currentIndex = definitions.findIndex((item) => item.status === currentStatus);
+  return {
+    appointmentId,
+    isMobileService,
+    timeline: definitions.map((item, index) => ({
+      status: item.status,
+      label: item.label,
+      at:
+        item.column === null
+          ? currentStatus === 'IN_PROGRESS'
+            ? dateTime(appointment.updated_at)
+            : null
+          : appointment[item.column] === null || appointment[item.column] === undefined
+            ? null
+            : dateTime(appointment[item.column]),
+      done: currentIndex >= 0 && index < currentIndex,
+      active: index === currentIndex,
+    })),
+    currentStatus,
+    departedAt:
+      appointment.barber_departed_at === null ? null : dateTime(appointment.barber_departed_at),
+    arrivedAt:
+      appointment.barber_arrived_at === null ? null : dateTime(appointment.barber_arrived_at),
+  };
+};
+
 export const cancelClientAppointment = async (clientId: string, appointmentId: string) =>
   withTransaction(async (trx) => {
     const rows = await query<Row>(

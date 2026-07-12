@@ -11,14 +11,14 @@ export default function RegisterPage(): React.ReactElement {
         <h1>Choose your cutG experience</h1>
         <p className="subtitle">Your role determines the tools and navigation you receive.</p>
         <div className="auth-role-grid">
-          <Link className="auth-role-card" href="/register/client">
+          <Link className="auth-role-card" href="/client/register">
             <span className="auth-role-card-icon">
               <Search size={22} />
             </span>
             <strong>Client account</strong>
             <span>Discover, save, and book barbers</span>
           </Link>
-          <Link className="auth-role-card" href="/register/barber">
+          <Link className="auth-role-card" href="/barber/register">
             <span className="auth-role-card-icon">
               <BriefcaseBusiness size={22} />
             </span>

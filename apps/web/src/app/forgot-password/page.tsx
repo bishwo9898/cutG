@@ -4,6 +4,7 @@ import { ForgotPasswordRequestSchema, type ForgotPasswordRequest } from '@barber
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Send } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -11,6 +12,8 @@ import { AuthShell } from '@/components/auth-shell';
 import { Notice } from '@/components/notice';
 
 export default function ForgotPasswordPage(): React.ReactElement {
+  const pathname = usePathname();
+  const role = pathname.startsWith('/barber') ? 'barber' : 'client';
   const [sent, setSent] = useState(false);
   const {
     register,
@@ -28,7 +31,7 @@ export default function ForgotPasswordPage(): React.ReactElement {
   };
 
   return (
-    <AuthShell>
+    <AuthShell audience={role === 'barber' ? 'BARBER' : 'CLIENT'}>
       <div className="auth-form">
         <span className="eyebrow">Account recovery</span>
         <h1>Reset your password</h1>
@@ -63,11 +66,11 @@ export default function ForgotPasswordPage(): React.ReactElement {
         </form>
         <p className="auth-footer">
           {sent ? (
-            <Link className="text-link" href="/reset-password">
+            <Link className="text-link" href={`/reset-password?role=${role}`}>
               Enter reset code
             </Link>
           ) : (
-            <Link className="text-link" href="/login">
+            <Link className="text-link" href={`/${role}/login`}>
               Return to sign in
             </Link>
           )}

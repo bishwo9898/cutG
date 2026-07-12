@@ -39,7 +39,7 @@ export default function SavedBarbersPage(): React.ReactElement {
     return (
       <main className="market-page narrow-page">
         <Notice>Sign in with a client account to view saved barbers.</Notice>
-        <Link className="button button-primary" href="/login/client">
+        <Link className="button button-primary" href="/client/login">
           Sign in
         </Link>
       </main>
@@ -49,13 +49,13 @@ export default function SavedBarbersPage(): React.ReactElement {
   return (
     <main className="market-page">
       <header className="market-nav">
-        <Link className="brand-lockup dark" href="/">
+        <Link className="brand-lockup dark" href="/client">
           <span className="brand-mark">cG</span>
           cutG
         </Link>
         <nav>
-          <Link href="/barbers">Find barbers</Link>
-          <Link href="/appointments">Appointments</Link>
+          <Link href="/client/barbers">Find barbers</Link>
+          <Link href="/client/appointments">Appointments</Link>
         </nav>
       </header>
       <section className="market-section">
@@ -73,7 +73,7 @@ export default function SavedBarbersPage(): React.ReactElement {
                 <p className="muted">{barber.city ?? 'Location coming soon'}</p>
                 <p>{barber.averageRating.toFixed(1)} rating</p>
                 <div className="button-row">
-                  <Link className="button button-secondary" href={`/barbers/${barber.id}`}>
+                  <Link className="button button-secondary" href={`/client/barbers/${barber.id}`}>
                     View
                   </Link>
                   <button

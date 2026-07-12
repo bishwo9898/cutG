@@ -11,14 +11,14 @@ export default function LoginPage(): React.ReactElement {
         <h1>How are you using cutG?</h1>
         <p className="subtitle">Each side has its own focused workspace and sign-in flow.</p>
         <div className="auth-role-grid">
-          <Link className="auth-role-card" href="/login/client">
+          <Link className="auth-role-card" href="/client/login">
             <span className="auth-role-card-icon">
               <Search size={22} />
             </span>
             <strong>I'm a client</strong>
             <span>Book and manage appointments</span>
           </Link>
-          <Link className="auth-role-card" href="/login/barber">
+          <Link className="auth-role-card" href="/barber/login">
             <span className="auth-role-card-icon">
               <BriefcaseBusiness size={22} />
             </span>

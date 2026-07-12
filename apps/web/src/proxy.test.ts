@@ -9,40 +9,42 @@ const request = (path: string, cookie?: string): NextRequest =>
     cookie === undefined ? {} : { headers: { cookie } },
   );
 
-describe('role-aware route proxy', () => {
-  it('sends unauthenticated dashboard visits to barber sign in', () => {
-    const response = proxy(request('/dashboard/mobile-service'));
-
-    expect(response.status).toBe(307);
+describe('dual portal proxy', () => {
+  it('permanently redirects legacy route families', () => {
+    const response = proxy(request('/dashboard/mobile-service?tab=area'));
+    expect(response.status).toBe(308);
     expect(response.headers.get('location')).toBe(
-      'http://localhost:3000/login/barber?next=%2Fdashboard%2Fmobile-service',
+      'http://localhost:3000/barber/dashboard/mobile-service?tab=area',
     );
   });
 
-  it('sends unauthenticated appointment visits to client sign in', () => {
-    const response = proxy(request('/appointments'));
-
-    expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toBe(
-      'http://localhost:3000/login/client?next=%2Fappointments',
+  it('sends protected portal visits to the matching login', () => {
+    expect(proxy(request('/barber/dashboard')).headers.get('location')).toBe(
+      'http://localhost:3000/barber/login?next=%2Fbarber%2Fdashboard',
+    );
+    expect(proxy(request('/client/appointments')).headers.get('location')).toBe(
+      'http://localhost:3000/client/login?next=%2Fclient%2Fappointments',
     );
   });
 
-  it('rejects a client session from the barber dashboard', () => {
-    const response = proxy(request('/dashboard', 'barber_access=token; cutg_role=CLIENT'));
-
-    expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toBe(
-      'http://localhost:3000/login/barber?next=%2Fdashboard',
-    );
+  it('redirects authenticated users away from the wrong portal', () => {
+    expect(
+      proxy(request('/barber/dashboard', 'barber_access=token; cutg_role=CLIENT')).headers.get(
+        'location',
+      ),
+    ).toBe('http://localhost:3000/client');
+    expect(
+      proxy(request('/client/barbers', 'barber_access=token; cutg_role=BARBER')).headers.get(
+        'location',
+      ),
+    ).toBe('http://localhost:3000/barber/dashboard');
   });
 
-  it('allows the matching role through', () => {
-    const response = proxy(
-      request('/dashboard/mobile-service', 'barber_access=token; cutg_role=BARBER'),
-    );
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get('location')).toBeNull();
+  it('allows public discovery and matching protected sessions', () => {
+    expect(proxy(request('/client/barbers')).status).toBe(200);
+    expect(
+      proxy(request('/barber/dashboard/mobile-service', 'barber_access=token; cutg_role=BARBER'))
+        .status,
+    ).toBe(200);
   });
 });
