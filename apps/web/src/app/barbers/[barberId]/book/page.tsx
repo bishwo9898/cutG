@@ -3,7 +3,7 @@
 import { barberDiscoveryApi, clientApi } from '@barber-saas/api-client';
 import { Autocomplete, LoadScript, type Libraries } from '@react-google-maps/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building2, Car, Check, MapPin } from 'lucide-react';
+import { Building2, Car, Check, Clock3, LocateFixed, MapPin, Navigation } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -12,6 +12,14 @@ import { ClientHeader } from '@/components/client-header';
 import { BookingSteps, SlotPicker } from '@/components/client-ui';
 import { Notice } from '@/components/notice';
 import { useUser } from '@/hooks/use-user';
+import {
+  appointmentEndsAt,
+  formatClockTime,
+  formatShortDate,
+  formatTimeRange,
+  slotStartsAt,
+  travelLeadStartsAt,
+} from '@/lib/booking-time';
 import { browserApi } from '@/lib/browser-api';
 import type {
   ClientAddress,
@@ -22,6 +30,7 @@ import type {
   TravelEstimate,
 } from '@/lib/contracts';
 import { errorMessage } from '@/lib/errors';
+import { placeToResolvedAddress, reverseGeocodeCoordinates } from '@/lib/google-address';
 
 type Profile = {
   id: string;
@@ -46,15 +55,6 @@ type OneTimeAddress = {
 const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 const mapsLibraries: Libraries = ['places'];
 
-const addressComponent = (
-  components: google.maps.GeocoderAddressComponent[],
-  type: string,
-  short = false,
-): string => {
-  const component = components.find((item) => item.types.includes(type));
-  return component === undefined ? '' : short ? component.short_name : component.long_name;
-};
-
 export default function BookBarberPage(): React.ReactElement {
   const { barberId } = useParams<{ barberId: string }>();
   const router = useRouter();
@@ -69,6 +69,9 @@ export default function BookBarberPage(): React.ReactElement {
   const [saveAddress, setSaveAddress] = useState(false);
   const [slot, setSlot] = useState<PublicSlot | null>(null);
   const [clientNotes, setClientNotes] = useState('');
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [mapsLoadError, setMapsLoadError] = useState(false);
 
   const profile = useQuery({
     queryKey: ['public-barber-book', barberId],
@@ -105,6 +108,12 @@ export default function BookBarberPage(): React.ReactElement {
     if (appointmentType !== 'mobile' || destination === null) return;
     estimate.mutate({ latitude: destination.latitude, longitude: destination.longitude });
   }, [appointmentType, destination?.latitude, destination?.longitude]);
+
+  useEffect(() => {
+    if (appointmentType === 'mobile' && destination === null) {
+      estimate.reset();
+    }
+  }, [appointmentType, destination, estimate]);
 
   useEffect(() => {
     if (selectedAddressId !== null || oneTimeAddress !== null) return;
@@ -183,23 +192,74 @@ export default function BookBarberPage(): React.ReactElement {
 
   const choosePlace = (): void => {
     const place = autocomplete.current?.getPlace();
-    const location = place?.geometry?.location;
-    const components = place?.address_components;
-    if (location === undefined || components === undefined) return;
-    const streetNumber = addressComponent(components, 'street_number');
-    const route = addressComponent(components, 'route');
+    if (place === undefined) return;
+    const resolved = placeToResolvedAddress(place);
+
+    if (resolved === null) {
+      setLocationError('Pick a full street address from the suggestions.');
+      return;
+    }
+
+    estimate.reset();
     setOneTimeAddress({
-      addressLine1: [streetNumber, route].filter(Boolean).join(' '),
-      city: addressComponent(components, 'locality') || addressComponent(components, 'sublocality'),
-      state: addressComponent(components, 'administrative_area_level_1', true),
-      zipCode: addressComponent(components, 'postal_code'),
-      country: addressComponent(components, 'country', true) || 'US',
-      latitude: location.lat(),
-      longitude: location.lng(),
+      addressLine1: resolved.addressLine1,
+      city: resolved.city,
+      state: resolved.state,
+      zipCode: resolved.zipCode,
+      country: resolved.country,
+      latitude: resolved.latitude,
+      longitude: resolved.longitude,
     });
-    setAddressSearch(place?.formatted_address ?? place?.name ?? 'Selected address');
+    setAddressSearch(resolved.formattedAddress);
     setSelectedAddressId(null);
     setSlot(null);
+    setLocationError(null);
+  };
+
+  const useCurrentLocation = (): void => {
+    setLocationError(null);
+    if (!('geolocation' in navigator)) {
+      setLocationError('Location access is not available in this browser.');
+      return;
+    }
+
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setLocating(false);
+        void (async (): Promise<void> => {
+          const resolved = await reverseGeocodeCoordinates(coords.latitude, coords.longitude);
+
+          if (resolved === null) {
+            setLocationError('Your location was found, but the address could not be resolved.');
+            return;
+          }
+
+          estimate.reset();
+          setOneTimeAddress({
+            addressLine1: resolved.addressLine1,
+            city: resolved.city,
+            state: resolved.state,
+            zipCode: resolved.zipCode,
+            country: resolved.country,
+            latitude: resolved.latitude,
+            longitude: resolved.longitude,
+          });
+          setAddressSearch(resolved.formattedAddress);
+          setSelectedAddressId(null);
+          setSlot(null);
+        })();
+      },
+      (geolocationError) => {
+        setLocating(false);
+        setLocationError(
+          geolocationError.code === geolocationError.PERMISSION_DENIED
+            ? 'Allow location access in your browser to autofill your address.'
+            : 'Your current location could not be determined.',
+        );
+      },
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
+    );
   };
 
   const mobileEnabled = mobile.data?.isEnabled === true;
@@ -223,6 +283,21 @@ export default function BookBarberPage(): React.ReactElement {
               : 3;
   const travelFee = isMobile ? (estimate.data?.travelFee ?? 0) : 0;
   const total = (service?.price ?? 0) + travelFee;
+  const appointmentStart = slot === null ? null : slotStartsAt(slot.date, slot.startTime);
+  const appointmentEnd =
+    slot === null || service === null
+      ? null
+      : appointmentEndsAt(slot.date, slot.startTime, service.durationMinutes);
+  const travelLead =
+    slot === null || !isMobile || estimate.data === undefined
+      ? null
+      : travelLeadStartsAt(slot.date, slot.startTime, estimate.data.estimatedTravelMinutes);
+  const selectedDestinationLabel =
+    selectedAddress !== null
+      ? `${selectedAddress.label} · ${selectedAddress.addressLine1}, ${selectedAddress.city}, ${selectedAddress.state} ${selectedAddress.zipCode}`
+      : oneTimeAddress !== null
+        ? `${oneTimeAddress.addressLine1}, ${oneTimeAddress.city}, ${oneTimeAddress.state} ${oneTimeAddress.zipCode}`
+        : null;
 
   return (
     <main className="market-page">
@@ -232,6 +307,11 @@ export default function BookBarberPage(): React.ReactElement {
           <div>
             <p className="eyebrow">Book appointment</p>
             <h1>{profile.data?.businessName ?? 'Barber'}</h1>
+            {mobileEnabled && (
+              <p className="booking-subtitle">
+                Mobile visits available from {mobile.data?.originCity ?? 'this barber'}.
+              </p>
+            )}
           </div>
         </div>
         <BookingSteps currentStep={currentStep} labels={stepLabels} />
@@ -253,6 +333,7 @@ export default function BookBarberPage(): React.ReactElement {
                     setService(item);
                     setAppointmentType(mobileEnabled ? null : 'shop');
                     setSlot(null);
+                    estimate.reset();
                   }}
                   type="button"
                 >
@@ -275,6 +356,8 @@ export default function BookBarberPage(): React.ReactElement {
                   onClick={() => {
                     setAppointmentType('shop');
                     setSlot(null);
+                    estimate.reset();
+                    setLocationError(null);
                   }}
                   type="button"
                 >
@@ -291,6 +374,7 @@ export default function BookBarberPage(): React.ReactElement {
                   onClick={() => {
                     setAppointmentType('mobile');
                     setSlot(null);
+                    estimate.reset();
                   }}
                   type="button"
                 >
@@ -309,17 +393,29 @@ export default function BookBarberPage(): React.ReactElement {
 
           {service !== null && isMobile && (
             <section className="booking-step-panel">
-              <h2>Where should your barber come?</h2>
+              <div className="section-title">
+                <div>
+                  <h2>Where should your barber come?</h2>
+                  <p className="booking-panel-copy">
+                    Pick a saved address, search a new one, or use your current location.
+                  </p>
+                </div>
+                <Link className="text-link" href="/client/profile/addresses">
+                  Manage saved addresses
+                </Link>
+              </div>
               <div className="address-choice-grid">
                 {(addresses.data?.addresses ?? []).map((address) => (
                   <button
                     className={`address-option${selectedAddressId === address.id ? ' is-selected' : ''}`}
                     key={address.id}
                     onClick={() => {
+                      estimate.reset();
                       setSelectedAddressId(address.id);
                       setOneTimeAddress(null);
                       setAddressSearch('');
                       setSlot(null);
+                      setLocationError(null);
                     }}
                     type="button"
                   >
@@ -336,40 +432,85 @@ export default function BookBarberPage(): React.ReactElement {
                   </button>
                 ))}
               </div>
+              {addresses.data !== undefined && addresses.data.addresses.length === 0 && (
+                <Notice tone="success">
+                  Save your common destinations in profile, or use one-time address search below.
+                </Notice>
+              )}
               <div className="field">
                 <label htmlFor="booking-address">Use a different address</label>
                 {mapsKey.length === 0 ? (
-                  <Notice>Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY for address search.</Notice>
+                  <Notice>
+                    Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY for address search and autofill.
+                  </Notice>
                 ) : (
-                  <LoadScript googleMapsApiKey={mapsKey} libraries={mapsLibraries}>
-                    <Autocomplete
-                      onLoad={(instance) => {
-                        autocomplete.current = instance;
-                      }}
-                      onPlaceChanged={choosePlace}
-                      options={{
-                        componentRestrictions: { country: 'us' },
-                        fields: ['address_components', 'formatted_address', 'geometry', 'name'],
-                        types: ['address'],
-                      }}
-                    >
-                      <div className="input-with-icon">
-                        <MapPin size={17} />
-                        <input
-                          id="booking-address"
-                          autoComplete="off"
-                          placeholder="Search for an address"
-                          value={addressSearch}
-                          onChange={(event) => {
-                            setAddressSearch(event.target.value);
-                            setOneTimeAddress(null);
-                          }}
-                        />
-                      </div>
-                    </Autocomplete>
+                  <LoadScript
+                    googleMapsApiKey={mapsKey}
+                    libraries={mapsLibraries}
+                    onError={() => setMapsLoadError(true)}
+                    onLoad={() => setMapsLoadError(false)}
+                  >
+                    <div className="booking-address-tools">
+                      <Autocomplete
+                        onLoad={(instance) => {
+                          autocomplete.current = instance;
+                        }}
+                        onPlaceChanged={choosePlace}
+                        options={{
+                          componentRestrictions: { country: 'us' },
+                          fields: ['address_components', 'formatted_address', 'geometry', 'name'],
+                          types: ['address'],
+                        }}
+                      >
+                        <div className="input-with-icon">
+                          <MapPin size={17} />
+                          <input
+                            id="booking-address"
+                            autoComplete="off"
+                            placeholder="Search for an address"
+                            value={addressSearch}
+                            onChange={(event) => {
+                              estimate.reset();
+                              setAddressSearch(event.target.value);
+                              setOneTimeAddress(null);
+                              setSlot(null);
+                              setLocationError(null);
+                            }}
+                          />
+                        </div>
+                      </Autocomplete>
+                      <button
+                        className="button button-secondary"
+                        disabled={locating}
+                        onClick={useCurrentLocation}
+                        type="button"
+                      >
+                        <LocateFixed size={16} />
+                        {locating ? 'Locating...' : 'Use my location'}
+                      </button>
+                    </div>
                   </LoadScript>
                 )}
+                <p className="field-help">
+                  Choose a suggestion so we can estimate travel correctly.
+                </p>
               </div>
+              {mapsLoadError && (
+                <Notice>
+                  Google Maps could not load. Check the web key restrictions for
+                  `http://localhost:3000/*`.
+                </Notice>
+              )}
+              {locationError !== null && <Notice>{locationError}</Notice>}
+              {selectedDestinationLabel !== null && (
+                <div className="selected-address-card">
+                  <div>
+                    <strong>Selected destination</strong>
+                    <span>{selectedDestinationLabel}</span>
+                  </div>
+                  <MapPin size={18} />
+                </div>
+              )}
               {oneTimeAddress !== null && (
                 <label className="checkbox-row">
                   <input
@@ -382,14 +523,39 @@ export default function BookBarberPage(): React.ReactElement {
               )}
               {estimate.isPending && <p className="muted">Calculating travel time...</p>}
               {estimate.data !== undefined && (
-                <div className="travel-estimate">
-                  <MapPin size={19} />
-                  <div>
-                    <strong>
-                      {estimate.data.distanceMiles.toFixed(1)} miles · about{' '}
-                      {estimate.data.estimatedTravelMinutes} min
-                    </strong>
-                    <span>${estimate.data.travelFee.toFixed(2)} travel fee</span>
+                <div className="travel-estimate-stack">
+                  <div className="travel-estimate">
+                    <MapPin size={19} />
+                    <div>
+                      <strong>
+                        {estimate.data.distanceMiles.toFixed(1)} miles · about{' '}
+                        {estimate.data.estimatedTravelMinutes} min
+                      </strong>
+                      <span>${estimate.data.travelFee.toFixed(2)} travel fee</span>
+                    </div>
+                  </div>
+                  <div className="travel-stats-grid">
+                    <div className="travel-stat">
+                      <Clock3 size={16} />
+                      <span>
+                        <strong>{estimate.data.estimatedTravelMinutes} min</strong>
+                        Drive time
+                      </span>
+                    </div>
+                    <div className="travel-stat">
+                      <Navigation size={16} />
+                      <span>
+                        <strong>{estimate.data.distanceMiles.toFixed(1)} mi</strong>
+                        Distance
+                      </span>
+                    </div>
+                    <div className="travel-stat">
+                      <Car size={16} />
+                      <span>
+                        <strong>${estimate.data.travelFee.toFixed(2)}</strong>
+                        Travel fee
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -407,7 +573,15 @@ export default function BookBarberPage(): React.ReactElement {
                     Showing slots with enough lead time for your barber to travel.
                   </Notice>
                 )}
-                <SlotPicker slots={filteredSlots} selectedId={slot?.id} onSelect={setSlot} />
+                <SlotPicker
+                  durationMinutes={service.durationMinutes}
+                  slots={filteredSlots}
+                  selectedId={slot?.id}
+                  {...(isMobile && estimate.data !== undefined
+                    ? { travelMinutes: estimate.data.estimatedTravelMinutes }
+                    : {})}
+                  onSelect={setSlot}
+                />
               </section>
             )}
 
@@ -422,7 +596,18 @@ export default function BookBarberPage(): React.ReactElement {
                 <p>
                   <span>Date and time</span>
                   <strong>
-                    {slot.date} at {slot.startTime}
+                    {appointmentStart === null || appointmentEnd === null
+                      ? `${slot.date} at ${slot.startTime}`
+                      : `${formatShortDate(appointmentStart)} · ${formatTimeRange(appointmentStart, appointmentEnd)}`}
+                  </strong>
+                </p>
+                <p>
+                  <span>Service duration</span>
+                  <strong>
+                    {service.durationMinutes} min
+                    {appointmentEnd !== null
+                      ? ` · finishes around ${formatClockTime(appointmentEnd)}`
+                      : ''}
                   </strong>
                 </p>
                 <p>
@@ -435,6 +620,12 @@ export default function BookBarberPage(): React.ReactElement {
                     <strong>
                       {destination.addressLine1}, {destination.city}, {destination.state}
                     </strong>
+                  </p>
+                )}
+                {isMobile && travelLead !== null && (
+                  <p>
+                    <span>Travel timing</span>
+                    <strong>Barber heads out around {formatClockTime(travelLead)}</strong>
                   </p>
                 )}
                 <hr />

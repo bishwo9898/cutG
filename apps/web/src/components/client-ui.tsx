@@ -3,6 +3,13 @@
 import { Calendar, Heart, Scissors, Star } from 'lucide-react';
 import Link from 'next/link';
 
+import {
+  appointmentEndsAt,
+  formatShortDate,
+  formatTimeRange,
+  slotEndsAt,
+  slotStartsAt,
+} from '@/lib/booking-time';
 import type { ClientAppointment, PublicBarber, PublicSlot, Review } from '@/lib/contracts';
 
 export function StarRating({
@@ -94,30 +101,45 @@ export function BarberCard({
 }
 
 export function SlotPicker({
+  durationMinutes,
   onSelect,
   selectedId,
   slots,
+  travelMinutes,
 }: {
   slots: PublicSlot[];
   selectedId?: string | undefined;
+  durationMinutes?: number;
+  travelMinutes?: number;
   onSelect: (slot: PublicSlot) => void;
 }): React.ReactElement {
   const available = slots.filter((slot) => slot.isAvailable);
   if (available.length === 0) return <p className="muted">No available slots for this range.</p>;
   return (
     <div className="slot-grid">
-      {available.map((slot) => (
-        <button
-          className={`slot-button${selectedId === slot.id ? ' is-selected' : ''}`}
-          key={slot.id}
-          onClick={() => onSelect(slot)}
-          type="button"
-        >
-          <Calendar size={15} />
-          <span>{new Date(`${slot.date}T00:00:00`).toLocaleDateString()}</span>
-          <strong>{slot.startTime}</strong>
-        </button>
-      ))}
+      {available.map((slot) => {
+        const start = slotStartsAt(slot.date, slot.startTime);
+        const end =
+          durationMinutes === undefined
+            ? slotEndsAt(slot.date, slot.endTime)
+            : appointmentEndsAt(slot.date, slot.startTime, durationMinutes);
+
+        return (
+          <button
+            className={`slot-button${selectedId === slot.id ? ' is-selected' : ''}`}
+            key={slot.id}
+            onClick={() => onSelect(slot)}
+            type="button"
+          >
+            <Calendar size={15} />
+            <span>{formatShortDate(start)}</span>
+            <strong>{formatTimeRange(start, end)}</strong>
+            {travelMinutes !== undefined && slot.availableForMobile === true && (
+              <small>{travelMinutes} min travel-ready</small>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

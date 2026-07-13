@@ -37,6 +37,7 @@ Supported filters:
 - `category`: active service category.
 - `minRating`: minimum public rating.
 - `maxPrice`: barber has at least one active service at or below this price.
+- `mobileOnly`: only barbers with enabled mobile service.
 - `verified`: verified profiles only.
 - `page`, `limit`: pagination, with max limit `48`.
 
@@ -95,6 +96,12 @@ Booking is atomic. Inside one transaction the API:
 7. Marks the slot `BOOKED` and attaches `appointment_id`.
 8. Creates placeholder notifications for the client and barber.
 
+Mobile bookings add one address decision step before slot selection:
+
+- Choose a saved address, search a one-time address, or use browser location autofill.
+- The web flow estimates distance, travel minutes, fee, travel-ready slots, barber departure timing, and projected finish time before confirmation.
+- Saved addresses can also be managed separately from `/client/profile/addresses`.
+
 No payment is collected in Phase 3. The web UI labels bookings as pay-at-the-shop.
 
 ## Cancellation
@@ -144,11 +151,12 @@ Public review lists hide client identity beyond first name and last initial.
 Client-facing pages now exist in `apps/web`:
 
 - `/`: marketplace homepage and featured barbers.
-- `/barbers`: search and filters.
+- `/barbers`: search, filters, Danville/mobile presets, and verified/mobile toggles.
 - `/barbers/:barberId`: public profile, services, slots, reviews, and save action.
-- `/barbers/:barberId/book`: service, slot, and confirmation flow.
+- `/barbers/:barberId/book`: service, appointment type, address, slot, and confirmation flow.
 - `/appointments`: client appointment list.
 - `/appointments/:appointmentId`: appointment detail, cancellation, and review form.
 - `/saved`: saved barber list.
+- `/client/profile/addresses`: saved-address management with Places search and current-location autofill.
 
 The barber dashboard remains under `/dashboard`.

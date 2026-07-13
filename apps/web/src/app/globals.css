@@ -448,6 +448,10 @@ a {
   line-height: 1.6;
 }
 
+.market-hero-actions {
+  margin-top: 16px;
+}
+
 .hero-search {
   width: min(680px, 100%);
   display: grid;
@@ -655,6 +659,11 @@ a {
   text-align: left;
   background: white;
   cursor: pointer;
+}
+
+.slot-button small {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .steps,
@@ -1791,6 +1800,14 @@ a {
   max-width: 1040px;
 }
 
+.booking-subtitle,
+.booking-panel-copy {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .booking-flow {
   display: grid;
   gap: 32px;
@@ -1827,6 +1844,18 @@ a {
   text-align: left;
   background: white;
   cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.appointment-type-option:hover,
+.address-option:hover,
+.filter-preset-list .list-row:hover {
+  border-color: #bcd2c8;
+  background: #fbfdfc;
+  transform: translateY(-1px);
 }
 
 .appointment-type-option svg,
@@ -1849,6 +1878,12 @@ a {
 
 .address-choice-grid + .field {
   margin-top: 20px;
+}
+
+.booking-address-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
 }
 
 .checkbox-row {
@@ -1881,6 +1916,52 @@ a {
 .travel-estimate span,
 .mobile-status-banner span {
   font-size: 13px;
+}
+
+.travel-estimate-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.travel-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.travel-stat,
+.selected-address-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 15px;
+  background: white;
+}
+
+.travel-stat span,
+.selected-address-card div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.travel-stat strong,
+.selected-address-card strong {
+  color: var(--ink);
+}
+
+.travel-stat span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.selected-address-card span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .booking-review {
@@ -1934,6 +2015,10 @@ a {
 .address-management-row small {
   margin: 4px 0 0;
   color: var(--muted);
+}
+
+.filter-preset-list {
+  margin: 14px 0 18px;
 }
 
 .address-row-actions {
@@ -2153,6 +2238,11 @@ a {
   .appointment-type-grid,
   .address-choice-grid,
   .address-management-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-address-tools,
+  .travel-stats-grid {
     grid-template-columns: 1fr;
   }
 

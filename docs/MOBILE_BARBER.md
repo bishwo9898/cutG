@@ -133,7 +133,7 @@ curl http://localhost:4000/barbers?mobileOnly=true
 curl http://localhost:4000/barbers/<barber-profile-id>
 ```
 
-Use `barber1@example.com`, `barber2@example.com`, or `client1@example.com` with `password123`. Barber 1 has a flat $15 travel fee and a 10-mile radius. Barber 2 uses $2 per mile and a 5-mile radius. Client 1 has Home and Office addresses.
+Use `barber1@example.com`, `barber2@example.com`, `client1@example.com`, or `client2@example.com` with `password123`. The first two barber accounts are seeded in Danville, Kentucky so mobile visits can be tested locally from both sides without leaving the same area. Barber 1 has a flat $15 travel fee and a 10-mile radius. Barber 2 uses $2 per mile and a 5-mile radius. Client 1 and Client 2 both have Danville saved addresses.
 
 ## Tests
 

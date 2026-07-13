@@ -54,6 +54,17 @@ export function ClientHome(): React.ReactElement {
               Search
             </button>
           </form>
+          <div className="button-row market-hero-actions">
+            <Link className="button button-secondary" href="/client/barbers?city=Danville&state=KY">
+              Browse Danville
+            </Link>
+            <Link
+              className="button button-secondary"
+              href="/client/barbers?city=Danville&state=KY&mobileOnly=true&verified=true"
+            >
+              Mobile visits near me
+            </Link>
+          </div>
         </div>
       </section>
 

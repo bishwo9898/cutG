@@ -254,7 +254,8 @@ Phase 7 adds:
 - Canonical `/barber/*` and `/client/*` portals with distinct auth copy, role-locked registration, protected routing, wrong-role handling, and legacy `308` redirects
 - Cross-role account switching through auth pages, stale-role-cookie recovery, full-navigation login handoff, and explicit network/error feedback
 - Five-step web mobile booking with appointment type, saved/one-time address, Places autocomplete, travel estimate, mobile-aware slots, and fee breakdown
-- Web saved-address management and polled mobile appointment timeline with destination map
+- Client-side booking time ranges, projected finish times, travel lead timing, current-location autofill, and selected-destination review
+- Web saved-address management with Places search, current-location autofill, and polled mobile appointment timeline with destination map
 - Native appointment-type selection, connected address/estimate flow, mobile-compatible slot filtering, fee-aware confirmation/payment, timeline polling, and native destination map
 - Public mobile policy, advisory mobile-slot availability, and client appointment timeline API endpoints
 - Shared API-client methods and typed web/native response models
@@ -266,6 +267,12 @@ Seed accounts use password `password123`:
 - `barber2@example.com`
 - `barber3@example.com`
 - `client1@example.com`
+- `client2@example.com`
+
+Local seeded geography for mobile-service testing:
+
+- `barber1@example.com`, `barber2@example.com`, `client1@example.com`, and `client2@example.com` are all centered in Danville, Kentucky.
+- `client1@example.com` and `client2@example.com` both include saved local addresses for shop and mobile-booking testing.
 
 Not built yet:
 
