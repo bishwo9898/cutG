@@ -15,10 +15,13 @@ import { colors, spacing, typography } from '@/theme';
 
 type OneTimeAddress = {
   addressLine1: string;
+  addressLine2?: string;
   city: string;
   state: string;
   zipCode: string;
   country?: string;
+  latitude: number;
+  longitude: number;
 };
 
 export default function ConfirmBookingScreen(): React.ReactElement {
@@ -32,6 +35,7 @@ export default function ConfirmBookingScreen(): React.ReactElement {
     address?: string;
     travelMinutes?: string;
     travelFee?: string;
+    estimateUnavailable?: string;
   }>();
   const barberId = params.barberId ?? '';
   const serviceId = params.serviceId ?? '';
@@ -51,6 +55,7 @@ export default function ConfirmBookingScreen(): React.ReactElement {
   const slot = listFromResponse(slots.data ?? {}).find((item) => item.id === slotId);
   const canPayOnline = profile.data?.stripeChargesEnabled === true;
   const travelFee = isMobile ? Number(params.travelFee ?? 0) : 0;
+  const estimateUnavailable = params.estimateUnavailable === 'true';
   const total = (service?.price ?? 0) + travelFee;
 
   const confirm = async (): Promise<void> => {
@@ -68,10 +73,13 @@ export default function ConfirmBookingScreen(): React.ReactElement {
             : {
                 clientAddressOneTime: {
                   addressLine1: oneTimeAddress?.addressLine1 ?? '',
+                  addressLine2: oneTimeAddress?.addressLine2,
                   city: oneTimeAddress?.city ?? '',
                   state: oneTimeAddress?.state ?? '',
                   zipCode: oneTimeAddress?.zipCode ?? '',
                   country: oneTimeAddress?.country ?? 'US',
+                  latitude: oneTimeAddress?.latitude,
+                  longitude: oneTimeAddress?.longitude,
                 },
               }
           : {}),
@@ -118,8 +126,15 @@ export default function ConfirmBookingScreen(): React.ReactElement {
         {isMobile ? (
           <View style={styles.priceRow}>
             <Text style={styles.meta}>Travel fee</Text>
-            <Text style={styles.value}>${travelFee.toFixed(2)}</Text>
+            <Text style={styles.value}>
+              {estimateUnavailable ? 'Barber confirms' : `$${travelFee.toFixed(2)}`}
+            </Text>
           </View>
+        ) : null}
+        {isMobile && estimateUnavailable ? (
+          <Text style={styles.warning}>
+            Travel timing and fee will be confirmed before the appointment.
+          </Text>
         ) : null}
         <View style={styles.priceRow}>
           <Text style={styles.total}>Total</Text>
@@ -185,4 +200,5 @@ const styles = StyleSheet.create({
   title: { ...typography.h3, color: colors.textPrimary },
   total: { ...typography.h3, color: colors.gold },
   value: { ...typography.body, color: colors.textPrimary },
+  warning: { ...typography.bodySmall, color: colors.warning, marginTop: spacing.md },
 });

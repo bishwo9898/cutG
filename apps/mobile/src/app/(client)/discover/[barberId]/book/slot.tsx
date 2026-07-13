@@ -22,17 +22,20 @@ export default function SelectSlotScreen(): React.ReactElement {
     address?: string;
     travelMinutes?: string;
     travelFee?: string;
+    estimateUnavailable?: string;
   }>();
   const barberId = params.barberId ?? '';
   const serviceId = params.serviceId ?? '';
   const isMobile = params.appointmentType === 'mobile';
+  const hasTravelEstimate =
+    isMobile && params.estimateUnavailable !== 'true' && Number(params.travelMinutes) > 0;
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [slot, setSlot] = useState<AvailabilitySlot | null>(null);
   const services = useBarberServices(barberId);
   const slots = useBarberSlots(
     barberId,
     date,
-    isMobile
+    hasTravelEstimate
       ? {
           mobileService: true,
           travelMinutes: Number(params.travelMinutes ?? 0),
@@ -46,7 +49,7 @@ export default function SelectSlotScreen(): React.ReactElement {
     [],
   );
   const slotList = listFromResponse(slots.data ?? {}).filter(
-    (item) => !isMobile || item.availableForMobile === true,
+    (item) => !hasTravelEstimate || item.availableForMobile === true,
   );
 
   return (
@@ -57,10 +60,12 @@ export default function SelectSlotScreen(): React.ReactElement {
       }}
     >
       <ScreenHeader showBack title="Choose a time" subtitle={service?.name ?? 'Select a time.'} />
-      {isMobile ? (
+      {hasTravelEstimate ? (
         <Text style={styles.info}>
           Showing slots with enough lead time for your barber to travel to you.
         </Text>
+      ) : isMobile ? (
+        <Text style={styles.warning}>Travel timing will be confirmed by your barber.</Text>
       ) : null}
       <ScrollView
         horizontal
@@ -104,6 +109,8 @@ export default function SelectSlotScreen(): React.ReactElement {
             if (params.address !== undefined) next.set('address', params.address);
             if (params.travelMinutes !== undefined) next.set('travelMinutes', params.travelMinutes);
             if (params.travelFee !== undefined) next.set('travelFee', params.travelFee);
+            if (params.estimateUnavailable !== undefined)
+              next.set('estimateUnavailable', params.estimateUnavailable);
             router.push(`/(client)/discover/${barberId}/book/confirm?${next.toString()}`);
           }
         }}
@@ -124,4 +131,5 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.info,
   },
+  warning: { ...typography.bodySmall, color: colors.warning },
 });

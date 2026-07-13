@@ -1,19 +1,21 @@
 'use client';
 
 import { clientApi, paymentApi } from '@barber-saas/api-client';
-import { GoogleMap, LoadScript, MarkerF } from '@react-google-maps/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Car, CheckCircle2, Circle, MapPin } from 'lucide-react';
+import { Car, MapPin } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
 import { ClientHeader } from '@/components/client-header';
-import { AppointmentStatusBadge, StarRating } from '@/components/client-ui';
+import {
+  AppointmentStatusBadge,
+  StarRating,
+  StaticMap,
+  StatusTimeline,
+} from '@/components/client-ui';
 import { Notice } from '@/components/notice';
 import { browserApi } from '@/lib/browser-api';
 import type { AppointmentTimeline, ClientAppointment, Review } from '@/lib/contracts';
-
-const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
 type PaymentStatus = {
   status: string;
@@ -44,9 +46,14 @@ export default function AppointmentDetailPage(): React.ReactElement {
     queryKey: ['appointment-status-updates', appointmentId],
     queryFn: () =>
       clientApi.appointmentStatusUpdates<AppointmentTimeline>(browserApi, appointmentId),
+    enabled: appointment.data?.isMobileService === true,
     refetchInterval: (query) => {
       const status = query.state.data?.currentStatus;
-      return status !== undefined && ['CONFIRMED', 'ON_THE_WAY', 'ARRIVED'].includes(status)
+      const scheduled = appointment.data?.scheduledAt.slice(0, 10);
+      const today = new Date().toISOString().slice(0, 10);
+      return scheduled === today &&
+        status !== undefined &&
+        ['CONFIRMED', 'ON_THE_WAY', 'ARRIVED'].includes(status)
         ? 30_000
         : false;
     },
@@ -163,51 +170,14 @@ export default function AppointmentDetailPage(): React.ReactElement {
             </div>
           )}
           {data.isMobileService === true && timeline.data !== undefined && (
-            <div className="appointment-timeline">
-              <h2>Appointment status</h2>
-              {timeline.data.timeline.map((item) => (
-                <div
-                  className={`timeline-row${item.active ? ' is-current' : ''}`}
-                  key={item.status}
-                >
-                  {item.done ? <CheckCircle2 size={19} /> : <Circle size={19} />}
-                  <div>
-                    <strong>{item.label}</strong>
-                    {item.at !== null && <small>{new Date(item.at).toLocaleString()}</small>}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <StatusTimeline timeline={timeline.data} />
           )}
-          {data.isMobileService === true && serviceAddress != null && mapsKey.length > 0 && (
-            <div className="appointment-map">
-              <LoadScript googleMapsApiKey={mapsKey}>
-                <GoogleMap
-                  center={{ lat: serviceAddress.latitude, lng: serviceAddress.longitude }}
-                  mapContainerClassName="appointment-map-canvas"
-                  zoom={14}
-                  options={{
-                    fullscreenControl: false,
-                    mapTypeControl: false,
-                    streetViewControl: false,
-                  }}
-                >
-                  <MarkerF
-                    position={{
-                      lat: serviceAddress.latitude,
-                      lng: serviceAddress.longitude,
-                    }}
-                  />
-                </GoogleMap>
-              </LoadScript>
-              <div className="appointment-map-label">
-                <MapPin size={17} />
-                <span>
-                  <strong>{data.barber.businessName}</strong>
-                  <small>Mobile service destination</small>
-                </span>
-              </div>
-            </div>
+          {data.isMobileService === true && serviceAddress != null && (
+            <StaticMap
+              address={`${serviceAddress.addressLine1}, ${serviceAddress.city}, ${serviceAddress.state} ${serviceAddress.zipCode}`}
+              latitude={serviceAddress.latitude}
+              longitude={serviceAddress.longitude}
+            />
           )}
           <p>
             <strong>Payment:</strong> {payment.data?.status ?? data.paymentStatus}

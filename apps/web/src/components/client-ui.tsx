@@ -1,16 +1,33 @@
 'use client';
 
-import { Calendar, Heart, Scissors, Star } from 'lucide-react';
-import Link from 'next/link';
-
+import { clientApi } from '@barber-saas/api-client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  appointmentEndsAt,
-  formatShortDate,
-  formatTimeRange,
-  slotEndsAt,
-  slotStartsAt,
-} from '@/lib/booking-time';
-import type { ClientAppointment, PublicBarber, PublicSlot, Review } from '@/lib/contracts';
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Car,
+  CheckCircle2,
+  Circle,
+  Heart,
+  MapPin,
+  Scissors,
+  ShieldCheck,
+  Star,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+
+import { appointmentEndsAt, formatTimeRange, slotEndsAt, slotStartsAt } from '@/lib/booking-time';
+import { browserApi } from '@/lib/browser-api';
+import type {
+  AppointmentTimeline,
+  ClientAppointment,
+  PublicBarber,
+  PublicSlot,
+  Review,
+  TravelEstimate,
+} from '@/lib/contracts';
 
 export function StarRating({
   interactive = false,
@@ -54,6 +71,16 @@ export function BarberCard({
   barber: PublicBarber;
   showSave?: boolean;
 }): React.ReactElement {
+  const queryClient = useQueryClient();
+  const [saved, setSaved] = useState(false);
+  const save = useMutation({
+    mutationFn: () => clientApi.saveBarber(browserApi, barber.id),
+    onMutate: () => setSaved(true),
+    onError: () => setSaved(false),
+    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ['saved-barbers'] }),
+  });
+  const nextSlot = barber.nextAvailableSlot === null ? null : new Date(barber.nextAvailableSlot);
+
   return (
     <article className="market-card">
       <Link href={`/client/barbers/${barber.id}`}>
@@ -71,9 +98,11 @@ export function BarberCard({
             <h3>{barber.businessName}</h3>
             <span className="card-title-actions">
               {barber.mobileService?.isEnabled === true && (
-                <span className="mobile-badge">Mobile</span>
+                <span className="mobile-badge">
+                  <Car size={13} /> Mobile
+                </span>
               )}
-              {showSave && <Heart size={18} />}
+              {barber.isVerified && <ShieldCheck className="verified-icon" size={17} />}
             </span>
           </div>
           <p className="muted">
@@ -89,13 +118,34 @@ export function BarberCard({
               ? 'Services being added'
               : `From $${barber.lowestServicePrice.toFixed(2)}`}
           </p>
+          {barber.serviceCategories.length > 0 && (
+            <p className="muted small barber-categories">
+              {barber.serviceCategories.slice(0, 3).join(' · ')}
+            </p>
+          )}
           <p className="muted small">
-            {barber.nextAvailableSlot === null
+            {nextSlot === null
               ? 'No open slots listed'
-              : `Next: ${new Date(barber.nextAvailableSlot).toLocaleString()}`}
+              : `Next: ${nextSlot.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} at ${nextSlot.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
           </p>
         </div>
       </Link>
+      <div className="market-card-actions">
+        {showSave && (
+          <button
+            aria-label={saved ? `Saved ${barber.businessName}` : `Save ${barber.businessName}`}
+            className={`button button-ghost${saved ? ' is-saved' : ''}`}
+            disabled={save.isPending || saved}
+            onClick={() => save.mutate()}
+            type="button"
+          >
+            <Heart fill={saved ? 'currentColor' : 'none'} size={17} /> {saved ? 'Saved' : 'Save'}
+          </button>
+        )}
+        <Link className="button button-primary" href={`/client/barbers/${barber.id}/book`}>
+          Book now
+        </Link>
+      </div>
     </article>
   );
 }
@@ -113,39 +163,236 @@ export function SlotPicker({
   travelMinutes?: number;
   onSelect: (slot: PublicSlot) => void;
 }): React.ReactElement {
-  const available = slots.filter((slot) => slot.isAvailable);
-  if (available.length === 0) return <p className="muted">No available slots for this range.</p>;
-  return (
-    <div className="slot-grid">
-      {available.map((slot) => {
-        const start = slotStartsAt(slot.date, slot.startTime);
-        const end =
-          durationMinutes === undefined
-            ? slotEndsAt(slot.date, slot.endTime)
-            : appointmentEndsAt(slot.date, slot.startTime, durationMinutes);
+  const available = useMemo(
+    () =>
+      slots
+        .filter((slot) => slot.isAvailable)
+        .sort((left, right) =>
+          `${left.date}T${left.startTime}`.localeCompare(`${right.date}T${right.startTime}`),
+        ),
+    [slots],
+  );
+  const dates = useMemo(() => [...new Set(available.map((slot) => slot.date))], [available]);
+  const selectedSlotDate = available.find((slot) => slot.id === selectedId)?.date;
+  const [selectedDate, setSelectedDate] = useState<string | null>(
+    selectedSlotDate ?? dates[0] ?? null,
+  );
 
-        return (
+  useEffect(() => {
+    if (selectedSlotDate !== undefined) {
+      setSelectedDate(selectedSlotDate);
+      return;
+    }
+    if (selectedDate === null || !dates.includes(selectedDate)) setSelectedDate(dates[0] ?? null);
+  }, [dates, selectedDate, selectedSlotDate]);
+
+  if (available.length === 0) return <p className="muted">No available slots for this range.</p>;
+  const selectedDateIndex = selectedDate === null ? -1 : dates.indexOf(selectedDate);
+  const selectedDateValue = selectedDate === null ? null : new Date(`${selectedDate}T12:00:00`);
+  const selectedSlots = available.filter((slot) => slot.date === selectedDate);
+
+  return (
+    <div className="compact-calendar">
+      <div className="compact-calendar-header">
+        <div>
+          <Calendar size={18} />
+          <span>
+            <strong>
+              {selectedDateValue?.toLocaleDateString([], { month: 'long', year: 'numeric' })}
+            </strong>
+            <small>{dates.length} available days</small>
+          </span>
+        </div>
+        <div className="compact-calendar-arrows">
           <button
-            className={`slot-button${selectedId === slot.id ? ' is-selected' : ''}`}
-            key={slot.id}
-            onClick={() => onSelect(slot)}
+            aria-label="Previous available date"
+            disabled={selectedDateIndex <= 0}
+            onClick={() => setSelectedDate(dates[selectedDateIndex - 1] ?? selectedDate)}
             type="button"
           >
-            <Calendar size={15} />
-            <span>{formatShortDate(start)}</span>
-            <strong>{formatTimeRange(start, end)}</strong>
-            {travelMinutes !== undefined && slot.availableForMobile === true && (
-              <small>{travelMinutes} min travel-ready</small>
-            )}
+            <ChevronLeft size={17} />
           </button>
-        );
-      })}
+          <button
+            aria-label="Next available date"
+            disabled={selectedDateIndex < 0 || selectedDateIndex >= dates.length - 1}
+            onClick={() => setSelectedDate(dates[selectedDateIndex + 1] ?? selectedDate)}
+            type="button"
+          >
+            <ChevronRight size={17} />
+          </button>
+        </div>
+      </div>
+
+      <div className="compact-date-rail" role="list" aria-label="Available dates">
+        {dates.map((date) => {
+          const value = new Date(`${date}T12:00:00`);
+          return (
+            <button
+              aria-pressed={selectedDate === date}
+              className={selectedDate === date ? 'is-selected' : ''}
+              key={date}
+              onClick={() => setSelectedDate(date)}
+              type="button"
+            >
+              <span>{value.toLocaleDateString([], { weekday: 'short' })}</span>
+              <strong>{value.getDate()}</strong>
+              <small>{value.toLocaleDateString([], { month: 'short' })}</small>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="compact-time-heading">
+        <strong>
+          {selectedDateValue?.toLocaleDateString([], {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </strong>
+        <span>{selectedSlots.length} times</span>
+      </div>
+      <div className="compact-time-grid">
+        {selectedSlots.map((slot) => {
+          const start = slotStartsAt(slot.date, slot.startTime);
+          const end =
+            durationMinutes === undefined
+              ? slotEndsAt(slot.date, slot.endTime)
+              : appointmentEndsAt(slot.date, slot.startTime, durationMinutes);
+          return (
+            <button
+              className={selectedId === slot.id ? 'is-selected' : ''}
+              key={slot.id}
+              onClick={() => onSelect(slot)}
+              title={formatTimeRange(start, end)}
+              type="button"
+            >
+              <strong>
+                {start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              </strong>
+              {durationMinutes !== undefined && <small>{durationMinutes} min</small>}
+              {travelMinutes !== undefined && slot.availableForMobile === true && (
+                <small>Travel-ready</small>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 export function AppointmentStatusBadge({ status }: { status: string }): React.ReactElement {
-  return <span className={`status-badge status-${status.toLowerCase()}`}>{status}</span>;
+  const label = status === 'ON_THE_WAY' ? 'On the way' : status.replaceAll('_', ' ');
+  return <span className={`status-badge status-${status.toLowerCase()}`}>{label}</span>;
+}
+
+export function TravelEstimateCard({
+  estimate,
+  isLoading,
+  errorMessage,
+  outsideRadius,
+}: {
+  estimate?: TravelEstimate | undefined;
+  isLoading: boolean;
+  errorMessage?: string | undefined;
+  outsideRadius?: boolean;
+}): React.ReactElement | null {
+  if (isLoading) {
+    return (
+      <div className="travel-estimate-card is-loading" role="status">
+        <span className="skeleton-line" />
+        <span className="skeleton-line short" />
+      </div>
+    );
+  }
+  if (errorMessage !== undefined) {
+    return (
+      <div className={`travel-estimate-card ${outsideRadius === true ? 'is-error' : 'is-warning'}`}>
+        <MapPin size={19} />
+        <div>
+          <strong>
+            {outsideRadius === true ? 'Outside service area' : 'Travel estimate unavailable'}
+          </strong>
+          <span>{errorMessage}</span>
+        </div>
+      </div>
+    );
+  }
+  if (estimate === undefined) return null;
+  return (
+    <div className="travel-estimate-card is-success">
+      <Car size={19} />
+      <div>
+        <strong>
+          {estimate.distanceMiles.toFixed(1)} miles · about {estimate.estimatedTravelMinutes} min
+        </strong>
+        <span>
+          ${estimate.travelFee.toFixed(2)} travel fee
+          {estimate.source === 'mock' ? ' · estimated locally' : ''}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function StatusTimeline({
+  timeline,
+}: {
+  timeline: AppointmentTimeline;
+}): React.ReactElement {
+  return (
+    <div className="appointment-timeline">
+      <h2>Status journey</h2>
+      {timeline.timeline.map((item) => (
+        <div className={`timeline-row${item.active ? ' is-current' : ''}`} key={item.status}>
+          {item.done ? <CheckCircle2 size={19} /> : <Circle size={19} />}
+          <div>
+            <strong>{item.label}</strong>
+            {item.at !== null && <small>{new Date(item.at).toLocaleString()}</small>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function StaticMap({
+  address,
+  latitude,
+  longitude,
+}: {
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+}): React.ReactElement {
+  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
+  const canRender = key.length > 0 && latitude !== null && longitude !== null;
+  if (!canRender)
+    return (
+      <div className="static-map-fallback">
+        <MapPin size={22} />
+        <div>
+          <strong>Mobile service destination</strong>
+          <span>{address}</span>
+        </div>
+      </div>
+    );
+  const params = new URLSearchParams({
+    center: `${latitude},${longitude}`,
+    zoom: '14',
+    size: '600x240',
+    scale: '2',
+    markers: `color:red|${latitude},${longitude}`,
+    key,
+  });
+  return (
+    <img
+      alt={`Map showing ${address}`}
+      className="static-map-image"
+      src={`https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`}
+    />
+  );
 }
 
 export function ReviewCard({ review }: { review: Review }): React.ReactElement {
@@ -190,15 +437,42 @@ export function AppointmentCard({
     <article className="market-card compact-card">
       <div className="card-body">
         <div className="card-title-row">
-          <h3>{appointment.service.name}</h3>
+          <div>
+            <p className="muted small">{appointment.barber.businessName}</p>
+            <h3>{appointment.service.name}</h3>
+          </div>
           <AppointmentStatusBadge status={appointment.status} />
         </div>
-        <p className="muted">{appointment.barber.businessName}</p>
-        <p>{new Date(appointment.scheduledAt).toLocaleString()}</p>
+        <p>
+          {new Date(appointment.scheduledAt).toLocaleString([], {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          })}
+        </p>
+        {appointment.isMobileService === true && appointment.serviceAddress != null && (
+          <p className="appointment-location">
+            <Car size={15} /> Mobile · {appointment.serviceAddress.addressLine1}
+          </p>
+        )}
         <p className="card-meta">${appointment.priceQuoted.toFixed(2)}</p>
-        <Link className="button button-secondary" href={`/client/appointments/${appointment.id}`}>
-          View
-        </Link>
+        <div className="market-card-actions inline-actions">
+          <Link className="button button-secondary" href={`/client/appointments/${appointment.id}`}>
+            View details
+          </Link>
+          {appointment.paymentStatus === 'PENDING' && (
+            <Link className="button button-primary" href={`/client/appointments/${appointment.id}`}>
+              Pay now
+            </Link>
+          )}
+          {appointment.status === 'COMPLETED' && appointment.review === null && (
+            <Link
+              className="button button-primary"
+              href={`/client/appointments/${appointment.id}#review`}
+            >
+              Leave review
+            </Link>
+          )}
+        </div>
       </div>
     </article>
   );

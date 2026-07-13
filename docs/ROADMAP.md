@@ -104,4 +104,15 @@ Status: Complete (July 12, 2026)
 - [x] Mobile-aware availability previews
 - [x] Polled appointment travel-status timelines and destination maps
 
-Next: Phase 8 GPS streaming, WebSocket updates, and push notifications.
+## Milestone 8: Client Marketplace Polish
+
+Status: Complete (July 12, 2026)
+
+- [x] Resilient web and native travel estimates with deterministic fallback
+- [x] Session-aware client navigation and account menu
+- [x] Premium discovery home, barber cards, search filters, and sorting
+- [x] Tabbed barber profiles and polished five-step mobile booking
+- [x] Appointment action cards, status journeys, polling, and map fallback
+- [x] Client profile and complete saved-address management
+
+Next: realtime GPS streaming, WebSocket updates, and push notifications.

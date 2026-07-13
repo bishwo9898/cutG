@@ -1,6 +1,7 @@
+import { ApiError } from '@barber-saas/api-client';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete';
 import type { SelectedPlace } from '@/components/ui/PlacesAutocomplete';
+import { PreciseLocationMap } from '@/components/ui/PreciseLocationMap';
 import { useBarberServices } from '@/hooks/useBarbers';
 import { useClientAddresses, useCreateAddress, useTravelEstimate } from '@/hooks/useMobileBarber';
 import { errorMessage } from '@/lib/errors';
@@ -49,10 +51,11 @@ export default function SelectAddressScreen(): React.ReactElement {
   useEffect(() => {
     const destination = selected ?? oneTime;
     if (destination === null || destination === undefined || barberId.length === 0) return;
+    estimate.reset();
     estimate.mutate({
       barberId,
-      destinationLatitude: destination.latitude,
-      destinationLongitude: destination.longitude,
+      destinationLatitude: Number(destination.latitude),
+      destinationLongitude: Number(destination.longitude),
     });
   }, [barberId, selected?.id, oneTime?.latitude, oneTime?.longitude]);
 
@@ -64,10 +67,13 @@ export default function SelectAddressScreen(): React.ReactElement {
         const saved = await createAddress.mutateAsync({
           label: 'Mobile visit',
           addressLine1: oneTime.addressLine1,
+          addressLine2: oneTime.addressLine2,
           city: oneTime.city,
           state: oneTime.state,
           zipCode: oneTime.zipCode,
           country: 'US',
+          latitude: oneTime.latitude,
+          longitude: oneTime.longitude,
         });
         addressId = saved.id;
       }
@@ -77,6 +83,7 @@ export default function SelectAddressScreen(): React.ReactElement {
         travelMinutes: String(travel?.estimatedTravelMinutes ?? 0),
         travelFee: String(travel?.travelFee ?? 0),
       });
+      if (estimateSoftError) destinationParams.set('estimateUnavailable', 'true');
       if (addressId !== undefined) destinationParams.set('addressId', addressId);
       else if (oneTime !== null) destinationParams.set('address', JSON.stringify(oneTime));
       router.push(`/(client)/discover/${barberId}/book/slot?${destinationParams.toString()}`);
@@ -86,6 +93,9 @@ export default function SelectAddressScreen(): React.ReactElement {
   };
 
   const travel = estimate.data;
+  const outsideRadius =
+    estimate.error instanceof ApiError && estimate.error.code === 'OUTSIDE_SERVICE_AREA';
+  const estimateSoftError = estimate.isError && !outsideRadius;
   return (
     <Screen>
       <ScreenHeader
@@ -122,6 +132,7 @@ export default function SelectAddressScreen(): React.ReactElement {
             setSelectedId(null);
           }}
         />
+        {oneTime !== null ? <PreciseLocationMap place={oneTime} onChange={setOneTime} /> : null}
         {oneTime !== null ? (
           <View style={styles.row}>
             <Text style={[styles.meta, styles.flex]}>Save this address to my profile</Text>
@@ -142,9 +153,36 @@ export default function SelectAddressScreen(): React.ReactElement {
           </Text>
         </Card>
       ) : null}
+      {estimate.isPending ? (
+        <Card>
+          <View style={styles.row}>
+            <ActivityIndicator color={colors.info} />
+            <View style={styles.flex}>
+              <Text style={styles.title}>Calculating travel</Text>
+              <Text style={styles.meta}>Checking distance, drive time, and fee...</Text>
+            </View>
+          </View>
+        </Card>
+      ) : null}
+      {outsideRadius ? (
+        <Card style={styles.errorCard}>
+          <Text style={styles.title}>Outside service area</Text>
+          <Text style={styles.meta}>{errorMessage(estimate.error)}</Text>
+        </Card>
+      ) : null}
+      {estimateSoftError ? (
+        <Card style={styles.warningCard}>
+          <Text style={styles.title}>Travel estimate unavailable</Text>
+          <Text style={styles.meta}>
+            Your barber will confirm arrival details. You can still continue.
+          </Text>
+        </Card>
+      ) : null}
       {error !== null ? <Text style={styles.error}>{error}</Text> : null}
       <Button
-        disabled={estimate.isPending || travel === undefined}
+        disabled={
+          estimate.isPending || outsideRadius || (selected === undefined && oneTime === null)
+        }
         title="Continue"
         onPress={() => void submit()}
       />
@@ -155,10 +193,12 @@ export default function SelectAddressScreen(): React.ReactElement {
 const styles = StyleSheet.create({
   divider: { backgroundColor: colors.border, height: 1, marginVertical: spacing.sm },
   error: { ...typography.bodySmall, color: colors.error },
+  errorCard: { borderColor: colors.error },
   flex: { flex: 1 },
   meta: { ...typography.body, color: colors.textSecondary },
   row: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
   selected: { borderColor: colors.success },
   title: { ...typography.h3, color: colors.textPrimary },
   total: { ...typography.h3, color: colors.gold, marginTop: spacing.sm },
+  warningCard: { borderColor: colors.warning },
 });

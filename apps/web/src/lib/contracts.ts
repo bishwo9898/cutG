@@ -110,6 +110,12 @@ export type TravelEstimate = {
   estimatedTravelMinutes: number;
   travelFeeCents: number;
   travelFee: number;
+  breakdown?: {
+    serviceArea: string;
+    feeStructure: string;
+    calculation: string;
+  };
+  source?: 'google' | 'mock';
 };
 
 export type AppointmentTimeline = {

@@ -16,8 +16,10 @@ let serviceId = '';
 let addressId = '';
 let slotId = '';
 type LoginBody = { accessToken: string };
-type SearchBody = { barbers: Array<{ mobileService: { baseFee: number } | null }> };
-type AddressBody = { id: string; label: string };
+type SearchBody = {
+  barbers: Array<{ mobileService: { baseFee: number } | null; nextAvailableSlot: string | null }>;
+};
+type AddressBody = { id: string; label: string; latitude: number; longitude: number };
 type AddressListBody = { addresses: unknown[] };
 type EstimateBody = { travelFee: number };
 type AppointmentBody = { id: string; status: string };
@@ -75,6 +77,11 @@ describe('Phase 6 mobile barber API', () => {
     const searchBody = search.body as SearchBody;
     expect(searchBody.barbers).toHaveLength(1);
     expect(searchBody.barbers[0]).toHaveProperty('mobileService.baseFee', 15);
+    expect(searchBody.barbers[0]).toHaveProperty('nextAvailableSlot');
+
+    const searchAlias = await request(app).get('/barbers/search?mobileOnly=true');
+    expect(searchAlias.status).toBe(200);
+    expect((searchAlias.body as SearchBody).barbers).toHaveLength(1);
 
     const publicConfig = await request(app).get(`/barbers/${barberId}/mobile`);
     expect(publicConfig.status).toBe(200);
@@ -91,10 +98,10 @@ describe('Phase 6 mobile barber API', () => {
       .set('Authorization', `Bearer ${clientToken}`)
       .send({
         label: 'Home',
-        addressLine1: '456 Oak Ave',
-        city: 'Brooklyn',
-        state: 'NY',
-        zipCode: '11201',
+        addressLine1: '307 W Broadway St',
+        city: 'Danville',
+        state: 'KY',
+        zipCode: '40422',
       });
     expect(created.status).toBe(201);
     expect(created.body).toMatchObject({ isDefault: true, latitude: 40.6892 });
@@ -109,6 +116,16 @@ describe('Phase 6 mobile barber API', () => {
       .set('Authorization', `Bearer ${clientToken}`)
       .send({ label: 'Apartment' });
     expect((renamed.body as AddressBody).label).toBe('Apartment');
+
+    const pinned = await request(app)
+      .patch(`/clients/me/addresses/${addressId}`)
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ latitude: 40.68923, longitude: -73.98514 });
+    expect(pinned.status).toBe(200);
+    expect(pinned.body as AddressBody).toMatchObject({
+      latitude: 40.68923,
+      longitude: -73.98514,
+    });
   });
 
   it('estimates travel, books buffer slots atomically, and advances mobile statuses', async () => {
@@ -140,7 +157,6 @@ describe('Phase 6 mobile barber API', () => {
 
     const estimate = await request(app)
       .post('/barbers/me/mobile/estimate')
-      .set('Authorization', `Bearer ${clientToken}`)
       .send({ barberId, destinationLatitude: 40.6892, destinationLongitude: -73.9851 });
     expect(estimate.status).toBe(200);
     expect((estimate.body as EstimateBody).travelFee).toBe(15);

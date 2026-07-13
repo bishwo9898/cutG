@@ -17,6 +17,7 @@ PATCH /auth/me
 POST /auth/forgot-password
 POST /auth/reset-password
 GET /barbers
+GET /barbers/search
 GET /barbers/:barberId/reviews
 GET /barbers/:barberId/mobile
 GET /clients/me
@@ -75,6 +76,7 @@ All `/barbers/me/*` routes require a bearer token for a `BARBER` account. Public
 | `POST`   | `/barbers/me/subscription/cancel`                | Cancel renewal at period end.         |
 | `POST`   | `/barbers/me/subscription/resume`                | Resume renewal.                       |
 | `GET`    | `/barbers`                                       | Search public barber marketplace.     |
+| `GET`    | `/barbers/search`                                | Compatibility alias for search.       |
 | `GET`    | `/barbers/:barberId`                             | Read a sanitized public profile.      |
 | `GET`    | `/barbers/:barberId/services`                    | List active public services.          |
 | `GET`    | `/barbers/:barberId/slots`                       | List safe public availability.        |
@@ -229,7 +231,7 @@ Validation errors include a `details.issues` array from Zod.
 | `GET`    | `/barbers/me/mobile`                           | Barber                   | Read mobile-service configuration.                |
 | `PUT`    | `/barbers/me/mobile`                           | Barber, BASIC+ to enable | Save radius, origin, fees, and notes.             |
 | `POST`   | `/barbers/me/mobile/disable`                   | Barber                   | Disable mobile service without deleting settings. |
-| `POST`   | `/barbers/me/mobile/estimate`                  | Client or barber         | Calculate distance, driving time, and travel fee. |
+| `POST`   | `/barbers/me/mobile/estimate`                  | Public                   | Calculate distance, driving time, and travel fee. |
 | `GET`    | `/clients/me/addresses`                        | Client                   | List saved addresses.                             |
 | `POST`   | `/clients/me/addresses`                        | Client                   | Geocode and save an address.                      |
 | `PATCH`  | `/clients/me/addresses/:addressId`             | Client                   | Update an owned address.                          |

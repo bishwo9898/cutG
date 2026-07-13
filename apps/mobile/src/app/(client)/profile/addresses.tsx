@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete';
 import type { SelectedPlace } from '@/components/ui/PlacesAutocomplete';
+import { PreciseLocationMap } from '@/components/ui/PreciseLocationMap';
 import {
   useClientAddresses,
   useCreateAddress,
@@ -35,10 +36,13 @@ export default function ClientAddressesScreen(): React.ReactElement {
       await create.mutateAsync({
         label,
         addressLine1: place.addressLine1,
+        addressLine2: place.addressLine2,
         city: place.city,
         state: place.state,
         zipCode: place.zipCode,
         country: 'US',
+        latitude: place.latitude,
+        longitude: place.longitude,
       });
       setAdding(false);
       setPlace(null);
@@ -60,6 +64,9 @@ export default function ClientAddressesScreen(): React.ReactElement {
                 {address.isDefault ? <Badge label="Default" tone="info" /> : null}
               </View>
               <Text style={styles.meta}>{address.addressLine1}</Text>
+              {address.addressLine2 !== null && address.addressLine2 !== undefined ? (
+                <Text style={styles.meta}>{address.addressLine2}</Text>
+              ) : null}
               <Text style={styles.meta}>
                 {address.city}, {address.state} {address.zipCode}
               </Text>
@@ -85,6 +92,7 @@ export default function ClientAddressesScreen(): React.ReactElement {
         <Card>
           <Input label="Label" value={label} onChangeText={setLabel} placeholder="Home" />
           <PlacesAutocomplete onSelect={setPlace} />
+          {place !== null ? <PreciseLocationMap place={place} onChange={setPlace} /> : null}
           <Button
             disabled={place === null || create.isPending}
             title="Save address"

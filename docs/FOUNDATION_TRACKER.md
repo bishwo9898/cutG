@@ -1,12 +1,12 @@
 # Foundation Tracker
 
-Last updated: July 12, 2026
+Last updated: July 13, 2026
 
 This document tracks what has been built so far from the Phase 0 foundation plan and what still needs to be configured locally before the next phase.
 
 ## Current Status
 
-Phase 0 foundation through Phase 7 dual portals and complete Mobile Barber booking are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, Expo application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
+Phase 0 foundation through Phase 8 client marketplace polish are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, Expo application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
 
 Verified commands:
 
@@ -19,7 +19,15 @@ pnpm db:migrate
 pnpm db:seed
 make test
 pnpm --filter @barber-saas/mobile typecheck
+pnpm --filter @barber-saas/web exec next build --webpack
 ```
+
+Latest Phase 8 automated results:
+
+- API: 9 test files, 33 tests passed against the isolated PostgreSQL test database.
+- Web: 5 test files, 15 tests passed.
+- API, web, mobile, shared packages: typecheck passed.
+- ESLint, Prettier check, API build, mobile build, and Next.js production build passed.
 
 Verified live endpoints:
 
@@ -261,6 +269,24 @@ Phase 7 adds:
 - Shared API-client methods and typed web/native response models
 - Portal architecture documentation in `docs/PORTALS.md`
 
+Phase 8 adds:
+
+- Resilient Google Distance Matrix integration with deterministic local fallback on missing keys, provider errors, or network failures
+- Hard `OUTSIDE_SERVICE_AREA` handling and advisory non-radius estimate failures on web and native booking
+- Session-aware client header with search, account avatar/menu, profile/address links, and complete sign-out behavior
+- Consumer marketplace home with quick filters, featured/mobile rails, how-it-works, skeletons, and recently viewed barbers
+- Rich reusable barber and appointment cards with trust, price, category, next-slot, save, payment, and review actions
+- Search rating/price/mobile/verified filters plus relevant, rating, price, and mobile-first sort controls
+- Tabbed public barber profile, mobile-service callout, service-specific booking links, and mobile sticky booking action
+- Client profile activity summary and complete address create/edit/delete/default controls
+- Shared precise-location picker with Places dropdown, current-location permission, reverse geocoding, map clicks, draggable pins, and exact coordinate confirmation
+- Coordinate-aware client address and one-time booking contracts that preserve a selected map point and optional apartment/suite/unit through API persistence
+- Compact booking calendar with an available-date rail, previous/next navigation, and a focused time grid
+- Reusable web travel card, status timeline, and Google Static Maps fallback components
+- Native advisory travel fallback, fee-confirmation state, travel-aware slot fallback, and animated active appointment timeline
+- Detailed client portal documentation in `docs/CLIENT_PORTAL.md`
+- Public `/barbers/search` compatibility alias; barber search and public profiles retain `nextAvailableSlot` and sanitized `mobileService`
+
 Seed accounts use password `password123`:
 
 - `barber1@example.com`
@@ -421,10 +447,11 @@ Current state:
 - Responsive protected dashboard shell
 - Barber dashboard home, profile, services, availability, appointments, and public-preview screens
 - Client marketplace homepage, search, barber profile, booking flow, appointments, appointment detail, and saved barbers
+- Phase 8 featured/mobile discovery rails, recently viewed history, rich cards, profile tabs, sorting, and loading skeletons
 - Public conversion-focused landing page at `/` and client saved-address management
-- Shared client portal navigation with consistent desktop active states and a stable mobile bottom bar
+- Session-aware client portal navigation with header search, account dropdown, sign out, and a stable mobile bottom bar
 - Barber payment setup, earnings, and subscription management pages
-- Responsive Mobile Service settings with Places address autocomplete, current-location permission, reverse geocoding, draggable origin, editable radius, travel fees, and client notes
+- Responsive Mobile Service settings with Places address autocomplete, current-location permission, reverse geocoding, draggable origin, exact-pin/service-area map modes, editable radius, travel fees, and client notes
 - Browser-side forms and state for profile/service/schedule workflows
 - Browser-side forms and state for client booking, cancellation, saved barbers, and reviews
 - Browser-side payment-intent, refund, Connect onboarding, and subscription checkout actions
@@ -456,7 +483,7 @@ Current state:
 - Token-aware API wrapper using `packages/api-client` and automatic refresh retry on `401`
 - TanStack Query hooks for public barber discovery, client appointments, payments, barber dashboard, earnings, and subscriptions
 - Client routes for discover/search, public barber profiles, booking, Stripe payment, appointments, saved barbers, and profile settings
-- Five-step native mobile-booking flow and polled status timeline with destination map
+- Five-step native mobile-booking flow, synchronized precise-location map, advisory estimate fallback, and animated polled status timeline with destination map
 - Barber routes for today, schedule, appointment lists/details, services, earnings, subscription, Stripe Connect, and profile settings
 - Stripe React Native `CardField` payment screen wired to `/payments/create-intent`
 - React Native Maps, Expo Location, Expo Image Picker, Expo Notifications, and Expo Linking dependencies configured
@@ -606,6 +633,7 @@ Generated output:
 | `docs/ARCHITECTURE.md`       | System architecture and scaling path.                 |
 | `docs/BARBERS.md`            | Barber schedule, slot, blocking, and status behavior. |
 | `docs/CLIENTS.md`            | Client discovery, booking, cancellation, and reviews. |
+| `docs/CLIENT_PORTAL.md`      | Client navigation, pages, components, and UX rules.   |
 | `docs/PAYMENTS.md`           | Stripe intents, Connect, webhooks, refunds, and fees. |
 | `docs/SUBSCRIPTIONS.md`      | Tier features, checkout, billing, and gates.          |
 | `docs/DEPLOYMENT.md`         | Deployment notes and production expectations.         |
@@ -742,10 +770,10 @@ Expected health state:
 
 ## Next Phase Readiness
 
-The foundation through Phase 7, including dual web portals and complete web/native Mobile Barber booking flows, is ready for continued implementation. The remaining natural steps are:
+The foundation through Phase 8, including dual portals, complete Mobile Barber booking, and the polished client marketplace, is ready for continued implementation. The remaining natural steps are:
 
 - Complete simulator/device QA and live Stripe/Google Maps acceptance testing with restricted keys
-- Phase 8: realtime GPS tracking, WebSockets, and push notifications
+- Realtime GPS tracking, WebSockets, and push notifications
 - Later phases: S3 uploads, travel analytics, and AI-assisted near-term availability
 
 ## Known Local Notes
@@ -807,6 +835,7 @@ GET /barbers/:barberId/services
 GET /barbers/:barberId/slots
 GET /barbers/:barberId/reviews
 GET /barbers/:barberId/mobile
+GET /barbers/search
 GET /clients/me
 GET /clients/me/saved-barbers
 POST /clients/me/saved-barbers

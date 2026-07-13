@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import { Screen } from '@/components/layout/Screen';
@@ -32,6 +32,18 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const pulse = useRef(new Animated.Value(0.35)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { duration: 700, toValue: 1, useNativeDriver: true }),
+        Animated.timing(pulse, { duration: 700, toValue: 0.35, useNativeDriver: true }),
+      ]),
+    );
+    animation.start();
+    return (): void => animation.stop();
+  }, [pulse]);
 
   const cancel = async (): Promise<void> => {
     try {
@@ -91,6 +103,7 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
                       ? 'Journey started'
                       : `Departed ${new Date(timeline.departedAt).toLocaleTimeString()}`}
                   </Text>
+                  <Text style={styles.meta}>Estimated arrival around {item.startTime}</Text>
                 </View>
               ) : null}
               {timeline?.currentStatus === 'ARRIVED' ? (
@@ -106,14 +119,17 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
               <View style={styles.timeline}>
                 {(timeline?.timeline ?? []).map((entry) => (
                   <View key={entry.status} style={styles.timelineRow}>
-                    <Text
-                      style={[
-                        styles.timelineMarker,
-                        (entry.done || entry.active) && styles.timelineReached,
-                      ]}
-                    >
-                      {entry.done ? '✓' : entry.active ? '●' : '○'}
-                    </Text>
+                    {entry.active ? (
+                      <Animated.Text
+                        style={[styles.timelineMarker, styles.timelineReached, { opacity: pulse }]}
+                      >
+                        ●
+                      </Animated.Text>
+                    ) : (
+                      <Text style={[styles.timelineMarker, entry.done && styles.timelineReached]}>
+                        {entry.done ? '✓' : '○'}
+                      </Text>
+                    )}
                     <View style={styles.timelineCopy}>
                       <Text style={[styles.timelineItem, entry.active && styles.timelineActive]}>
                         {entry.label}

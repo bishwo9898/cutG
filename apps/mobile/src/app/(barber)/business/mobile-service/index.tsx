@@ -1,7 +1,6 @@
 import Slider from '@react-native-community/slider';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import MapView, { Circle, Marker } from 'react-native-maps';
 
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -9,6 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete';
+import type { SelectedPlace } from '@/components/ui/PlacesAutocomplete';
+import { PreciseLocationMap } from '@/components/ui/PreciseLocationMap';
 import { useBarberProfilePrivate } from '@/hooks/useBarberDashboard';
 import { useMobileConfig, useUpdateMobileConfig } from '@/hooks/useMobileBarber';
 import { errorMessage } from '@/lib/errors';
@@ -74,6 +75,15 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
   };
 
   const suggestion = config.data?.suggestedFee;
+  const originPlace: SelectedPlace = {
+    addressLine1: originAddress,
+    city: '',
+    state: '',
+    zipCode: '',
+    latitude,
+    longitude,
+    formattedAddress: originAddress || 'Current mobile-service origin',
+  };
   return (
     <Screen>
       <ScreenHeader showBack title="Mobile Barber" subtitle="Set your travel area and fee." />
@@ -86,31 +96,6 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
       </Card>
       {enabled ? (
         <>
-          <MapView
-            style={styles.map}
-            region={{ latitude, longitude, latitudeDelta: 0.25, longitudeDelta: 0.25 }}
-          >
-            <Marker coordinate={{ latitude, longitude }} />
-            <Circle
-              center={{ latitude, longitude }}
-              radius={radius * 1609.344}
-              fillColor="rgba(233,69,96,0.15)"
-              strokeColor={colors.accent}
-            />
-          </MapView>
-          <Card>
-            <Text style={styles.title}>Service radius: {radius.toFixed(0)} miles</Text>
-            <Slider
-              minimumValue={1}
-              maximumValue={50}
-              step={1}
-              value={radius}
-              onValueChange={setRadius}
-              minimumTrackTintColor={colors.accent}
-              maximumTrackTintColor={colors.border}
-              thumbTintColor={colors.accentLight}
-            />
-          </Card>
           <Card>
             <Text style={styles.title}>Travel fee</Text>
             <View style={styles.segmented}>
@@ -152,6 +137,28 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
               setLongitude(place.longitude);
             }}
           />
+          <PreciseLocationMap
+            place={originPlace}
+            radiusMiles={radius}
+            onChange={(place) => {
+              setOriginAddress(place.formattedAddress);
+              setLatitude(place.latitude);
+              setLongitude(place.longitude);
+            }}
+          />
+          <Card>
+            <Text style={styles.title}>Service radius: {radius.toFixed(0)} miles</Text>
+            <Slider
+              maximumTrackTintColor={colors.border}
+              maximumValue={50}
+              minimumTrackTintColor={colors.accent}
+              minimumValue={1}
+              onValueChange={setRadius}
+              step={1}
+              thumbTintColor={colors.accentLight}
+              value={radius}
+            />
+          </Card>
           <Input
             label="Notes for clients"
             value={notes}
@@ -175,7 +182,6 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  map: { borderRadius: 8, height: 260, overflow: 'hidden' },
   message: { ...typography.bodySmall, color: colors.textSecondary },
   meta: { ...typography.bodySmall, color: colors.textSecondary },
   segment: { borderRadius: 6, flex: 1, padding: spacing.sm },

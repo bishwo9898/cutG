@@ -1,6 +1,4 @@
 import { env } from '../../config/env';
-import { AppError } from '../../middleware/errorHandler';
-
 export type Coordinates = { latitude: number; longitude: number };
 export type TravelMetrics = {
   distanceMiles: number;
@@ -64,25 +62,17 @@ export const getTravelMetrics = async (
       `https://maps.googleapis.com/maps/api/distancematrix/json?${parameters.toString()}`,
     );
   } catch {
-    throw new AppError(503, 'Travel estimates are temporarily unavailable.', 'MAPS_UNAVAILABLE');
+    return mockDistance(origin, destination);
   }
   const body = (await response.json()) as DistanceMatrixResponse;
   const element = body.rows?.[0]?.elements?.[0];
   if (!response.ok || body.status !== 'OK' || element?.status !== 'OK') {
-    throw new AppError(
-      422,
-      'Could not calculate travel for this address.',
-      'TRAVEL_ESTIMATE_FAILED',
-    );
+    return mockDistance(origin, destination);
   }
   const meters = element.distance?.value;
   const seconds = element.duration?.value;
   if (meters === undefined || seconds === undefined) {
-    throw new AppError(
-      422,
-      'Could not calculate travel for this address.',
-      'TRAVEL_ESTIMATE_FAILED',
-    );
+    return mockDistance(origin, destination);
   }
   return {
     distanceMiles: Number((meters / 1609.344).toFixed(2)),

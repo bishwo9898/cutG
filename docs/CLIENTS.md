@@ -1,7 +1,7 @@
 # Clients
 
-Phase 3 adds the client marketplace side of cutG: discovery, saved barbers, appointment booking,
-cancellation, and reviews.
+The client marketplace covers discovery, saved barbers, appointment booking, cancellation, reviews,
+and the polished Phase 8 consumer portal. See `docs/CLIENT_PORTAL.md` for page-level UI behavior.
 
 ## Client Identity
 
@@ -98,9 +98,14 @@ Booking is atomic. Inside one transaction the API:
 
 Mobile bookings add one address decision step before slot selection:
 
-- Choose a saved address, search a one-time address, or use browser location autofill.
+- Choose a saved address, search a one-time address, use browser location autofill, click the map, or drag the exact-location pin.
+- Places suggestions and map interactions share one selected value; accepted latitude/longitude coordinates are persisted without a second geocode.
 - The web flow estimates distance, travel minutes, fee, travel-ready slots, barber departure timing, and projected finish time before confirmation.
 - Saved addresses can also be managed separately from `/client/profile/addresses`.
+- Address changes debounce travel estimation by 500 ms. Only `OUTSIDE_SERVICE_AREA` blocks progress;
+  other estimate failures remain advisory and let the client continue.
+- Google travel failures fall back to the deterministic local distance model, matching no-key local
+  development behavior.
 
 No payment is collected in Phase 3. The web UI labels bookings as pay-at-the-shop.
 
@@ -150,13 +155,15 @@ Public review lists hide client identity beyond first name and last initial.
 
 Client-facing pages now exist in `apps/web`:
 
-- `/`: marketplace homepage and featured barbers.
-- `/barbers`: search, filters, Danville/mobile presets, and verified/mobile toggles.
-- `/barbers/:barberId`: public profile, services, slots, reviews, and save action.
-- `/barbers/:barberId/book`: service, appointment type, address, slot, and confirmation flow.
-- `/appointments`: client appointment list.
-- `/appointments/:appointmentId`: appointment detail, cancellation, and review form.
-- `/saved`: saved barber list.
-- `/client/profile/addresses`: saved-address management with Places search and current-location autofill.
+- `/client`: hero search, quick filters, featured/mobile sections, and recently viewed barbers.
+- `/client/barbers`: search, filters, sort, Danville/mobile presets, and verified/mobile toggles.
+- `/client/barbers/:barberId`: tabbed public profile, mobile service, slots, reviews, and save action.
+- `/client/barbers/:barberId/book`: service, appointment type, address, estimate, slot, and confirmation flow.
+- `/client/appointments`: upcoming/past appointment list with status and contextual actions.
+- `/client/appointments/:appointmentId`: status journey, map fallback, payment, cancellation, and review form.
+- `/client/saved`: saved barber list.
+- `/client/profile`: identity and client activity summary.
+- `/client/profile/addresses`: saved-address management with Places suggestions, current-location autofill, map selection, and a draggable precise-location pin.
 
-The barber dashboard remains under `/dashboard`.
+Legacy unprefixed routes redirect to these canonical client routes. The barber dashboard remains under
+`/barber/dashboard`.

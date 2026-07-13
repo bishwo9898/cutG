@@ -43,7 +43,7 @@ export const TravelEstimateSchema = z.object({
 });
 export type TravelEstimateRequest = z.infer<typeof TravelEstimateSchema>;
 
-export const SaveAddressSchema = z.object({
+const AddressFieldsSchema = z.object({
   label: z.string().trim().min(1).max(50),
   addressLine1: z.string().trim().min(1).max(200),
   addressLine2: z.string().trim().max(100).optional(),
@@ -51,19 +51,39 @@ export const SaveAddressSchema = z.object({
   state: z.string().trim().min(1).max(50),
   zipCode: z.string().trim().min(1).max(20),
   country: z.string().trim().length(2).default('US'),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+});
+
+const coordinatesArePaired = (value: {
+  latitude?: number | undefined;
+  longitude?: number | undefined;
+}): boolean => (value.latitude === undefined) === (value.longitude === undefined);
+
+export const SaveAddressSchema = AddressFieldsSchema.refine(coordinatesArePaired, {
+  message: 'Latitude and longitude must be provided together',
+  path: ['latitude'],
 });
 export type SaveAddressRequest = z.infer<typeof SaveAddressSchema>;
 
-export const UpdateAddressSchema = SaveAddressSchema.partial().refine(
-  (value) => Object.keys(value).length > 0,
-  {
+export const UpdateAddressSchema = AddressFieldsSchema.partial()
+  .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required',
-  },
-);
+  })
+  .refine(coordinatesArePaired, {
+    message: 'Latitude and longitude must be provided together',
+    path: ['latitude'],
+  });
 export type UpdateAddressRequest = z.infer<typeof UpdateAddressSchema>;
 export const AddressParamsSchema = z.object({ addressId: z.string().uuid() });
 
-export const OneTimeAddressSchema = SaveAddressSchema.omit({ label: true });
+export const OneTimeAddressSchema = AddressFieldsSchema.omit({ label: true }).refine(
+  coordinatesArePaired,
+  {
+    message: 'Latitude and longitude must be provided together',
+    path: ['latitude'],
+  },
+);
 export type OneTimeAddressRequest = z.infer<typeof OneTimeAddressSchema>;
 
 export const BookMobileAppointmentExtensionSchema = z

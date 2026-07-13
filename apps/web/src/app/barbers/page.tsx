@@ -21,10 +21,12 @@ function BarberSearchPageContent(): React.ReactElement {
   const [state, setState] = useState(searchParams.get('state') ?? '');
   const [category, setCategory] = useState(searchParams.get('category') ?? '');
   const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') ?? '');
+  const [minRating, setMinRating] = useState(searchParams.get('minRating') ?? '');
+  const [sort, setSort] = useState(searchParams.get('sort') ?? 'relevant');
   const [mobileOnly, setMobileOnly] = useState(searchParams.get('mobileOnly') === 'true');
   const [verifiedOnly, setVerifiedOnly] = useState(searchParams.get('verified') === 'true');
 
-  const params = Object.fromEntries(searchParams.entries());
+  const params = Object.fromEntries([...searchParams.entries()].filter(([key]) => key !== 'sort'));
   const { data, isLoading } = useQuery({
     queryKey: ['barber-search', params],
     queryFn: () => barberDiscoveryApi.search<Response>(browserApi, params),
@@ -38,10 +40,27 @@ function BarberSearchPageContent(): React.ReactElement {
     if (state.trim()) next.set('state', state.trim());
     if (category) next.set('category', category);
     if (maxPrice.trim()) next.set('maxPrice', maxPrice.trim());
+    if (minRating) next.set('minRating', minRating);
+    if (sort !== 'relevant') next.set('sort', sort);
     if (mobileOnly) next.set('mobileOnly', 'true');
     if (verifiedOnly) next.set('verified', 'true');
     router.push(`/client/barbers?${next.toString()}`);
   };
+
+  const sortedBarbers = [...(data?.barbers ?? [])].sort((left, right) => {
+    if (sort === 'rating') return right.averageRating - left.averageRating;
+    if (sort === 'price')
+      return (
+        (left.lowestServicePrice ?? Number.MAX_SAFE_INTEGER) -
+        (right.lowestServicePrice ?? Number.MAX_SAFE_INTEGER)
+      );
+    if (sort === 'mobile')
+      return (
+        Number(right.mobileService?.isEnabled === true) -
+        Number(left.mobileService?.isEnabled === true)
+      );
+    return 0;
+  });
 
   const applyPreset = (updates: Record<string, string | null>): void => {
     const next = new URLSearchParams(searchParams.toString());
@@ -131,6 +150,19 @@ function BarberSearchPageContent(): React.ReactElement {
               </select>
             </div>
             <div className="field">
+              <label htmlFor="minRating">Minimum rating</label>
+              <select
+                id="minRating"
+                className="select"
+                value={minRating}
+                onChange={(event) => setMinRating(event.target.value)}
+              >
+                <option value="">Any rating</option>
+                <option value="4">4 stars and up</option>
+                <option value="4.5">4.5 stars and up</option>
+              </select>
+            </div>
+            <div className="field">
               <label htmlFor="maxPrice">Max price</label>
               <input
                 id="maxPrice"
@@ -171,13 +203,36 @@ function BarberSearchPageContent(): React.ReactElement {
                   : 'Available barbers'}
               </h1>
             </div>
-            <p className="muted">{data?.pagination.total ?? 0} results</p>
+            <div className="results-sort">
+              <span className="muted">{data?.pagination.total ?? 0} results</span>
+              <select
+                aria-label="Sort barbers"
+                className="select"
+                value={sort}
+                onChange={(event) => {
+                  setSort(event.target.value);
+                  const next = new URLSearchParams(searchParams.toString());
+                  if (event.target.value === 'relevant') next.delete('sort');
+                  else next.set('sort', event.target.value);
+                  router.push(`/client/barbers?${next.toString()}`);
+                }}
+              >
+                <option value="relevant">Most relevant</option>
+                <option value="rating">Highest rated</option>
+                <option value="price">Lowest price</option>
+                <option value="mobile">Mobile first</option>
+              </select>
+            </div>
           </div>
           {isLoading ? (
-            <p className="muted">Loading barbers...</p>
+            <div className="barber-grid">
+              {Array.from({ length: 6 }, (_, index) => (
+                <div className="market-card skeleton-card" key={index} />
+              ))}
+            </div>
           ) : (
             <div className="barber-grid">
-              {(data?.barbers ?? []).map((barber) => (
+              {sortedBarbers.map((barber) => (
                 <BarberCard barber={barber} key={barber.id} showSave />
               ))}
             </div>

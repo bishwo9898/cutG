@@ -92,10 +92,15 @@ barberRouter.get(
   }),
 );
 
+barberRouter.get(
+  '/search',
+  asyncHandler(async (request, response) => {
+    response.json(await searchBarbers(BarberSearchQuerySchema.parse(request.query)));
+  }),
+);
+
 barberRouter.post(
   '/me/mobile/estimate',
-  requireAuth,
-  requireRoles('BARBER', 'CLIENT'),
   asyncHandler(async (request, response) => {
     response.json(await estimateTravel(TravelEstimateSchema.parse(request.body)));
   }),

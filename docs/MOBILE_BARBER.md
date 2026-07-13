@@ -1,6 +1,6 @@
 # Mobile Barber
 
-Last updated: July 11, 2026
+Last updated: July 13, 2026
 
 Phase 6 adds on-demand mobile service to cutG. BASIC and PREMIUM barbers can define a travel area and fee, clients can manage service addresses, and mobile appointments reserve travel time before the booked slot.
 
@@ -37,6 +37,8 @@ The barber dashboard at `/dashboard/mobile-service` keeps the origin address, co
 - Selecting a suggestion moves the map and service-area circle to that address.
 - Clicking the map or dragging the marker updates the coordinates and reverse-geocodes the address field.
 - **Use my location** requests browser location permission, centers the map on the device position, and reverse-geocodes it into the origin field.
+- **Exact pin** uses street-level zoom for origin placement; **Service area** frames the configured radius without changing the saved center.
+- The selected address and six-decimal coordinates remain visible below the map before saving.
 - Location denial and Google Maps loading failures produce actionable messages without discarding existing settings.
 - Fee structure, travel fee, public visit notes, enabled state, and service area are saved together through `PUT /barbers/me/mobile`.
 
@@ -44,7 +46,11 @@ Browser geolocation requires a secure context. HTTPS is required in production; 
 
 ## Travel Estimates
 
-With `GOOGLE_MAPS_API_KEY` configured, the API uses Google Distance Matrix in driving mode with a current departure time. Without a key in development and test, it uses a deterministic route estimate based on Haversine distance, a 1.2 road-distance multiplier, and a 25 mph assumed speed. Production should always use a restricted server key.
+With `GOOGLE_MAPS_API_KEY` configured, the API uses Google Distance Matrix in driving mode with a current departure time. Without a key in development and test, it uses a deterministic route estimate based on Haversine distance, a 1.2 road-distance multiplier, and a 25 mph assumed speed. If Google is unavailable or rejects a distance request, the same deterministic model provides a resilient fallback. Production should still use a restricted server key.
+
+Client estimate behavior distinguishes hard and soft failures. `OUTSIDE_SERVICE_AREA` blocks mobile
+booking. Network, provider, and unexpected estimate failures display an advisory message and preserve
+progress so the barber can confirm arrival details.
 
 Fee calculation:
 
@@ -77,7 +83,9 @@ Travel buffers are excluded from public slot responses. Client cancellation, bar
 
 ## Saved Addresses
 
-Client addresses are owned by `users.id` and store coordinates after the first geocode. The first address becomes the default. A partial update only geocodes again when physical address fields change. Deleting the default promotes the most recently created remaining address. A partial unique index guarantees at most one default per client.
+Client addresses are owned by `users.id` and store coordinates after the first geocode. Web and native clients submit coordinates produced by Places, current location, map taps, or marker dragging; the API treats those paired coordinates as authoritative. Text-only address submissions continue to use server geocoding. The first address becomes the default. A partial update only geocodes again when physical address fields change without coordinates. Deleting the default promotes the most recently created remaining address. A partial unique index guarantees at most one default per client.
+
+Latitude and longitude must be supplied together. The shared contracts reject half-specified coordinates, while one-time booking addresses carry the same precise pair and optional apartment/suite/unit into the appointment snapshot.
 
 Appointment rows copy the service address and coordinates. Removing a saved address therefore does not erase historical appointment location details.
 
@@ -88,7 +96,7 @@ Appointment rows copy the service address and coordinates. Removing a saved addr
 | `GET`    | `/barbers/me/mobile`                           | BARBER                   | Read config and platform fee suggestion.            |
 | `PUT`    | `/barbers/me/mobile`                           | BARBER, BASIC+ to enable | Create or replace config.                           |
 | `POST`   | `/barbers/me/mobile/disable`                   | BARBER                   | Disable without deleting config.                    |
-| `POST`   | `/barbers/me/mobile/estimate`                  | BARBER or CLIENT         | Validate radius and return distance, time, and fee. |
+| `POST`   | `/barbers/me/mobile/estimate`                  | Public                   | Validate radius and return distance, time, and fee. |
 | `GET`    | `/clients/me/addresses`                        | CLIENT                   | List owned saved addresses.                         |
 | `POST`   | `/clients/me/addresses`                        | CLIENT                   | Geocode and save an address.                        |
 | `PATCH`  | `/clients/me/addresses/:addressId`             | CLIENT                   | Update an owned address.                            |

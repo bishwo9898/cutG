@@ -9,7 +9,7 @@ import {
   type Libraries,
 } from '@react-google-maps/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LocateFixed, MapPin, Navigation, Save } from 'lucide-react';
+import { Crosshair, LocateFixed, Map, MapPin, Navigation, Save } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Notice } from '@/components/notice';
@@ -53,6 +53,7 @@ export default function MobileServicePage(): React.ReactElement {
   const [mapLoadError, setMapLoadError] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [mapMode, setMapMode] = useState<'pin' | 'radius'>('radius');
   const circle = useRef<google.maps.Circle | null>(null);
   const autocomplete = useRef<google.maps.places.Autocomplete | null>(null);
 
@@ -115,6 +116,7 @@ export default function MobileServicePage(): React.ReactElement {
       return;
     }
     setOrigin(lat, lng, place?.formatted_address ?? place?.name);
+    setMapMode('pin');
   };
 
   const useCurrentLocation = (): void => {
@@ -128,6 +130,7 @@ export default function MobileServicePage(): React.ReactElement {
       ({ coords }) => {
         setLocating(false);
         reverseGeocode(coords.latitude, coords.longitude);
+        setMapMode('pin');
       },
       (geolocationError) => {
         setLocating(false);
@@ -249,15 +252,34 @@ export default function MobileServicePage(): React.ReactElement {
                   </button>
                 </div>
                 {locationError !== null && <Notice>{locationError}</Notice>}
+                <div className="map-mode-control" role="group" aria-label="Map view">
+                  <button
+                    className={mapMode === 'pin' ? 'is-active' : ''}
+                    onClick={() => setMapMode('pin')}
+                    type="button"
+                  >
+                    <Crosshair size={15} /> Exact pin
+                  </button>
+                  <button
+                    className={mapMode === 'radius' ? 'is-active' : ''}
+                    onClick={() => setMapMode('radius')}
+                    type="button"
+                  >
+                    <Map size={15} /> Service area
+                  </button>
+                </div>
                 <GoogleMap
                   center={{ lat: latitude, lng: longitude }}
                   mapContainerClassName="mobile-service-map"
                   onClick={(event) => {
                     const lat = event.latLng?.lat();
                     const lng = event.latLng?.lng();
-                    if (lat !== undefined && lng !== undefined) reverseGeocode(lat, lng);
+                    if (lat !== undefined && lng !== undefined) {
+                      reverseGeocode(lat, lng);
+                      setMapMode('pin');
+                    }
                   }}
-                  zoom={10}
+                  zoom={mapMode === 'pin' ? 18 : radius <= 5 ? 12 : radius <= 15 ? 10 : 9}
                   options={{
                     fullscreenControl: false,
                     mapTypeControl: false,
@@ -271,7 +293,10 @@ export default function MobileServicePage(): React.ReactElement {
                     onDragEnd={(event) => {
                       const lat = event.latLng?.lat();
                       const lng = event.latLng?.lng();
-                      if (lat !== undefined && lng !== undefined) reverseGeocode(lat, lng);
+                      if (lat !== undefined && lng !== undefined) {
+                        reverseGeocode(lat, lng);
+                        setMapMode('pin');
+                      }
                     }}
                   />
                   <CircleF
@@ -332,9 +357,9 @@ export default function MobileServicePage(): React.ReactElement {
               />
             </div>
             <div className="coordinate-row">
-              <span>Origin coordinates</span>
+              <span>Exact origin coordinates</span>
               <code>
-                {latitude.toFixed(5)}, {longitude.toFixed(5)}
+                {latitude.toFixed(6)}, {longitude.toFixed(6)}
               </code>
             </div>
           </div>

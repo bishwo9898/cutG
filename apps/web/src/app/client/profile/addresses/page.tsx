@@ -1,30 +1,45 @@
 'use client';
 
 import { clientApi } from '@barber-saas/api-client';
-import { Autocomplete, LoadScript, type Libraries } from '@react-google-maps/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Home, LocateFixed, MapPin, Plus, Trash2 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { Home, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { useState } from 'react';
 
 import { ClientHeader } from '@/components/client-header';
 import { Notice } from '@/components/notice';
+import { PreciseLocationPicker } from '@/components/precise-location-picker';
 import { browserApi } from '@/lib/browser-api';
 import type { ClientAddress } from '@/lib/contracts';
 import { errorMessage } from '@/lib/errors';
-import { placeToResolvedAddress, reverseGeocodeCoordinates } from '@/lib/google-address';
+import type { ResolvedGoogleAddress } from '@/lib/google-address';
 
 type AddressList = { addresses: ClientAddress[] };
-const emptyForm = { label: '', addressLine1: '', city: '', state: '', zipCode: '' };
+type AddressForm = {
+  label: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  latitude?: number;
+  longitude?: number;
+};
+const emptyForm: AddressForm = {
+  label: '',
+  addressLine1: '',
+  addressLine2: '',
+  city: '',
+  state: '',
+  zipCode: '',
+};
 const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
-const mapsLibraries: Libraries = ['places'];
 
 export default function ClientAddressesPage(): React.ReactElement {
   const queryClient = useQueryClient();
-  const autocomplete = useRef<google.maps.places.Autocomplete | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [locating, setLocating] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [mapsLoadError, setMapsLoadError] = useState(false);
+  const [addressSearch, setAddressSearch] = useState('');
+  const [preciseLocation, setPreciseLocation] = useState<ResolvedGoogleAddress | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const addresses = useQuery({
     queryKey: ['client-addresses'],
     queryFn: () => clientApi.addresses<AddressList>(browserApi),
@@ -36,6 +51,8 @@ export default function ClientAddressesPage(): React.ReactElement {
     mutationFn: () => clientApi.createAddress<ClientAddress>(browserApi, form),
     onSuccess: async () => {
       setForm(emptyForm);
+      setAddressSearch('');
+      setPreciseLocation(null);
       await refresh();
     },
   });
@@ -43,71 +60,79 @@ export default function ClientAddressesPage(): React.ReactElement {
     mutationFn: (id: string) => clientApi.deleteAddress(browserApi, id),
     onSuccess: refresh,
   });
+  const edit = useMutation({
+    mutationFn: () => clientApi.updateAddress<ClientAddress>(browserApi, editingId ?? '', form),
+    onSuccess: async () => {
+      setForm(emptyForm);
+      setAddressSearch('');
+      setPreciseLocation(null);
+      setEditingId(null);
+      await refresh();
+    },
+  });
   const setDefault = useMutation({
     mutationFn: (id: string) => clientApi.setDefaultAddress(browserApi, id),
     onSuccess: refresh,
   });
-  const update = (key: keyof typeof form, value: string): void =>
-    setForm((current) => ({ ...current, [key]: value }));
-  const canSubmit = Object.values(form).every((value) => value.trim().length > 0);
-  const choosePlace = (): void => {
-    const place = autocomplete.current?.getPlace();
-    if (place === undefined) return;
+  const update = (
+    key: 'label' | 'addressLine1' | 'addressLine2' | 'city' | 'state' | 'zipCode',
+    value: string,
+  ): void => {
+    setForm((current) => {
+      const next = { ...current, [key]: value };
+      if (key !== 'label' && key !== 'addressLine2') {
+        delete next.latitude;
+        delete next.longitude;
+      }
+      return next;
+    });
+    if (key !== 'label' && key !== 'addressLine2') setPreciseLocation(null);
+  };
+  const canSubmit =
+    form.label.trim().length > 0 &&
+    form.addressLine1.trim().length > 0 &&
+    form.city.trim().length > 0 &&
+    form.state.trim().length > 0 &&
+    form.zipCode.trim().length > 0;
+  const beginEdit = (address: ClientAddress): void => {
+    setEditingId(address.id);
+    setForm({
+      label: address.label,
+      addressLine1: address.addressLine1,
+      addressLine2: address.addressLine2 ?? '',
+      city: address.city,
+      state: address.state,
+      zipCode: address.zipCode,
+      latitude: address.latitude,
+      longitude: address.longitude,
+    });
+    const formattedAddress = `${address.addressLine1}, ${address.city}, ${address.state} ${address.zipCode}`;
+    setAddressSearch(formattedAddress);
+    setPreciseLocation({
+      addressLine1: address.addressLine1,
+      city: address.city,
+      state: address.state,
+      zipCode: address.zipCode,
+      country: address.country,
+      latitude: address.latitude,
+      longitude: address.longitude,
+      formattedAddress,
+    });
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  };
 
-    const resolved = placeToResolvedAddress(place);
-    if (resolved === null) {
-      setLocationError('Choose a full street address from the suggestions.');
-      return;
-    }
-
+  const choosePreciseLocation = (resolved: ResolvedGoogleAddress): void => {
+    setPreciseLocation(resolved);
     setForm((current) => ({
       ...current,
       addressLine1: resolved.addressLine1,
+      addressLine2: resolved.addressLine2 ?? '',
       city: resolved.city,
       state: resolved.state,
       zipCode: resolved.zipCode,
+      latitude: resolved.latitude,
+      longitude: resolved.longitude,
     }));
-    setLocationError(null);
-  };
-
-  const useCurrentLocation = (): void => {
-    setLocationError(null);
-    if (!('geolocation' in navigator)) {
-      setLocationError('Location access is not available in this browser.');
-      return;
-    }
-
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setLocating(false);
-        void (async (): Promise<void> => {
-          const resolved = await reverseGeocodeCoordinates(coords.latitude, coords.longitude);
-
-          if (resolved === null) {
-            setLocationError('Your location was found, but the address could not be resolved.');
-            return;
-          }
-
-          setForm((current) => ({
-            ...current,
-            addressLine1: resolved.addressLine1,
-            city: resolved.city,
-            state: resolved.state,
-            zipCode: resolved.zipCode,
-          }));
-        })();
-      },
-      (geolocationError) => {
-        setLocating(false);
-        setLocationError(
-          geolocationError.code === geolocationError.PERMISSION_DENIED
-            ? 'Allow location access in your browser to autofill your address.'
-            : 'Your current location could not be determined.',
-        );
-      },
-      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
-    );
   };
 
   return (
@@ -133,6 +158,7 @@ export default function ClientAddressesPage(): React.ReactElement {
                     {address.isDefault && <span className="mobile-badge">Default</span>}
                   </div>
                   <p>{address.addressLine1}</p>
+                  {address.addressLine2 !== null && <small>{address.addressLine2}</small>}
                   <small>
                     {address.city}, {address.state} {address.zipCode}
                   </small>
@@ -148,6 +174,14 @@ export default function ClientAddressesPage(): React.ReactElement {
                     </button>
                   )}
                   <button
+                    aria-label={`Edit ${address.label}`}
+                    className="icon-button"
+                    onClick={() => beginEdit(address)}
+                    type="button"
+                  >
+                    <Pencil size={17} />
+                  </button>
+                  <button
                     aria-label={`Delete ${address.label}`}
                     className="icon-button"
                     onClick={() => remove.mutate(address.id)}
@@ -161,8 +195,24 @@ export default function ClientAddressesPage(): React.ReactElement {
           </div>
           <section className="panel">
             <div className="panel-header">
-              <h2>Add an address</h2>
-              <Plus size={18} />
+              <h2>{editingId === null ? 'Add an address' : 'Edit address'}</h2>
+              {editingId === null ? (
+                <Plus size={18} />
+              ) : (
+                <button
+                  aria-label="Cancel editing"
+                  className="icon-button"
+                  onClick={() => {
+                    setEditingId(null);
+                    setForm(emptyForm);
+                    setAddressSearch('');
+                    setPreciseLocation(null);
+                  }}
+                  type="button"
+                >
+                  <X size={17} />
+                </button>
+              )}
             </div>
             <div className="panel-body form-stack">
               <div className="field">
@@ -184,58 +234,39 @@ export default function ClientAddressesPage(): React.ReactElement {
                     onChange={(event) => update('addressLine1', event.target.value)}
                   />
                 ) : (
-                  <LoadScript
-                    googleMapsApiKey={mapsKey}
-                    libraries={mapsLibraries}
-                    onError={() => setMapsLoadError(true)}
-                    onLoad={() => setMapsLoadError(false)}
-                  >
-                    <div className="booking-address-tools">
-                      <Autocomplete
-                        onLoad={(instance) => {
-                          autocomplete.current = instance;
-                        }}
-                        onPlaceChanged={choosePlace}
-                        options={{
-                          componentRestrictions: { country: 'us' },
-                          fields: ['address_components', 'formatted_address', 'geometry', 'name'],
-                          types: ['address'],
-                        }}
-                      >
-                        <div className="input-with-icon">
-                          <MapPin size={17} />
-                          <input
-                            id="addressLine1"
-                            autoComplete="off"
-                            placeholder="Search for an address"
-                            value={form.addressLine1}
-                            onChange={(event) => update('addressLine1', event.target.value)}
-                          />
-                        </div>
-                      </Autocomplete>
-                      <button
-                        className="button button-secondary"
-                        disabled={locating}
-                        onClick={useCurrentLocation}
-                        type="button"
-                      >
-                        <LocateFixed size={16} />
-                        {locating ? 'Locating...' : 'Use my location'}
-                      </button>
-                    </div>
-                  </LoadScript>
+                  <PreciseLocationPicker
+                    inputId="addressLine1"
+                    onLocationChange={choosePreciseLocation}
+                    onSearchValueChange={(value) => {
+                      setAddressSearch(value);
+                      if (value !== preciseLocation?.formattedAddress) {
+                        setPreciseLocation(null);
+                        setForm((current) => {
+                          const next = { ...current, addressLine1: value };
+                          delete next.latitude;
+                          delete next.longitude;
+                          return next;
+                        });
+                      }
+                    }}
+                    searchValue={addressSearch}
+                    value={preciseLocation}
+                  />
                 )}
                 <p className="field-help">
-                  Search or use your current location to fill the address.
+                  Search, use your current location, or drag the pin to the exact entrance.
                 </p>
               </div>
-              {mapsLoadError && (
-                <Notice>
-                  Google Maps could not load. Check the web key restrictions for
-                  `http://localhost:3000/*`.
-                </Notice>
-              )}
-              {locationError !== null && <Notice>{locationError}</Notice>}
+              <div className="field">
+                <label htmlFor="addressLine2">Apartment, suite, or unit</label>
+                <input
+                  className="input"
+                  id="addressLine2"
+                  value={form.addressLine2}
+                  onChange={(event) => update('addressLine2', event.target.value)}
+                  placeholder="Optional"
+                />
+              </div>
               {(['city', 'state', 'zipCode'] as const).map((key) => (
                 <div className="field" key={key}>
                   <label htmlFor={key}>
@@ -252,12 +283,17 @@ export default function ClientAddressesPage(): React.ReactElement {
               <button
                 className="button button-primary"
                 disabled={!canSubmit || create.isPending}
-                onClick={() => create.mutate()}
+                onClick={() => (editingId === null ? create.mutate() : edit.mutate())}
                 type="button"
               >
-                {create.isPending ? 'Saving...' : 'Save address'}
+                {create.isPending || edit.isPending
+                  ? 'Saving...'
+                  : editingId === null
+                    ? 'Save address'
+                    : 'Update address'}
               </button>
               {create.isError && <Notice>{errorMessage(create.error)}</Notice>}
+              {edit.isError && <Notice>{errorMessage(edit.error)}</Notice>}
               {remove.isError && <Notice>{errorMessage(remove.error)}</Notice>}
             </div>
           </section>

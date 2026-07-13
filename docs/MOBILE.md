@@ -82,10 +82,13 @@ Implemented route groups under `apps/mobile/src/app/(client)`:
 - Discover and search barbers
 - Public barber profile with services, availability, reviews, save action, and Book Now
 - Booking flow: select service, select slot, confirm, pay at shop or continue to Stripe
+- Mobile booking address estimates with hard radius enforcement and advisory provider-failure fallback
+- Synchronized native Places selection, current location, map taps, draggable pins, and exact coordinate persistence for client and barber addresses
 - Stripe card payment screen using `CardField` and `confirmPayment`
 - Appointment list, detail, cancellation, payment status, and review submission
 - Saved barbers
 - Client profile editing and logout
+- Polished active mobile-appointment timeline with 30-second polling and travel-state banners
 
 ## Barber Flows
 

@@ -42,6 +42,19 @@ export const geocodeAddress = async (
   fetcher: typeof fetch = fetch,
 ): Promise<ResolvedAddress> => {
   const formattedAddress = fullAddress(input);
+  if (input.latitude !== undefined && input.longitude !== undefined) {
+    return {
+      addressLine1: input.addressLine1,
+      ...(input.addressLine2 === undefined ? {} : { addressLine2: input.addressLine2 }),
+      city: input.city,
+      state: input.state,
+      zipCode: input.zipCode,
+      country: input.country,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      formattedAddress,
+    };
+  }
   if (env.GOOGLE_MAPS_API_KEY.length === 0 || env.NODE_ENV === 'test') {
     return {
       addressLine1: input.addressLine1,
@@ -173,6 +186,8 @@ export const updateClientAddress = async (
     'state',
     'zipCode',
     'country',
+    'latitude',
+    'longitude',
   ].some((key) => Object.hasOwn(input, key));
   const merged: SaveAddressRequest = {
     label: input.label ?? String(existing.label),
@@ -184,6 +199,8 @@ export const updateClientAddress = async (
     state: input.state ?? String(existing.state),
     zipCode: input.zipCode ?? String(existing.zip_code),
     country: input.country ?? String(existing.country),
+    ...(input.latitude === undefined ? {} : { latitude: input.latitude }),
+    ...(input.longitude === undefined ? {} : { longitude: input.longitude }),
   };
   const resolved = locationChanged
     ? await geocodeAddress(merged)

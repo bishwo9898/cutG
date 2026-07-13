@@ -7,6 +7,7 @@ import { colors, spacing, typography } from '@/theme';
 
 export type SelectedPlace = {
   addressLine1: string;
+  addressLine2?: string;
   city: string;
   state: string;
   zipCode: string;
@@ -92,6 +93,9 @@ export const PlacesAutocomplete = ({
     const route = component(components, 'route');
     const selected = {
       addressLine1: [streetNumber, route].filter(Boolean).join(' '),
+      ...(component(components, 'subpremise').length === 0
+        ? {}
+        : { addressLine2: component(components, 'subpremise') }),
       city: component(components, 'locality') || component(components, 'sublocality_level_1'),
       state: component(components, 'administrative_area_level_1', true),
       zipCode: component(components, 'postal_code'),
