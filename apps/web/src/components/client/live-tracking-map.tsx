@@ -1,11 +1,11 @@
 'use client';
 
 import { clientApi } from '@barber-saas/api-client';
+import { GoogleMap, LoadScript, MarkerF, PolylineF } from '@react-google-maps/api';
 import { useQuery } from '@tanstack/react-query';
 import { Car, Scissors } from 'lucide-react';
 
-import { StaticMap } from '@/components/client/static-map';
-import { SimpleMap } from '@/components/maps/simple-map';
+import { MapFallback, StaticMap } from '@/components/client/static-map';
 import { browserApi } from '@/lib/browser-api';
 import type { BarberLocation } from '@/lib/contracts';
 
@@ -35,12 +35,13 @@ export function LiveTrackingMap({
     enabled: active,
     refetchInterval: active ? 15_000 : false,
   });
+  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
   const tracking: ActiveBarberLocation | null = isActiveLocation(location.data)
     ? location.data
     : null;
   const ping = tracking?.lastPing ?? null;
 
-  if (!active || tracking === null || ping === null) {
+  if (!active || ping === null) {
     return (
       <div className="tracking-map-shell">
         <StaticMap address={address} latitude={clientLatitude} longitude={clientLongitude} />
@@ -60,25 +61,35 @@ export function LiveTrackingMap({
       </div>
     );
   }
+  if (key.length === 0) {
+    return (
+      <MapFallback
+        address={`${tracking?.barberName ?? 'Your barber'} is on the way to ${address}`}
+        height={240}
+        latitude={clientLatitude}
+        longitude={clientLongitude}
+      />
+    );
+  }
+  const barber = { lat: ping.latitude, lng: ping.longitude };
+  const client = { lat: clientLatitude, lng: clientLongitude };
   return (
     <div className="tracking-map-shell">
-      <SimpleMap
-        height={240}
-        points={[
-          {
-            latitude: ping.latitude,
-            longitude: ping.longitude,
-            label: `${tracking.barberName} live location`,
-            kind: 'barber',
-          },
-          {
-            latitude: clientLatitude,
-            longitude: clientLongitude,
-            label: address,
-            kind: 'destination',
-          },
-        ]}
-      />
+      <LoadScript googleMapsApiKey={key}>
+        <GoogleMap
+          center={{ lat: (barber.lat + client.lat) / 2, lng: (barber.lng + client.lng) / 2 }}
+          mapContainerClassName="live-tracking-map"
+          options={{ fullscreenControl: false, mapTypeControl: false, streetViewControl: false }}
+          zoom={13}
+        >
+          <MarkerF label="B" position={barber} title="Barber's live location" />
+          <MarkerF position={client} title="Service destination" />
+          <PolylineF
+            options={{ strokeColor: '#2684ff', strokeOpacity: 0.8, strokeWeight: 3 }}
+            path={[barber, client]}
+          />
+        </GoogleMap>
+      </LoadScript>
       <div className="tracking-banner">
         <Car size={19} />
         <div>

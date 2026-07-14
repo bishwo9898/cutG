@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { StaticMap } from './static-map';
 
 describe('StaticMap', () => {
-  it('renders a useful address fallback when coordinates are unavailable', () => {
+  it('renders a useful map fallback when no browser key is configured', () => {
     render(
       <StaticMap
         address="600 West Walnut Street, Danville, KY 40422"
-        latitude={null}
-        longitude={null}
+        latitude={37.6454}
+        longitude={-84.7739}
       />,
     );
 
