@@ -15,9 +15,15 @@ export default function BarberLayout(): React.ReactElement {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.accentLight,
+        tabBarActiveTintColor: colors.textPrimary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: { backgroundColor: colors.primary, borderTopColor: colors.border },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginBottom: 4 },
+        tabBarStyle: {
+          backgroundColor: colors.primary,
+          borderTopColor: colors.border,
+          height: 72,
+          paddingTop: 8,
+        },
       }}
     >
       <Tabs.Screen name="today" options={{ title: 'Today', tabBarIcon: tabIcon('today') }} />

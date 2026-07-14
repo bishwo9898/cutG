@@ -1,4 +1,15 @@
-import { CalendarCheck, MapPin, Search, Scissors, Store, TrendingUp } from 'lucide-react';
+import {
+  ArrowUpRight,
+  CalendarCheck,
+  Check,
+  Clock3,
+  MapPin,
+  Search,
+  Scissors,
+  ShieldCheck,
+  Store,
+  TrendingUp,
+} from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -43,43 +54,102 @@ export default async function LandingPage(): Promise<React.ReactElement> {
           cutG
         </Link>
         <nav>
-          <Link href="#how-it-works">How it works</Link>
-          <Link href="#for-barbers">For barbers</Link>
-          <Link href="/client/login">Client sign in</Link>
-          <Link className="button button-secondary" href="/barber/login">
-            Barber portal
+          <Link href="#how-it-works">The experience</Link>
+          <Link href="#for-barbers">For professionals</Link>
+          <Link href="/client/login">Sign in</Link>
+          <Link className="button landing-nav-button" href="/client/register">
+            Book a barber <ArrowUpRight size={15} />
           </Link>
         </nav>
       </header>
 
       <section className="landing-hero">
         <div className="landing-hero-content">
-          <p className="eyebrow">Book the chair or bring it to you</p>
-          <h1>Your barber, wherever you are.</h1>
+          <p className="eyebrow">The modern barber marketplace</p>
+          <h1>A better cut starts here.</h1>
           <p>
-            Book top barbers near you, or bring professional service to your home, office, or hotel.
+            Discover trusted barbers, reserve the right time, and choose the chair or your door—all
+            in one beautifully simple experience.
           </p>
           <div className="button-row">
             <Link className="button button-primary" href="/client/register">
-              Find a barber
+              Find your barber <ArrowUpRight size={17} />
             </Link>
             <Link className="button landing-outline-button" href="/barber/register">
-              I&apos;m a barber
+              Join as a professional
             </Link>
           </div>
+          <div className="landing-trust-row">
+            <span>
+              <ShieldCheck size={15} /> Verified professionals
+            </span>
+            <span>
+              <Clock3 size={15} /> Book in under a minute
+            </span>
+          </div>
+        </div>
+        <aside className="landing-hero-card" aria-label="Sample booking">
+          <div className="landing-hero-card-topline">
+            <span>Next available</span>
+            <strong>Today</strong>
+          </div>
+          <div className="landing-hero-card-profile">
+            <span className="landing-hero-avatar">JM</span>
+            <div>
+              <strong>Jordan Miles</strong>
+              <span>Fade specialist · 4.9</span>
+            </div>
+            <ShieldCheck size={18} />
+          </div>
+          <div className="landing-hero-card-slots">
+            <span>3:30 PM</span>
+            <span>5:00 PM</span>
+            <span>6:15 PM</span>
+          </div>
+          <div className="landing-hero-card-footer">
+            <span>Classic fade</span>
+            <strong>From $38</strong>
+          </div>
+        </aside>
+      </section>
+
+      <section className="landing-proof" aria-label="cutG advantages">
+        <div>
+          <strong>One place</strong>
+          <span>Search, compare, and book</span>
+        </div>
+        <div>
+          <strong>Two ways</strong>
+          <span>In-shop or mobile service</span>
+        </div>
+        <div>
+          <strong>Zero guesswork</strong>
+          <span>Clear services and pricing</span>
         </div>
       </section>
 
       <section className="landing-section" id="how-it-works">
         <div className="landing-section-heading">
-          <p className="eyebrow">Simple from search to service</p>
-          <h2>How cutG works</h2>
+          <p className="eyebrow">Designed around your day</p>
+          <h2>Your next cut, without the back-and-forth.</h2>
         </div>
         <div className="landing-steps">
           {[
-            [Search, 'Discover', 'Search nearby barbers by style, rating, and price.'],
-            [CalendarCheck, 'Book', 'Choose your service, time, and appointment location.'],
-            [Scissors, 'Get your cut', 'Visit the shop or have your barber come to you.'],
+            [
+              Search,
+              'Find your match',
+              'Explore nearby professionals by style, rating, service, and price.',
+            ],
+            [
+              CalendarCheck,
+              'Choose your time',
+              'See real availability and reserve the appointment that fits your day.',
+            ],
+            [
+              Scissors,
+              'Leave looking sharp',
+              'Take the chair or have a mobile barber bring the experience to you.',
+            ],
           ].map(([Icon, title, copy]) => {
             const StepIcon = Icon as typeof Search;
             return (
@@ -95,14 +165,14 @@ export default async function LandingPage(): Promise<React.ReactElement> {
 
       <section className="landing-mobile-band">
         <div className="landing-mobile-copy">
-          <p className="eyebrow">Mobile barber service</p>
-          <h2>The barber comes to you.</h2>
+          <p className="eyebrow">The chair, reimagined</p>
+          <h2>Great service. Your address.</h2>
           <p>
             Skip the commute. Choose an address, see the travel price before booking, and follow
             each visit from confirmed to arrived.
           </p>
           <Link className="button button-primary" href="/client/barbers?mobileOnly=true">
-            Find mobile barbers
+            Explore mobile barbers <ArrowUpRight size={16} />
           </Link>
         </div>
         <div className="landing-map-scene" aria-hidden="true">
@@ -139,8 +209,8 @@ export default async function LandingPage(): Promise<React.ReactElement> {
 
       <section className="landing-barber-band" id="for-barbers">
         <div className="landing-section-heading">
-          <p className="eyebrow">Built for independent barbers</p>
-          <h2>Grow your barbering business.</h2>
+          <p className="eyebrow">Your craft. Your business.</p>
+          <h2>A calmer way to run a busier chair.</h2>
         </div>
         <div className="landing-benefits">
           <article>
@@ -160,22 +230,28 @@ export default async function LandingPage(): Promise<React.ReactElement> {
           </article>
         </div>
         <Link className="button button-primary" href="/barber/register">
-          Join as a barber
+          Build your business on cutG <ArrowUpRight size={16} />
         </Link>
       </section>
 
       <section className="landing-section pricing-preview">
         <div>
-          <p className="eyebrow">Plans that grow with you</p>
-          <h2>Start free. Upgrade when you&apos;re ready.</h2>
+          <p className="eyebrow">Start on your terms</p>
+          <h2>Everything you need to open your digital chair.</h2>
         </div>
-        <div className="tier-preview">
-          <span>Free</span>
-          <span>Basic</span>
-          <span>Premium</span>
+        <div className="landing-plan-points">
+          <span>
+            <Check size={15} /> A polished public profile
+          </span>
+          <span>
+            <Check size={15} /> Booking and calendar tools
+          </span>
+          <span>
+            <Check size={15} /> Clear business insights
+          </span>
         </div>
         <Link className="button button-secondary" href="/barber/register">
-          Create a barber account
+          Start free <ArrowUpRight size={16} />
         </Link>
       </section>
 

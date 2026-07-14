@@ -32,7 +32,9 @@ const styles = StyleSheet.create({
   backButton: {
     alignItems: 'center',
     backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderRadius: 24,
+    borderWidth: 1,
     height: 44,
     justifyContent: 'center',
     width: 44,
@@ -40,6 +42,7 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.bodySmall,
     color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   textWrap: {
     flex: 1,
@@ -52,5 +55,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: spacing.md,
+    marginBottom: spacing.sm,
   },
 });

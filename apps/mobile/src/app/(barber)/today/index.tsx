@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { AppointmentCard } from '@/components/barber/AppointmentCard';
 import { Screen } from '@/components/layout/Screen';
@@ -40,17 +41,31 @@ export default function TodayScreen(): React.ReactElement {
         void appointments.refetch();
       }}
     >
-      <ScreenHeader title="Today" subtitle={format(new Date(), 'EEEE, MMMM d')} />
+      <View style={styles.hero}>
+        <Text style={styles.eyebrow}>CUTG · PROFESSIONAL</Text>
+        <ScreenHeader
+          title="Your chair, at a glance."
+          subtitle={format(new Date(), 'EEEE, MMMM d')}
+        />
+        <View style={styles.openStatus}>
+          <View style={styles.statusDot} />
+          <Text style={styles.openStatusText}>Workspace is ready</Text>
+          <Ionicons color={colors.textMuted} name="arrow-forward" size={16} />
+        </View>
+      </View>
       <View style={styles.stats}>
         <Card style={styles.stat}>
+          <Text style={styles.statIndex}>01</Text>
           <Text style={styles.statValue}>{list.length}</Text>
           <Text style={styles.statLabel}>Appointments</Text>
         </Card>
         <Card style={styles.stat}>
+          <Text style={styles.statIndex}>02</Text>
           <Text style={styles.statValue}>{pending}</Text>
           <Text style={styles.statLabel}>Pending</Text>
         </Card>
         <Card style={styles.stat}>
+          <Text style={styles.statIndex}>03</Text>
           <Text style={styles.statValue}>{'$' + revenue.toFixed(0)}</Text>
           <Text style={styles.statLabel}>Revenue</Text>
         </Card>
@@ -114,11 +129,46 @@ export default function TodayScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
+  eyebrow: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '700',
+    letterSpacing: 1.6,
+  },
+  hero: {
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    gap: spacing.sm,
+    paddingBottom: spacing.lg,
+  },
   item: {
     gap: spacing.sm,
   },
+  openStatus: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  openStatusText: {
+    ...typography.label,
+    color: colors.textSecondary,
+    flex: 1,
+  },
   stat: {
     flex: 1,
+    minHeight: 132,
+    justifyContent: 'space-between',
+    padding: spacing.md,
+  },
+  statIndex: {
+    ...typography.caption,
+    color: colors.textMuted,
   },
   statLabel: {
     ...typography.caption,
@@ -131,5 +181,11 @@ const styles = StyleSheet.create({
   stats: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  statusDot: {
+    backgroundColor: colors.textPrimary,
+    borderRadius: 4,
+    height: 7,
+    width: 7,
   },
 });

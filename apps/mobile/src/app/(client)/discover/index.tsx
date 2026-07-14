@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { BarberCard } from '@/components/barber/BarberCard';
 import { Screen } from '@/components/layout/Screen';
@@ -24,13 +25,30 @@ export default function DiscoverScreen(): React.ReactElement {
         void featured.refetch();
       }}
     >
-      <ScreenHeader title="Discover" subtitle="Find the next clean cut near you." />
-      <Button title="Search barbers" onPress={() => router.push('/(client)/discover/search')} />
-      <Button
-        title="Design your look"
-        variant="secondary"
-        onPress={() => router.push('/(client)/design')}
-      />
+      <View style={styles.hero}>
+        <Text style={styles.eyebrow}>CUTG · FOR CLIENTS</Text>
+        <ScreenHeader
+          title="Find your next great barber."
+          subtitle="Trusted professionals, real availability, one simple booking."
+        />
+        <View style={styles.heroActions}>
+          <View style={styles.heroAction}>
+            <Button
+              icon={<Ionicons color={colors.textOnAccent} name="search" size={17} />}
+              title="Search barbers"
+              onPress={() => router.push('/(client)/discover/search')}
+            />
+          </View>
+          <View style={styles.heroAction}>
+            <Button
+              icon={<Ionicons color={colors.textSecondary} name="sparkles-outline" size={17} />}
+              title="Design a look"
+              variant="secondary"
+              onPress={() => router.push('/(client)/design')}
+            />
+          </View>
+        </View>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -55,7 +73,13 @@ export default function DiscoverScreen(): React.ReactElement {
           />
         ))}
       </ScrollView>
-      <Text style={styles.section}>Featured barbers</Text>
+      <View style={styles.sectionHeading}>
+        <View>
+          <Text style={styles.eyebrow}>CURATED FOR YOU</Text>
+          <Text style={styles.section}>Featured barbers</Text>
+        </View>
+        <Text style={styles.sectionMeta}>Verified</Text>
+      </View>
       {featured.isLoading ? <Skeleton height={120} /> : null}
       {!featured.isLoading && barbers.length === 0 ? (
         <EmptyState title="No barbers yet" message="Seed the database or broaden your filters." />
@@ -78,6 +102,25 @@ export default function DiscoverScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
+  eyebrow: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '700',
+    letterSpacing: 1.6,
+  },
+  hero: {
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    gap: spacing.md,
+    paddingBottom: spacing.lg,
+  },
+  heroAction: {
+    flex: 1,
+  },
+  heroActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
   chips: {
     gap: spacing.sm,
   },
@@ -97,5 +140,16 @@ const styles = StyleSheet.create({
   section: {
     ...typography.h2,
     color: colors.textPrimary,
+    marginTop: spacing.xs,
+  },
+  sectionHeading: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+  },
+  sectionMeta: {
+    ...typography.caption,
+    color: colors.textMuted,
   },
 });

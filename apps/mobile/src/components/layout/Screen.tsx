@@ -55,7 +55,8 @@ const styles = StyleSheet.create({
   },
   scroll: {
     gap: spacing.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.xxl,
   },
 });

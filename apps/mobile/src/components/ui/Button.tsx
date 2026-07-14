@@ -33,7 +33,14 @@ export const Button = ({
   >
     <View style={styles.content}>
       {icon}
-      <Text style={[styles.text, variant === 'ghost' && styles.ghostText]}>{title}</Text>
+      <Text
+        style={[
+          styles.text,
+          (variant === 'ghost' || variant === 'secondary') && styles.secondaryText,
+        ]}
+      >
+        {title}
+      </Text>
     </View>
   </Pressable>
 );
@@ -41,8 +48,8 @@ export const Button = ({
 const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
-    borderRadius: 8,
-    minHeight: 48,
+    borderRadius: 999,
+    minHeight: 50,
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
@@ -60,7 +67,7 @@ const styles = StyleSheet.create({
   ghost: {
     backgroundColor: 'transparent',
   },
-  ghostText: {
+  secondaryText: {
     color: colors.textSecondary,
   },
   pressed: {
@@ -70,7 +77,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
   },
   secondary: {
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: colors.surface,
     borderColor: colors.borderLight,
     borderWidth: 1,
   },
