@@ -9,7 +9,7 @@ export type AppointmentStatus =
   | 'CANCELLED'
   | 'NO_SHOW';
 export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED';
-export type ServiceCategory = 'haircut' | 'beard' | 'shave' | 'combo' | 'kids' | 'other';
+export type ServiceCategory = 'haircut' | 'beard' | 'shave' | 'color' | 'combo' | 'kids' | 'other';
 export type SubscriptionTier = 'FREE' | 'BASIC' | 'PREMIUM';
 
 export type AuthUser = {
@@ -207,7 +207,45 @@ export type AppointmentSummary = {
   travelFeeCents?: number;
   travelFee?: number;
   pricing?: { serviceFee: number; travelFee: number; total: number };
+  styleReference?: StyleReference | null;
 };
+
+export type StyleReference = {
+  id: string;
+  styleName: string | null;
+  description: string | null;
+  previewImageUrl: string | null;
+  sourcePhotoUrl: string | null;
+};
+
+export type HairDesign = {
+  id: string;
+  styleName: string;
+  styleCategory: 'haircut' | 'beard' | 'color';
+  description: string | null;
+  sourcePhotoUrl: string | null;
+  generatedPreviewUrl: string | null;
+  aiStatus: string;
+  appointmentId: string | null;
+  createdAt: string;
+};
+
+export type BarberLocation =
+  | { isTracking: false; reason: string; arrivedAt?: string | null }
+  | {
+      isTracking: true;
+      appointmentId: string;
+      barberName: string;
+      lastPing: {
+        latitude: number;
+        longitude: number;
+        headingDegrees: number | null;
+        recordedAt: string;
+        secondsAgo: number;
+      };
+      estimatedArrivalMinutes: number;
+      distanceRemainingMiles: number;
+    };
 
 export type PaymentIntentResponse = {
   appointmentId: string;

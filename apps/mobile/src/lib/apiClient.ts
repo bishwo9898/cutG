@@ -29,6 +29,7 @@ import { useAuthStore } from '@/store/authStore';
 import type {
   AppointmentSummary,
   AppointmentTimeline,
+  BarberLocation,
   AuthUser,
   AvailabilitySlot,
   BarberProfile,
@@ -45,6 +46,7 @@ import type {
   SubscriptionSummary,
   MobileBarberConfig,
   TravelEstimate,
+  HairDesign,
 } from './types';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
@@ -151,6 +153,8 @@ export const mobileApi = {
       withAuth((client) => clientApi.appointment(client, appointmentId)),
     appointmentStatusUpdates: (appointmentId: string): Promise<AppointmentTimeline> =>
       withAuth((client) => clientApi.appointmentStatusUpdates(client, appointmentId)),
+    barberLocation: (appointmentId: string): Promise<BarberLocation> =>
+      withAuth((client) => clientApi.barberLocation(client, appointmentId)),
     cancelAppointment: (appointmentId: string): Promise<AppointmentSummary> =>
       withAuth((client) => clientApi.cancelAppointment(client, appointmentId)),
     createReview: (body: CreateReviewRequest): Promise<Review> =>
@@ -167,6 +171,15 @@ export const mobileApi = {
       withAuth((client) => clientApi.deleteAddress(client, addressId)),
     setDefaultAddress: (addressId: string): Promise<ClientAddress> =>
       withAuth((client) => clientApi.setDefaultAddress(client, addressId)),
+    designs: (): Promise<{ designs: HairDesign[] }> =>
+      withAuth((client) => clientApi.designs(client)),
+    createDesign: (body: {
+      styleName: string;
+      styleCategory: 'haircut' | 'beard' | 'color';
+      description?: string;
+    }): Promise<HairDesign> => withAuth((client) => clientApi.createDesign(client, body)),
+    attachDesign: (designId: string, appointmentId: string): Promise<{ message: string }> =>
+      withAuth((client) => clientApi.attachDesign(client, designId, appointmentId)),
   },
   payments: {
     createIntent: (appointmentId: string): Promise<PaymentIntentResponse> =>
@@ -235,6 +248,17 @@ export const mobileApi = {
       withAuth((client) => mobileBarberApi.disable(client)),
     travelEstimate: (body: TravelEstimateRequest): Promise<TravelEstimate> =>
       withAuth((client) => mobileBarberApi.estimate(client, body)),
+    sendLocationPing: (
+      appointmentId: string,
+      body: {
+        latitude: number;
+        longitude: number;
+        accuracyMeters?: number;
+        headingDegrees?: number;
+        speedMs?: number;
+      },
+    ): Promise<{ recorded: boolean }> =>
+      withAuth((client) => mobileBarberApi.sendLocationPing(client, appointmentId, body)),
   },
 };
 

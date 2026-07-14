@@ -164,6 +164,9 @@ Client-facing pages now exist in `apps/web`:
 - `/client/saved`: saved barber list.
 - `/client/profile`: identity and client activity summary.
 - `/client/profile/addresses`: saved-address management with Places suggestions, current-location autofill, map selection, and a draggable precise-location pin.
+- `/client/design`: preset-driven Hair Design Studio with saved briefs and appointment attachment.
+
+Phase 9 appointment details add correct service/travel/total pricing, both parties' notes, quick rebooking, a polished status journey, resilient static-map fallback, and 15-second live barber tracking while `ON_THE_WAY`.
 
 Legacy unprefixed routes redirect to these canonical client routes. The barber dashboard remains under
 `/barber/dashboard`.

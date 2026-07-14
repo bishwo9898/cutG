@@ -3,6 +3,8 @@ export * from './auth';
 export * from './barber';
 export * from './client';
 export * from './database';
+export * from './design';
 export * from './enums';
 export * from './mobile';
+export * from './location';
 export * from './payment';

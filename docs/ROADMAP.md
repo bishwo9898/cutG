@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: July 8, 2026
+Last updated: July 13, 2026
 
 ## Milestone 1: Platform Foundation
 
@@ -115,4 +115,16 @@ Status: Complete (July 12, 2026)
 - [x] Appointment action cards, status journeys, polling, and map fallback
 - [x] Client profile and complete saved-address management
 
-Next: realtime GPS streaming, WebSocket updates, and push notifications.
+## Milestone 9: GPS Tracking And Hair Design Foundation
+
+Status: Complete (July 13, 2026)
+
+- [x] Foreground barber GPS broadcasting for active mobile journeys
+- [x] Ownership-scoped latest-location polling with distance and ETA recalculation
+- [x] Web and native tracking maps with destination and moving barber markers
+- [x] Resilient static-map fallback without broken image states
+- [x] Placeholder Hair Design Studio with categorized presets and saved briefs
+- [x] Appointment design attachment and barber-facing style visibility
+- [x] Immutable service/travel/total price display and categorized service menus
+
+Next: object-backed reference images, real AI generation, WebSocket location updates, and push notifications.

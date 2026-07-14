@@ -3,7 +3,7 @@
 import { CreateServiceSchema } from '@barber-saas/shared-types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Scissors, Trash2, X } from 'lucide-react';
+import { ChevronDown, Pencil, Plus, Scissors, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
@@ -16,11 +16,23 @@ import { errorMessage } from '@/lib/errors';
 
 type FormValues = z.infer<typeof CreateServiceSchema>;
 type ServiceResponse = { services: BarberService[]; total: number };
+type ServiceCategory = BarberService['category'];
+const categories: Array<{ value: ServiceCategory; label: string }> = [
+  { value: 'haircut', label: 'Haircuts' },
+  { value: 'beard', label: 'Beard' },
+  { value: 'shave', label: 'Shave' },
+  { value: 'color', label: 'Color' },
+  { value: 'combo', label: 'Combos' },
+  { value: 'kids', label: 'Kids' },
+  { value: 'other', label: 'Other' },
+];
 
 export default function ServicesPage(): React.ReactElement {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<BarberService | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [createCategory, setCreateCategory] = useState<ServiceCategory>('haircut');
+  const [visibleCategory, setVisibleCategory] = useState<ServiceCategory | 'all'>('all');
   const services = useQuery({
     queryKey: ['services'],
     queryFn: () => browserApi.get<ServiceResponse>('/barbers/me/services'),
@@ -45,9 +57,9 @@ export default function ServicesPage(): React.ReactElement {
         category: editing.category,
       });
     } else {
-      reset({ name: '', description: '', price: 0, durationMinutes: 30, category: 'haircut' });
+      reset({ name: '', description: '', price: 0, durationMinutes: 30, category: createCategory });
     }
-  }, [editing, reset]);
+  }, [createCategory, editing, reset]);
 
   const save = useMutation({
     mutationFn: (values: FormValues) =>
@@ -66,7 +78,8 @@ export default function ServicesPage(): React.ReactElement {
     onSuccess: async () => queryClient.invalidateQueries({ queryKey: ['services'] }),
   });
 
-  const openCreate = (): void => {
+  const openCreate = (category: ServiceCategory = 'haircut'): void => {
+    setCreateCategory(category);
     setEditing(null);
     setDrawerOpen(true);
   };
@@ -83,7 +96,7 @@ export default function ServicesPage(): React.ReactElement {
           <h1>Services</h1>
           <p>Keep your menu focused, priced clearly, and easy to book.</p>
         </div>
-        <button className="button button-primary" onClick={openCreate} type="button">
+        <button className="button button-primary" onClick={() => openCreate()} type="button">
           <Plus size={17} />
           Add service
         </button>
@@ -101,7 +114,7 @@ export default function ServicesPage(): React.ReactElement {
             title="Your service menu is empty"
             detail="Add the cuts and treatments clients can book."
             action={
-              <button className="button button-primary" onClick={openCreate} type="button">
+              <button className="button button-primary" onClick={() => openCreate()} type="button">
                 <Plus size={17} />
                 Add first service
               </button>
@@ -109,42 +122,116 @@ export default function ServicesPage(): React.ReactElement {
           />
         </section>
       ) : (
-        <section className="service-grid">
-          {services.data.services.map((service) => (
-            <article className="service-card" key={service.id}>
-              <span className={`badge ${service.isActive ? 'badge-success' : ''}`}>
-                {service.isActive ? service.category : 'Inactive'}
-              </span>
-              <h3>{service.name}</h3>
-              <p>{service.description ?? 'No description added yet.'}</p>
-              <div className="service-meta">
-                <span>${service.price.toFixed(2)}</span>
-                <span>{service.durationMinutes} min</span>
-              </div>
-              <div className="card-actions">
-                <button
-                  className="button button-secondary"
-                  onClick={() => openEdit(service)}
-                  type="button"
-                >
-                  <Pencil size={15} />
-                  Edit
-                </button>
-                {service.isActive && (
-                  <button
-                    className="button button-danger"
-                    disabled={deactivate.isPending}
-                    onClick={() => deactivate.mutate(service.id)}
-                    type="button"
+        <>
+          <nav className="service-category-pills" aria-label="Service categories">
+            <button
+              className={visibleCategory === 'all' ? 'is-active' : ''}
+              onClick={() => setVisibleCategory('all')}
+              type="button"
+            >
+              All {services.data.services.filter((service) => service.isActive).length}
+            </button>
+            {categories.map((category) => (
+              <button
+                className={visibleCategory === category.value ? 'is-active' : ''}
+                key={category.value}
+                onClick={() => setVisibleCategory(category.value)}
+                type="button"
+              >
+                {category.label}{' '}
+                {
+                  services.data.services.filter(
+                    (service) => service.isActive && service.category === category.value,
+                  ).length
+                }
+              </button>
+            ))}
+          </nav>
+          <div className="categorized-services">
+            {categories
+              .filter((category) => visibleCategory === 'all' || visibleCategory === category.value)
+              .map((category) => {
+                const items = services.data.services.filter(
+                  (service) => service.isActive && service.category === category.value,
+                );
+                return (
+                  <section
+                    className="service-category-section"
+                    id={`services-${category.value}`}
+                    key={category.value}
                   >
-                    <Trash2 size={15} />
-                    Deactivate
-                  </button>
-                )}
-              </div>
-            </article>
-          ))}
-        </section>
+                    <div className="service-category-heading">
+                      <div>
+                        <h2>{category.label}</h2>
+                        <span>{items.length} active</span>
+                      </div>
+                      <button
+                        className="button button-ghost"
+                        onClick={() => openCreate(category.value)}
+                        type="button"
+                      >
+                        <Plus size={15} /> Add {category.label.toLowerCase()}
+                      </button>
+                    </div>
+                    {items.length === 0 ? (
+                      <p className="empty-category-copy">
+                        No {category.label.toLowerCase()} services yet.
+                      </p>
+                    ) : (
+                      items.map((service) => (
+                        <article className="service-menu-row" key={service.id}>
+                          <div>
+                            <strong>{service.name}</strong>
+                            <span>{service.description ?? 'No description added yet.'}</span>
+                          </div>
+                          <span>{service.durationMinutes} min</span>
+                          <strong>${service.price.toFixed(2)}</strong>
+                          <span className="badge badge-success">Active</span>
+                          <div className="service-row-actions">
+                            <button
+                              className="icon-button"
+                              aria-label={`Edit ${service.name}`}
+                              onClick={() => openEdit(service)}
+                              type="button"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              className="icon-button danger"
+                              aria-label={`Deactivate ${service.name}`}
+                              disabled={deactivate.isPending}
+                              onClick={() => deactivate.mutate(service.id)}
+                              type="button"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </article>
+                      ))
+                    )}
+                  </section>
+                );
+              })}
+            {services.data.services.some((service) => !service.isActive) && (
+              <details className="inactive-services">
+                <summary>
+                  <ChevronDown size={16} /> Inactive services (
+                  {services.data.services.filter((service) => !service.isActive).length})
+                </summary>
+                {services.data.services
+                  .filter((service) => !service.isActive)
+                  .map((service) => (
+                    <button key={service.id} onClick={() => openEdit(service)} type="button">
+                      <span>{service.name}</span>
+                      <small>
+                        {service.category} · ${service.price.toFixed(2)}
+                      </small>
+                    </button>
+                  ))}
+              </details>
+            )}
+          </div>
+        </>
       )}
       {drawerOpen && (
         <div className="drawer-backdrop" role="presentation">
@@ -209,6 +296,7 @@ export default function ServicesPage(): React.ReactElement {
                   <option value="haircut">Haircut</option>
                   <option value="beard">Beard</option>
                   <option value="shave">Shave</option>
+                  <option value="color">Color</option>
                   <option value="combo">Combo</option>
                   <option value="kids">Kids</option>
                   <option value="other">Other</option>

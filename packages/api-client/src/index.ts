@@ -131,6 +131,8 @@ export const clientApi = {
     client.get<T>(`/clients/me/appointments/${appointmentId}`),
   appointmentStatusUpdates: <T>(client: ApiClient, appointmentId: string): Promise<T> =>
     client.get<T>(`/clients/me/appointments/${appointmentId}/status-updates`),
+  barberLocation: <T>(client: ApiClient, appointmentId: string): Promise<T> =>
+    client.get<T>(`/clients/me/appointments/${appointmentId}/barber-location`),
   cancelAppointment: <T>(client: ApiClient, appointmentId: string): Promise<T> =>
     client.delete<T>(`/clients/me/appointments/${appointmentId}`),
   createReview: <T>(client: ApiClient, body: unknown): Promise<T> =>
@@ -146,6 +148,11 @@ export const clientApi = {
     client.delete<T>(`/clients/me/addresses/${addressId}`),
   setDefaultAddress: <T>(client: ApiClient, addressId: string): Promise<T> =>
     client.post<T>(`/clients/me/addresses/${addressId}/set-default`),
+  designs: <T>(client: ApiClient): Promise<T> => client.get<T>('/clients/me/designs'),
+  createDesign: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/clients/me/designs', body),
+  attachDesign: <T>(client: ApiClient, designId: string, appointmentId: string): Promise<T> =>
+    client.post<T>(`/clients/me/designs/${designId}/attach`, { appointmentId }),
 };
 
 export const mobileBarberApi = {
@@ -155,6 +162,8 @@ export const mobileBarberApi = {
   disable: <T>(client: ApiClient): Promise<T> => client.post<T>('/barbers/me/mobile/disable'),
   estimate: <T>(client: ApiClient, body: unknown): Promise<T> =>
     client.post<T>('/barbers/me/mobile/estimate', body),
+  sendLocationPing: <T>(client: ApiClient, appointmentId: string, body: unknown): Promise<T> =>
+    client.post<T>(`/barbers/me/appointments/${appointmentId}/location`, body),
 };
 
 export const paymentApi = {

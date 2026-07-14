@@ -26,6 +26,11 @@ export default function DiscoverScreen(): React.ReactElement {
     >
       <ScreenHeader title="Discover" subtitle="Find the next clean cut near you." />
       <Button title="Search barbers" onPress={() => router.push('/(client)/discover/search')} />
+      <Button
+        title="Design your look"
+        variant="secondary"
+        onPress={() => router.push('/(client)/design')}
+      />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

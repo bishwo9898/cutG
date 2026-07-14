@@ -465,8 +465,11 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
   );
   values.push(filters.limit, (filters.page - 1) * filters.limit);
   const rows = await query<Row>(
-    `SELECT a.*,s.name AS service_name,u.first_name,u.last_name,u.phone
+    `SELECT a.*,s.name AS service_name,u.first_name,u.last_name,u.phone,
+      hd.id AS style_design_id,hd.style_name,hd.description AS style_description,
+      hd.generated_preview_url,hd.source_photo_url
      FROM appointments a JOIN services s ON s.id=a.service_id JOIN users u ON u.id=a.client_id
+     LEFT JOIN client_hair_designs hd ON hd.id=a.style_reference_id
      WHERE ${where.join(' AND ')} ORDER BY a.scheduled_at DESC
      LIMIT $${values.length - 1} OFFSET $${values.length}`,
     values,
@@ -516,6 +519,16 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
       travelFee: Number(row.travel_fee_cents ?? 0) / 100,
       barberDepartedAt: row.barber_departed_at === null ? null : dateTime(row.barber_departed_at),
       barberArrivedAt: row.barber_arrived_at === null ? null : dateTime(row.barber_arrived_at),
+      styleReference:
+        row.style_design_id === null || row.style_design_id === undefined
+          ? null
+          : {
+              id: row.style_design_id,
+              styleName: row.style_name,
+              description: row.style_description,
+              previewImageUrl: row.generated_preview_url,
+              sourcePhotoUrl: row.source_photo_url,
+            },
     })),
     pagination: {
       page: filters.page,

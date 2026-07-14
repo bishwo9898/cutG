@@ -14,6 +14,7 @@ import {
   Scissors,
   ShieldCheck,
   Star,
+  Repeat2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -28,6 +29,8 @@ import type {
   Review,
   TravelEstimate,
 } from '@/lib/contracts';
+
+export { StaticMap } from '@/components/client/static-map';
 
 export function StarRating({
   interactive = false,
@@ -80,6 +83,16 @@ export function BarberCard({
     onSuccess: async () => queryClient.invalidateQueries({ queryKey: ['saved-barbers'] }),
   });
   const nextSlot = barber.nextAvailableSlot === null ? null : new Date(barber.nextAvailableSlot);
+  const availabilityLabel = ((): string => {
+    if (nextSlot === null) return 'No slots available';
+    const today = new Date();
+    const slotDay = new Date(nextSlot.getFullYear(), nextSlot.getMonth(), nextSlot.getDate());
+    const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const days = Math.round((slotDay.getTime() - todayDay.getTime()) / 86_400_000);
+    if (days === 0) return 'Available today';
+    if (days === 1) return 'Available tomorrow';
+    return `Next: ${nextSlot.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+  })();
 
   return (
     <article className="market-card">
@@ -123,10 +136,8 @@ export function BarberCard({
               {barber.serviceCategories.slice(0, 3).join(' · ')}
             </p>
           )}
-          <p className="muted small">
-            {nextSlot === null
-              ? 'No open slots listed'
-              : `Next: ${nextSlot.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} at ${nextSlot.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
+          <p className={`availability-label${nextSlot !== null ? ' has-slots' : ''}`}>
+            {availabilityLabel}
           </p>
         </div>
       </Link>
@@ -344,54 +355,29 @@ export function StatusTimeline({
   return (
     <div className="appointment-timeline">
       <h2>Status journey</h2>
-      {timeline.timeline.map((item) => (
-        <div className={`timeline-row${item.active ? ' is-current' : ''}`} key={item.status}>
-          {item.done ? <CheckCircle2 size={19} /> : <Circle size={19} />}
+      {timeline.timeline.map((item, index) => (
+        <div
+          className={`timeline-row${item.done ? ' is-complete' : ''}${item.active ? ' is-current' : ''}`}
+          key={item.status}
+        >
+          <span className="timeline-marker">
+            {item.done ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+            {index < timeline.timeline.length - 1 && <span className="timeline-connector" />}
+          </span>
           <div>
             <strong>{item.label}</strong>
-            {item.at !== null && <small>{new Date(item.at).toLocaleString()}</small>}
+            {item.at !== null && (
+              <small>
+                {new Date(item.at).toLocaleString([], {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                })}
+              </small>
+            )}
           </div>
         </div>
       ))}
     </div>
-  );
-}
-
-export function StaticMap({
-  address,
-  latitude,
-  longitude,
-}: {
-  address: string;
-  latitude: number | null;
-  longitude: number | null;
-}): React.ReactElement {
-  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
-  const canRender = key.length > 0 && latitude !== null && longitude !== null;
-  if (!canRender)
-    return (
-      <div className="static-map-fallback">
-        <MapPin size={22} />
-        <div>
-          <strong>Mobile service destination</strong>
-          <span>{address}</span>
-        </div>
-      </div>
-    );
-  const params = new URLSearchParams({
-    center: `${latitude},${longitude}`,
-    zoom: '14',
-    size: '600x240',
-    scale: '2',
-    markers: `color:red|${latitude},${longitude}`,
-    key,
-  });
-  return (
-    <img
-      alt={`Map showing ${address}`}
-      className="static-map-image"
-      src={`https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`}
-    />
   );
 }
 
@@ -470,6 +456,14 @@ export function AppointmentCard({
               href={`/client/appointments/${appointment.id}#review`}
             >
               Leave review
+            </Link>
+          )}
+          {appointment.status === 'COMPLETED' && (
+            <Link
+              className="button button-secondary"
+              href={`/client/barbers/${appointment.barber.id}/book?serviceId=${appointment.service.id}`}
+            >
+              <Repeat2 size={15} /> Book again
             </Link>
           )}
         </div>

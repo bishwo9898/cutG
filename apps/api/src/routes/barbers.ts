@@ -12,6 +12,7 @@ import {
   PublicSlotsQuerySchema,
   ReviewQuerySchema,
   SetMobileConfigSchema,
+  LocationPingSchema,
   ServiceFilterSchema,
   ServiceParamsSchema,
   SetScheduleSchema,
@@ -21,6 +22,7 @@ import {
   UpdateBarberPhotoSchema,
   UpdateBarberProfileSchema,
   UpdateServiceSchema,
+  TrackingAppointmentParamsSchema,
   UuidParamsSchema,
 } from '@barber-saas/shared-types';
 import {
@@ -58,6 +60,7 @@ import {
   updateProfile,
 } from '../services/barber/barberService';
 import { listPublicReviews, searchBarbers } from '../services/discovery/barberSearchService';
+import { recordBarberLocation } from '../services/location/locationTrackingService';
 import {
   disableMobileConfig,
   estimateTravel,
@@ -262,6 +265,19 @@ barberRouter.patch(
     const input = UpdateAppointmentStatusSchema.parse(request.body);
     response.json(
       await updateAppointmentStatus(userId(request), appointmentId, input.status, input.notes),
+    );
+  }),
+);
+barberRouter.post(
+  '/me/appointments/:appointmentId/location',
+  asyncHandler(async (request, response) => {
+    const { appointmentId } = TrackingAppointmentParamsSchema.parse(request.params);
+    response.json(
+      await recordBarberLocation(
+        userId(request),
+        appointmentId,
+        LocationPingSchema.parse(request.body),
+      ),
     );
   }),
 );

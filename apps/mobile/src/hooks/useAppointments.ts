@@ -4,7 +4,7 @@ import type { BookAppointmentRequest, CreateReviewRequest } from '@barber-saas/s
 
 import { mobileApi } from '@/lib/apiClient';
 import { queryClient } from '@/lib/queryClient';
-import type { AppointmentSummary, Paginated, Review } from '@/lib/types';
+import type { AppointmentSummary, BarberLocation, Paginated, Review } from '@/lib/types';
 
 export type AppointmentFilters = Record<string, string | number | boolean | undefined>;
 
@@ -21,6 +21,17 @@ export const useClientAppointment = (appointmentId: string): UseQueryResult<Appo
     queryKey: ['appointments', 'client', appointmentId],
     queryFn: () => mobileApi.client.appointment(appointmentId),
     enabled: appointmentId.length > 0,
+  });
+
+export const useBarberLocation = (
+  appointmentId: string,
+  active: boolean,
+): UseQueryResult<BarberLocation> =>
+  useQuery({
+    queryKey: ['appointments', 'barber-location', appointmentId],
+    queryFn: () => mobileApi.client.barberLocation(appointmentId),
+    enabled: active && appointmentId.length > 0,
+    refetchInterval: active ? 15_000 : false,
   });
 
 export const useBookAppointment = (): UseMutationResult<

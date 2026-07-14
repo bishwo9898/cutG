@@ -1,17 +1,11 @@
 'use client';
 
-import {
-  Autocomplete,
-  CircleF,
-  GoogleMap,
-  LoadScript,
-  MarkerF,
-  type Libraries,
-} from '@react-google-maps/api';
+import { Autocomplete, LoadScript, type Libraries } from '@react-google-maps/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Crosshair, LocateFixed, Map, MapPin, Navigation, Save } from 'lucide-react';
+import { LocateFixed, MapPin, Navigation, Save } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { SimpleMap } from '@/components/maps/simple-map';
 import { Notice } from '@/components/notice';
 import { LoadingState } from '@/components/query-states';
 import { browserApi } from '@/lib/browser-api';
@@ -53,8 +47,6 @@ export default function MobileServicePage(): React.ReactElement {
   const [mapLoadError, setMapLoadError] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
-  const [mapMode, setMapMode] = useState<'pin' | 'radius'>('radius');
-  const circle = useRef<google.maps.Circle | null>(null);
   const autocomplete = useRef<google.maps.places.Autocomplete | null>(null);
 
   useEffect(() => {
@@ -116,7 +108,6 @@ export default function MobileServicePage(): React.ReactElement {
       return;
     }
     setOrigin(lat, lng, place?.formatted_address ?? place?.name);
-    setMapMode('pin');
   };
 
   const useCurrentLocation = (): void => {
@@ -130,7 +121,6 @@ export default function MobileServicePage(): React.ReactElement {
       ({ coords }) => {
         setLocating(false);
         reverseGeocode(coords.latitude, coords.longitude);
-        setMapMode('pin');
       },
       (geolocationError) => {
         setLocating(false);
@@ -251,91 +241,57 @@ export default function MobileServicePage(): React.ReactElement {
                     {locating ? 'Locating...' : 'Use my location'}
                   </button>
                 </div>
-                {locationError !== null && <Notice>{locationError}</Notice>}
-                <div className="map-mode-control" role="group" aria-label="Map view">
-                  <button
-                    className={mapMode === 'pin' ? 'is-active' : ''}
-                    onClick={() => setMapMode('pin')}
-                    type="button"
-                  >
-                    <Crosshair size={15} /> Exact pin
-                  </button>
-                  <button
-                    className={mapMode === 'radius' ? 'is-active' : ''}
-                    onClick={() => setMapMode('radius')}
-                    type="button"
-                  >
-                    <Map size={15} /> Service area
-                  </button>
-                </div>
-                <GoogleMap
-                  center={{ lat: latitude, lng: longitude }}
-                  mapContainerClassName="mobile-service-map"
-                  onClick={(event) => {
-                    const lat = event.latLng?.lat();
-                    const lng = event.latLng?.lng();
-                    if (lat !== undefined && lng !== undefined) {
-                      reverseGeocode(lat, lng);
-                      setMapMode('pin');
-                    }
-                  }}
-                  zoom={mapMode === 'pin' ? 18 : radius <= 5 ? 12 : radius <= 15 ? 10 : 9}
-                  options={{
-                    fullscreenControl: false,
-                    mapTypeControl: false,
-                    streetViewControl: false,
-                    zoomControl: true,
-                  }}
-                >
-                  <MarkerF
-                    draggable
-                    position={{ lat: latitude, lng: longitude }}
-                    onDragEnd={(event) => {
-                      const lat = event.latLng?.lat();
-                      const lng = event.latLng?.lng();
-                      if (lat !== undefined && lng !== undefined) {
-                        reverseGeocode(lat, lng);
-                        setMapMode('pin');
-                      }
-                    }}
-                  />
-                  <CircleF
-                    center={{ lat: latitude, lng: longitude }}
-                    radius={radius * 1609.344}
-                    options={{
-                      editable: true,
-                      fillColor: '#13795b',
-                      fillOpacity: 0.16,
-                      strokeColor: '#13795b',
-                      strokeOpacity: 0.9,
-                      strokeWeight: 2,
-                    }}
-                    onLoad={(instance) => {
-                      circle.current = instance;
-                    }}
-                    onRadiusChanged={() => {
-                      const meters = circle.current?.getRadius();
-                      if (meters !== undefined) {
-                        setRadius(
-                          Math.min(50, Math.max(1, Math.round((meters / 1609.344) * 10) / 10)),
-                        );
-                      }
-                    }}
-                    onUnmount={() => {
-                      circle.current = null;
-                    }}
-                  />
-                </GoogleMap>
               </LoadScript>
             ) : (
-              <Notice>Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to display the editable map.</Notice>
+              <div className="origin-controls">
+                <div className="input-with-icon origin-input">
+                  <MapPin size={18} />
+                  <input
+                    aria-label="Origin address"
+                    id="originAddress"
+                    placeholder="Enter your starting address"
+                    value={originAddress}
+                    onChange={(event) => {
+                      setOriginAddress(event.target.value);
+                      setOriginResolved(false);
+                    }}
+                  />
+                </div>
+                <button
+                  className="button button-secondary location-button"
+                  disabled={locating}
+                  onClick={useCurrentLocation}
+                  type="button"
+                >
+                  <LocateFixed size={17} />
+                  {locating ? 'Locating...' : 'Use my location'}
+                </button>
+              </div>
             )}
+            {locationError !== null && <Notice>{locationError}</Notice>}
             {mapLoadError && (
               <Notice>
-                Google Maps could not load. Enable Maps JavaScript, Places, and Geocoding APIs, then
-                allow http://localhost:3000/* in this key's website restrictions.
+                Address suggestions could not load. The map remains available; check the Places
+                and Geocoding API restrictions on your web key.
               </Notice>
             )}
+            <div className="service-area-map-wrap">
+              <SimpleMap
+                height={310}
+                interactive
+                onPointChange={reverseGeocode}
+                points={[
+                  {
+                    latitude,
+                    longitude,
+                    label: originAddress || 'Service origin',
+                    kind: 'origin',
+                  },
+                ]}
+                radiusMiles={radius}
+              />
+              <span className="service-map-hint">Drag the pin or tap the map to fine-tune</span>
+            </div>
             <div className="radius-control">
               <div className="radius-control-copy">
                 <Navigation size={17} />

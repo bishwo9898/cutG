@@ -27,6 +27,7 @@ export default function ClientLayout(): React.ReactElement {
       />
       <Tabs.Screen name="saved" options={{ title: 'Saved', tabBarIcon: tabIcon('heart') }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tabIcon('person') }} />
+      <Tabs.Screen name="design" options={{ href: null }} />
     </Tabs>
   );
 }

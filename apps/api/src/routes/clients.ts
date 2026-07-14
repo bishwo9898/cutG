@@ -1,14 +1,18 @@
 import {
   AddressParamsSchema,
+  AttachHairDesignSchema,
   BookAppointmentSchema,
   ClientAppointmentParamsSchema,
   ClientAppointmentQuerySchema,
   CreateReviewSchema,
+  CreateHairDesignSchema,
+  HairDesignParamsSchema,
   PaymentHistoryQuerySchema,
   SaveAddressSchema,
   SaveBarberSchema,
   UuidParamsSchema,
   UpdateAddressSchema,
+  TrackingAppointmentParamsSchema,
 } from '@barber-saas/shared-types';
 import {
   Router,
@@ -32,6 +36,12 @@ import {
   removeSavedBarber,
   saveBarber,
 } from '../services/client/clientService';
+import {
+  attachHairDesign,
+  createHairDesign,
+  listHairDesigns,
+} from '../services/design/hairDesignService';
+import { getLatestBarberLocation } from '../services/location/locationTrackingService';
 import {
   createClientAddress,
   deleteClientAddress,
@@ -135,6 +145,29 @@ clientRouter.post(
 );
 
 clientRouter.get(
+  '/me/designs',
+  asyncHandler(async (request, response) => {
+    response.json(await listHairDesigns(userId(request)));
+  }),
+);
+clientRouter.post(
+  '/me/designs',
+  asyncHandler(async (request, response) => {
+    response
+      .status(201)
+      .json(await createHairDesign(userId(request), CreateHairDesignSchema.parse(request.body)));
+  }),
+);
+clientRouter.post(
+  '/me/designs/:designId/attach',
+  asyncHandler(async (request, response) => {
+    const { designId } = HairDesignParamsSchema.parse(request.params);
+    const { appointmentId } = AttachHairDesignSchema.parse(request.body);
+    response.json(await attachHairDesign(userId(request), designId, appointmentId));
+  }),
+);
+
+clientRouter.get(
   '/me/appointments',
   asyncHandler(async (request, response) => {
     response.json(
@@ -151,6 +184,14 @@ clientRouter.get(
   asyncHandler(async (request, response) => {
     const { appointmentId } = ClientAppointmentParamsSchema.parse(request.params);
     response.json(await getAppointmentStatusUpdates(userId(request), appointmentId));
+  }),
+);
+
+clientRouter.get(
+  '/me/appointments/:appointmentId/barber-location',
+  asyncHandler(async (request, response) => {
+    const { appointmentId } = TrackingAppointmentParamsSchema.parse(request.params);
+    response.json(await getLatestBarberLocation(userId(request), appointmentId));
   }),
 );
 

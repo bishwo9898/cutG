@@ -138,6 +138,25 @@ export function ClientHome(): React.ReactElement {
         </section>
       )}
 
+      <section className="market-section design-home-band">
+        <div>
+          <p className="eyebrow">Design your look</p>
+          <h2>Walk in with a clear vision.</h2>
+          <p>Choose a style, describe the details, and attach the brief to your next booking.</p>
+        </div>
+        <div className="design-home-actions">
+          <Link className="button button-primary" href="/client/design">
+            <Sparkles size={16} /> Open Hair Design Studio
+          </Link>
+          <div className="style-chip-row">
+            <span>Fade</span>
+            <span>Taper</span>
+            <span>Textured top</span>
+            <span>Beard fade</span>
+          </div>
+        </div>
+      </section>
+
       <section className="market-section">
         <div className="section-title">
           <div>

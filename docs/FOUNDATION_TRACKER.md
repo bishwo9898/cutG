@@ -6,7 +6,7 @@ This document tracks what has been built so far from the Phase 0 foundation plan
 
 ## Current Status
 
-Phase 0 foundation through Phase 8 client marketplace polish are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, Expo application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
+Phase 0 foundation through Phase 9 GPS tracking and Hair Design Studio are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, Expo application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
 
 Verified commands:
 
@@ -22,10 +22,10 @@ pnpm --filter @barber-saas/mobile typecheck
 pnpm --filter @barber-saas/web exec next build --webpack
 ```
 
-Latest Phase 8 automated results:
+Latest Phase 9 automated results:
 
-- API: 9 test files, 33 tests passed against the isolated PostgreSQL test database.
-- Web: 5 test files, 15 tests passed.
+- API: 10 test files, 35 tests passed against the isolated PostgreSQL test database.
+- Web: 7 test files, 17 tests passed.
 - API, web, mobile, shared packages: typecheck passed.
 - ESLint, Prettier check, API build, mobile build, and Next.js production build passed.
 
@@ -287,6 +287,16 @@ Phase 8 adds:
 - Detailed client portal documentation in `docs/CLIENT_PORTAL.md`
 - Public `/barbers/search` compatibility alias; barber search and public profiles retain `nextAvailableSlot` and sanitized `mobileService`
 
+Phase 9 adds:
+
+- Migration `007_new_features.ts` with bounded barber GPS pings, client hair designs, and appointment style references
+- Foreground native GPS broadcasting and ownership-scoped client live-location polling
+- Web live tracking with destination/barber markers, remaining ETA, and resilient static-map fallback
+- Placeholder Hair Design Studio on web/mobile with presets, saved descriptions, and appointment attachment
+- Correct appointment service/travel/total display based on immutable `price_quoted` and cent-based travel fees
+- Categorized barber service menus on web/mobile, including color services and collapsed inactive rows
+- Polished status timeline, both-party notes, quick rebooking, and availability labels
+
 Seed accounts use password `password123`:
 
 - `barber1@example.com`
@@ -302,6 +312,8 @@ Local seeded geography for mobile-service testing:
 
 Not built yet:
 
+- Real AI hairstyle generation or analysis
+- Durable S3-backed hair reference uploads
 - Native push notification delivery
 - Real-time slot updates through WebSockets
 - Admin endpoints and admin mobile screens
@@ -325,6 +337,7 @@ Migrations:
 - `apps/api/src/db/migrations/004_client_features.ts`
 - `apps/api/src/db/migrations/005_payments_and_subscriptions.ts`
 - `apps/api/src/db/migrations/006_mobile_barber.ts`
+- `apps/api/src/db/migrations/007_new_features.ts`
 
 The initial schema includes 9 production-oriented tables:
 
@@ -384,6 +397,15 @@ The mobile barber migration adds:
 
 It also extends appointments and availability slots with location snapshots, travel accounting, lifecycle timestamps, and internal buffer fields.
 
+The Phase 9 migration adds:
+
+| Table                   | Purpose                                                        |
+| ----------------------- | -------------------------------------------------------------- |
+| `barber_location_pings` | Latest foreground GPS samples for active mobile journeys.      |
+| `client_hair_designs`   | Saved placeholder AI style briefs and appointment attachments. |
+
+It also extends appointments with `style_reference_id` and `style_notes`.
+
 Additional Phase 4 database changes:
 
 - Extends `payments` with platform fee, barber payout, refund, transfer, payout batch, and capture/failure fields.
@@ -423,7 +445,8 @@ Seed data currently creates:
 Appointment status mix:
 
 - 8 `COMPLETED`
-- 5 `CONFIRMED`
+- 4 `CONFIRMED`
+- 1 `ON_THE_WAY` mobile appointment owned by `client1@example.com` and `barber1@example.com`
 - 4 `PENDING`
 - 2 `CANCELLED`
 - 1 `NO_SHOW`
@@ -639,6 +662,8 @@ Generated output:
 | `docs/DEPLOYMENT.md`         | Deployment notes and production expectations.         |
 | `docs/MOBILE.md`             | Expo mobile setup, flows, Stripe, and limitations.    |
 | `docs/MOBILE_BARBER.md`      | Mobile service, maps, addresses, fees, and buffers.   |
+| `docs/GPS_TRACKING.md`       | Foreground GPS lifecycle, API, storage, and privacy.  |
+| `docs/HAIR_DESIGN.md`        | Style studio and Phase 10 AI integration plan.        |
 | `docs/PORTALS.md`            | Canonical web portals, redirects, and role routing.   |
 | `docs/FOUNDATION_TRACKER.md` | This running tracker of what exists so far.           |
 | `docs/ROADMAP.md`            | Forward-looking product and engineering plan.         |
@@ -770,7 +795,7 @@ Expected health state:
 
 ## Next Phase Readiness
 
-The foundation through Phase 8, including dual portals, complete Mobile Barber booking, and the polished client marketplace, is ready for continued implementation. The remaining natural steps are:
+The foundation through Phase 9, including dual portals, Mobile Barber booking/live tracking, and placeholder AI style briefs, is ready for continued implementation. The remaining natural steps are:
 
 - Complete simulator/device QA and live Stripe/Google Maps acceptance testing with restricted keys
 - Realtime GPS tracking, WebSockets, and push notifications
@@ -822,6 +847,7 @@ POST /barbers/me/blocked-dates
 DELETE /barbers/me/blocked-dates/:date
 GET /barbers/me/appointments
 PATCH /barbers/me/appointments/:appointmentId/status
+POST /barbers/me/appointments/:appointmentId/location
 POST /barbers/me/stripe/connect
 GET /barbers/me/stripe/status
 GET /barbers/me/earnings
@@ -844,9 +870,13 @@ POST /clients/me/appointments
 GET /clients/me/appointments
 GET /clients/me/appointments/:appointmentId
 GET /clients/me/appointments/:appointmentId/status-updates
+GET /clients/me/appointments/:appointmentId/barber-location
 DELETE /clients/me/appointments/:appointmentId
 POST /clients/me/reviews
 GET /clients/me/payment-history
+POST /clients/me/designs
+GET /clients/me/designs
+POST /clients/me/designs/:designId/attach
 POST /payments/create-intent
 GET /payments/appointment/:appointmentId
 POST /payments/refund

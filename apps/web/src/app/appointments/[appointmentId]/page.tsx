@@ -2,20 +2,18 @@
 
 import { clientApi, paymentApi } from '@barber-saas/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Car, MapPin } from 'lucide-react';
+import { Paperclip, Repeat2 } from 'lucide-react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
+import { LiveTrackingMap } from '@/components/client/live-tracking-map';
 import { ClientHeader } from '@/components/client-header';
-import {
-  AppointmentStatusBadge,
-  StarRating,
-  StaticMap,
-  StatusTimeline,
-} from '@/components/client-ui';
+import { AppointmentStatusBadge, StarRating, StatusTimeline } from '@/components/client-ui';
 import { Notice } from '@/components/notice';
 import { browserApi } from '@/lib/browser-api';
 import type { AppointmentTimeline, ClientAppointment, Review } from '@/lib/contracts';
+import { formatPrice } from '@/lib/money';
 
 type PaymentStatus = {
   status: string;
@@ -113,39 +111,13 @@ export default function AppointmentDetailPage(): React.ReactElement {
         <p className="muted">Loading appointment...</p>
       ) : (
         <section className="summary-panel">
-          {data.isMobileService === true && timeline.data?.currentStatus === 'ON_THE_WAY' && (
-            <div className="mobile-status-banner">
-              <Car size={21} />
-              <div>
-                <strong>Your barber is on the way</strong>
-                <span>
-                  {timeline.data.departedAt === null
-                    ? 'Journey started'
-                    : `Departed ${new Date(timeline.data.departedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
-                </span>
-              </div>
-            </div>
-          )}
-          {data.isMobileService === true && timeline.data?.currentStatus === 'ARRIVED' && (
-            <div className="mobile-status-banner arrived">
-              <MapPin size={21} />
-              <div>
-                <strong>Your barber has arrived</strong>
-                <span>
-                  {timeline.data.arrivedAt === null
-                    ? 'Ready for your service'
-                    : `Arrived ${new Date(timeline.data.arrivedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
-                </span>
-              </div>
-            </div>
-          )}
           <div className="card-title-row">
             <h1>{data.service.name}</h1>
             <AppointmentStatusBadge status={data.status} />
           </div>
           <p>{data.barber.businessName}</p>
           <p>{new Date(data.scheduledAt).toLocaleString()}</p>
-          <p>${(data.pricing?.total ?? data.priceQuoted).toFixed(2)}</p>
+          <p>{formatPrice(data.pricing?.total ?? data.priceQuoted)}</p>
           {data.isMobileService === true && serviceAddress != null && (
             <div className="list-row">
               <div>
@@ -173,21 +145,34 @@ export default function AppointmentDetailPage(): React.ReactElement {
             <StatusTimeline timeline={timeline.data} />
           )}
           {data.isMobileService === true && serviceAddress != null && (
-            <StaticMap
+            <LiveTrackingMap
               address={`${serviceAddress.addressLine1}, ${serviceAddress.city}, ${serviceAddress.state} ${serviceAddress.zipCode}`}
-              latitude={serviceAddress.latitude}
-              longitude={serviceAddress.longitude}
+              appointmentId={appointmentId}
+              arrivedAt={timeline.data?.arrivedAt}
+              clientLatitude={serviceAddress.latitude}
+              clientLongitude={serviceAddress.longitude}
+              status={timeline.data?.currentStatus ?? data.status}
             />
           )}
           <p>
             <strong>Payment:</strong> {payment.data?.status ?? data.paymentStatus}
           </p>
-          {payment.data !== undefined && (
-            <p className="muted">
-              Total ${payment.data.breakdown.total.toFixed(2)} · Service fee $
-              {payment.data.breakdown.platformFee.toFixed(2)}
-            </p>
-          )}
+          <div className="appointment-price-breakdown">
+            <span>
+              Service <strong>{formatPrice(data.pricing?.serviceFee ?? data.priceQuoted)}</strong>
+            </span>
+            {data.isMobileService === true && (
+              <span>
+                Travel <strong>{formatPrice(data.pricing?.travelFee ?? data.travelFee)}</strong>
+              </span>
+            )}
+            <span>
+              Total{' '}
+              <strong>
+                {formatPrice(data.pricing?.total ?? data.priceQuoted + (data.travelFee ?? 0))}
+              </strong>
+            </span>
+          </div>
           <div className="button-row">
             {canPay && (
               <button
@@ -215,7 +200,33 @@ export default function AppointmentDetailPage(): React.ReactElement {
           )}
           {createIntent.error instanceof Error && <Notice>{createIntent.error.message}</Notice>}
           {refund.error instanceof Error && <Notice>{refund.error.message}</Notice>}
-          {data.clientNotes !== null && <p className="muted">Notes: {data.clientNotes}</p>}
+          <div className="appointment-notes-grid">
+            <div>
+              <strong>Your notes</strong>
+              <p>{data.clientNotes ?? 'No notes added.'}</p>
+            </div>
+            <div>
+              <strong>Barber's response</strong>
+              <p>{data.barberNotes ?? 'No response yet.'}</p>
+            </div>
+          </div>
+          {data.styleReference != null && (
+            <div className="style-reference-card">
+              <Paperclip size={18} />
+              <div>
+                <strong>{data.styleReference.styleName ?? 'Style reference'}</strong>
+                <p>{data.styleReference.description ?? 'Reference attached for your barber.'}</p>
+              </div>
+            </div>
+          )}
+          {data.status === 'COMPLETED' && (
+            <Link
+              className="button button-secondary"
+              href={`/client/barbers/${data.barber.id}/book?serviceId=${data.service.id}`}
+            >
+              <Repeat2 size={16} /> Book again
+            </Link>
+          )}
           {canCancel && (
             <button
               className="button button-danger"

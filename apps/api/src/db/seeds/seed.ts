@@ -58,7 +58,7 @@ type AppointmentSeed = {
   availabilitySlotId: string;
   scheduledAt: Date;
   durationMinutes: number;
-  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+  status: 'PENDING' | 'CONFIRMED' | 'ON_THE_WAY' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
   paymentStatus: 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED';
   locationAddress: string;
   locationLatitude: number;
@@ -71,6 +71,7 @@ type AppointmentSeed = {
   confirmedAt: Date | null;
   completedAt: Date | null;
   cancelledAt: Date | null;
+  barberDepartedAt: Date | null;
   isMobileService: boolean;
   serviceAddressLine1: string | null;
   serviceAddressCity: string | null;
@@ -327,7 +328,7 @@ const buildAppointments = (clients: ClientSeed[], slots: SlotSeed[]): Appointmen
     'COMPLETED',
     'COMPLETED',
     'CONFIRMED',
-    'CONFIRMED',
+    'ON_THE_WAY',
     'CONFIRMED',
     'CONFIRMED',
     'CONFIRMED',
@@ -343,7 +344,7 @@ const buildAppointments = (clients: ClientSeed[], slots: SlotSeed[]): Appointmen
   return statuses.map((status, index): AppointmentSeed => {
     const barber = requireAt(barberSeeds, index, 'appointment barber');
     const client =
-      index < 5 || (status === 'PENDING' && barber.email === 'barber1@example.com')
+      index < 5 || index === 9 || (status === 'PENDING' && barber.email === 'barber1@example.com')
         ? requireAt(clients, 0, 'John Client')
         : requireAt(clients, index - 4, 'appointment client');
     const service = requireAt(barber.services, index, 'appointment service');
@@ -391,9 +392,13 @@ const buildAppointments = (clients: ClientSeed[], slots: SlotSeed[]): Appointmen
         ? 'Client left satisfied; style notes recorded for next visit.'
         : null,
       cancellationReason: isCancelled ? 'Schedule conflict reported by client.' : null,
-      confirmedAt: status === 'CONFIRMED' || isCompleted ? addDays(scheduledAt, -1) : null,
+      confirmedAt:
+        status === 'CONFIRMED' || status === 'ON_THE_WAY' || isCompleted
+          ? addDays(scheduledAt, -1)
+          : null,
       completedAt: isCompleted ? addDays(scheduledAt, 0) : null,
       cancelledAt: isCancelled ? addDays(scheduledAt, -1) : null,
+      barberDepartedAt: status === 'ON_THE_WAY' ? new Date(Date.now() - 5 * 60 * 1000) : null,
       isMobileService,
       serviceAddressLine1: isMobileService ? '212 W Main St' : null,
       serviceAddressCity: isMobileService ? 'Danville' : null,
@@ -411,6 +416,8 @@ const buildAppointments = (clients: ClientSeed[], slots: SlotSeed[]): Appointmen
 export async function seed(knex: Knex): Promise<void> {
   faker.seed(20260707);
 
+  await knex('barber_location_pings').del();
+  await knex('client_hair_designs').del();
   await knex('notifications').del();
   await knex('client_addresses').del();
   await knex('mobile_barber_config').del();
@@ -661,6 +668,7 @@ export async function seed(knex: Knex): Promise<void> {
       confirmed_at: appointment.confirmedAt,
       completed_at: appointment.completedAt,
       cancelled_at: appointment.cancelledAt,
+      barber_departed_at: appointment.barberDepartedAt,
       is_mobile_service: appointment.isMobileService,
       service_address_line1: appointment.serviceAddressLine1,
       service_address_city: appointment.serviceAddressCity,

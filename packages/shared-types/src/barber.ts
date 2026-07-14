@@ -2,7 +2,15 @@ import { z } from 'zod';
 
 import { AppointmentStatusEnum } from './enums';
 
-export const ServiceCategoryEnum = z.enum(['haircut', 'beard', 'shave', 'combo', 'kids', 'other']);
+export const ServiceCategoryEnum = z.enum([
+  'haircut',
+  'beard',
+  'shave',
+  'color',
+  'combo',
+  'kids',
+  'other',
+]);
 export const ServiceDurationSchema = z.union([
   z.literal(15),
   z.literal(30),

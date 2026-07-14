@@ -105,6 +105,16 @@ const mapAppointment = (row: Row) => ({
   },
   barberName: row.business_name,
   barberPhotoUrl: row.profile_photo_url,
+  styleReference:
+    row.style_design_id === null || row.style_design_id === undefined
+      ? null
+      : {
+          id: row.style_design_id,
+          styleName: row.style_name,
+          description: row.style_description,
+          previewImageUrl: row.generated_preview_url,
+          sourcePhotoUrl: row.source_photo_url,
+        },
   slot:
     row.availability_slot_id === null
       ? null
@@ -146,11 +156,17 @@ const appointmentSelect = `
     r.title AS review_title,
     r.comment AS review_comment,
     r.created_at AS review_created_at
+    ,hd.id AS style_design_id
+    ,hd.style_name
+    ,hd.description AS style_description
+    ,hd.generated_preview_url
+    ,hd.source_photo_url
   FROM appointments a
   JOIN services s ON s.id = a.service_id
   JOIN barber_profiles bp ON bp.id = a.barber_id
   LEFT JOIN availability_slots av ON av.id = a.availability_slot_id
   LEFT JOIN reviews r ON r.appointment_id = a.id
+  LEFT JOIN client_hair_designs hd ON hd.id = a.style_reference_id
 `;
 
 export const getClientProfile = async (clientId: string) => {

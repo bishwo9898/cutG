@@ -84,6 +84,9 @@ Implemented route groups under `apps/mobile/src/app/(client)`:
 - Booking flow: select service, select slot, confirm, pay at shop or continue to Stripe
 - Mobile booking address estimates with hard radius enforcement and advisory provider-failure fallback
 - Synchronized native Places selection, current location, map taps, draggable pins, and exact coordinate persistence for client and barber addresses
+- Foreground GPS broadcasting every 15 seconds while `ON_THE_WAY`, with silent network failure and automatic cleanup
+- Client live-location polling, moving barber marker, remaining distance, and ETA
+- Native placeholder Hair Design Studio and barber-visible style briefs
 - Stripe card payment screen using `CardField` and `confirmPayment`
 - Appointment list, detail, cancellation, payment status, and review submission
 - Saved barbers

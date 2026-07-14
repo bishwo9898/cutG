@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/Input';
 import { StarRating } from '@/components/ui/StarRating';
 import {
   useCancelAppointment,
+  useBarberLocation,
   useClientAppointment,
   useCreateReview,
 } from '@/hooks/useAppointments';
@@ -66,6 +67,7 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
 
   const item = appointment.data;
   const timeline = statusUpdates.data;
+  const barberLocation = useBarberLocation(appointmentId, timeline?.currentStatus === 'ON_THE_WAY');
 
   return (
     <Screen
@@ -160,7 +162,40 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
                     }}
                     title="Mobile appointment"
                   />
+                  {barberLocation.data?.isTracking === true ? (
+                    <>
+                      <Marker
+                        coordinate={{
+                          latitude: barberLocation.data.lastPing.latitude,
+                          longitude: barberLocation.data.lastPing.longitude,
+                        }}
+                        pinColor={colors.info}
+                        title={`${barberLocation.data.barberName} is on the way`}
+                      />
+                      <Polyline
+                        coordinates={[
+                          {
+                            latitude: barberLocation.data.lastPing.latitude,
+                            longitude: barberLocation.data.lastPing.longitude,
+                          },
+                          {
+                            latitude: item.serviceAddress.latitude,
+                            longitude: item.serviceAddress.longitude,
+                          },
+                        ]}
+                        strokeColor={colors.info}
+                        strokeWidth={3}
+                      />
+                    </>
+                  ) : null}
                 </MapView>
+              ) : null}
+              {barberLocation.data?.isTracking === true ? (
+                <Text style={styles.meta}>
+                  About {barberLocation.data.estimatedArrivalMinutes} min ·{' '}
+                  {barberLocation.data.distanceRemainingMiles.toFixed(1)} miles away · updated{' '}
+                  {barberLocation.data.lastPing.secondsAgo}s ago
+                </Text>
               ) : null}
               <Text style={styles.meta}>
                 Service: ${(item.pricing?.serviceFee ?? item.price).toFixed(2)}
@@ -184,6 +219,13 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
                 }
               />
             ) : null}
+          </Card>
+          <Card>
+            <Text style={styles.title}>Appointment notes</Text>
+            <Text style={styles.meta}>Your notes: {item.clientNotes ?? 'None'}</Text>
+            <Text style={styles.meta}>
+              Barber response: {item.barberNotes ?? 'No response yet'}
+            </Text>
           </Card>
           {item.status === 'PENDING' || item.status === 'CONFIRMED' ? (
             <Button

@@ -143,6 +143,33 @@ export default function AppointmentsPage(): React.ReactElement {
                       </td>
                       <td>
                         {appointment.service.name}
+                        {appointment.clientNotes !== null && (
+                          <small style={{ display: 'block' }}>
+                            Client: {appointment.clientNotes}
+                          </small>
+                        )}
+                        {appointment.barberNotes !== null && (
+                          <small style={{ display: 'block' }}>
+                            My note: {appointment.barberNotes}
+                          </small>
+                        )}
+                        {appointment.styleReference != null && (
+                          <div className="appointment-style-inline">
+                            <strong>
+                              {appointment.styleReference.styleName ?? 'Style reference'}
+                            </strong>
+                            <span>{appointment.styleReference.description}</span>
+                            {appointment.styleReference.sourcePhotoUrl !== null && (
+                              <a
+                                href={appointment.styleReference.sourcePhotoUrl}
+                                rel="noreferrer"
+                                target="_blank"
+                              >
+                                View reference photo
+                              </a>
+                            )}
+                          </div>
+                        )}
                         {appointment.isMobileService === true && (
                           <small style={{ display: 'block' }}>
                             Mobile · {appointment.serviceAddress?.addressLine1},{' '}

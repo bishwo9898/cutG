@@ -72,7 +72,7 @@ export type BarberService = {
   description: string | null;
   price: number;
   durationMinutes: 15 | 30 | 45 | 60 | 90 | 120;
-  category: 'haircut' | 'beard' | 'shave' | 'combo' | 'kids' | 'other';
+  category: 'haircut' | 'beard' | 'shave' | 'color' | 'combo' | 'kids' | 'other';
   isActive: boolean;
 };
 
@@ -171,6 +171,7 @@ export type Appointment = {
   distanceMiles?: number | null;
   estimatedTravelMinutes?: number | null;
   travelFee?: number;
+  styleReference?: StyleReference | null;
 };
 
 export type ClientAppointment = {
@@ -211,7 +212,45 @@ export type ClientAppointment = {
   estimatedTravelMinutes?: number | null;
   travelFee?: number;
   pricing?: { serviceFee: number; travelFee: number; total: number };
+  styleReference?: StyleReference | null;
 };
+
+export type StyleReference = {
+  id: string;
+  styleName: string | null;
+  description: string | null;
+  previewImageUrl: string | null;
+  sourcePhotoUrl: string | null;
+};
+
+export type HairDesign = {
+  id: string;
+  styleName: string;
+  styleCategory: 'haircut' | 'beard' | 'color';
+  description: string | null;
+  sourcePhotoUrl: string | null;
+  generatedPreviewUrl: string | null;
+  aiStatus: 'placeholder' | 'pending' | 'processing' | 'completed' | 'failed';
+  appointmentId: string | null;
+  createdAt: string;
+};
+
+export type BarberLocation =
+  | { isTracking: false; reason: string; arrivedAt?: string | null }
+  | {
+      isTracking: true;
+      appointmentId: string;
+      barberName: string;
+      lastPing: {
+        latitude: number;
+        longitude: number;
+        headingDegrees: number | null;
+        recordedAt: string;
+        secondsAgo: number;
+      };
+      estimatedArrivalMinutes: number;
+      distanceRemainingMiles: number;
+    };
 
 export type Review = {
   id: string;

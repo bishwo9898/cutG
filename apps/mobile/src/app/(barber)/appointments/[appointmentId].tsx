@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useBarberAppointments, useUpdateAppointmentStatus } from '@/hooks/useBarberDashboard';
+import { useLocationBroadcast } from '@/hooks/useLocationBroadcast';
 import { colors, spacing, typography } from '@/theme';
 import { openNavigation } from '@/lib/maps';
 
@@ -37,6 +38,7 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
           (item) => item.id === appointmentId,
         );
   const status = nextStatus(appointment?.status, appointment?.isMobileService === true);
+  useLocationBroadcast(appointmentId, appointment?.status);
 
   return (
     <Screen
@@ -97,6 +99,18 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
           <Input label="Barber notes" value={notes} onChangeText={setNotes} multiline />
           {appointment.clientNotes !== null && appointment.clientNotes !== undefined ? (
             <Text style={styles.meta}>Client note: {appointment.clientNotes}</Text>
+          ) : null}
+          {appointment.barberNotes !== null && appointment.barberNotes !== undefined ? (
+            <Text style={styles.meta}>Saved note: {appointment.barberNotes}</Text>
+          ) : null}
+          {appointment.styleReference != null ? (
+            <Card>
+              <Text style={styles.title}>Client's requested style</Text>
+              <Text style={styles.meta}>{appointment.styleReference.styleName}</Text>
+              <Text style={styles.meta}>
+                {appointment.styleReference.description ?? 'No extra style notes.'}
+              </Text>
+            </Card>
           ) : null}
           {status !== null ? (
             <Button
