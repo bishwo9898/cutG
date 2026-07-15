@@ -56,6 +56,9 @@ export default function ServicesScreen(): React.ReactElement {
                   />
                 </View>
                 <Switch
+                  ios_backgroundColor={colors.surfaceRaised}
+                  thumbColor={service.isActive ? colors.textPrimary : colors.textMuted}
+                  trackColor={{ false: colors.surfaceRaised, true: colors.borderLight }}
                   value={service.isActive}
                   onValueChange={(isActive) => {
                     void update.mutateAsync({ id: service.id, body: { isActive } });

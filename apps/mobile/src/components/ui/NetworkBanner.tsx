@@ -14,7 +14,7 @@ const styles = StyleSheet.create({
   banner: {
     ...typography.caption,
     backgroundColor: colors.warning,
-    color: colors.primary,
+    color: colors.textPrimary,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     textAlign: 'center',

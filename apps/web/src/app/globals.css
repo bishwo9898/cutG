@@ -4329,3 +4329,309 @@ a {
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* Monochrome contrast repair: remove legacy light-theme surfaces. */
+html {
+  color-scheme: dark;
+}
+
+.style-reference-card,
+.availability-label,
+.design-home-band,
+.style-chip-row span,
+.photo-upload-zone,
+.style-preset-grid button,
+.design-preview-panel,
+.saved-look-card,
+.service-category-pills button,
+.input,
+.select,
+.textarea,
+.auth-role-card,
+.client-account-dropdown,
+.client-account-dropdown > a,
+.client-account-dropdown > button,
+.quick-filter-row a,
+.hero-search,
+.filter-panel,
+.summary-panel,
+.market-card,
+.review-card,
+.list-row,
+.slot-button,
+.steps span,
+.segmented button,
+.status-badge,
+.input-with-icon,
+.notice,
+.travel-estimate-card,
+.precise-location-search,
+.precise-location-confirmation,
+.map-mode-control button,
+.compact-calendar,
+.compact-calendar-arrows button,
+.compact-date-rail button,
+.compact-time-heading,
+.compact-time-grid button,
+.radius-control,
+.money-input,
+.suggestion-row,
+.pac-item,
+.table th,
+.service-card,
+.drawer,
+.icon-button,
+.appointment-type-option,
+.address-option,
+.selected-address-card,
+.booking-summary-lines,
+.appointment-map-label,
+.client-mobile-booking-bar,
+.client-mobile-booking-bar > button {
+  border-color: var(--line);
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.style-preset-grid button:hover,
+.service-category-pills button:hover,
+.client-account-dropdown > a:hover,
+.client-account-dropdown > button:hover,
+.list-row:hover,
+.slot-button:hover,
+.map-mode-control button:hover,
+.compact-calendar-arrows button:hover,
+.compact-date-rail button:hover,
+.compact-time-grid button:hover,
+.suggestion-row:hover,
+.pac-item:hover,
+.filter-preset-list .list-row:hover {
+  color: #ffffff;
+  background: #20201e;
+}
+
+.is-selected,
+.slot-button.is-selected,
+.segmented button.is-active,
+.steps .is-active,
+.service-category-pills button.is-active,
+.style-preset-grid button.is-selected,
+.map-mode-control button.is-active,
+.compact-date-rail button.is-selected,
+.compact-time-grid button.is-selected,
+.appointment-type-option.is-selected,
+.address-option.is-selected {
+  border-color: #f3f3ee;
+  color: #090909;
+  background: #f3f3ee;
+}
+
+.is-selected *,
+.slot-button.is-selected *,
+.segmented button.is-active *,
+.steps .is-active *,
+.service-category-pills button.is-active *,
+.style-preset-grid button.is-selected *,
+.map-mode-control button.is-active *,
+.compact-date-rail button.is-selected *,
+.compact-time-grid button.is-selected *,
+.appointment-type-option.is-selected *,
+.address-option.is-selected * {
+  color: #090909;
+}
+
+.profile-tabs button {
+  color: var(--muted);
+  background: transparent;
+}
+
+.profile-tabs button:hover,
+.profile-tabs button.is-active {
+  border-bottom-color: #f3f3ee;
+  color: #ffffff;
+  background: transparent;
+}
+
+.notice-error,
+.notice-success,
+.notice-warning,
+.travel-estimate-card.is-warning,
+.travel-estimate-card.is-error,
+.status-confirmed,
+.status-completed,
+.status-pending,
+.status-on_the_way,
+.status-arrived,
+.status-in_progress,
+.status-cancelled,
+.status-no_show,
+.badge-success,
+.badge-warning,
+.badge-danger,
+.mobile-status-banner,
+.mobile-status-banner.arrived,
+.tracking-banner,
+.tracking-banner.arrived,
+.availability-label.has-slots,
+.suggestion-row {
+  border-color: #3d3d39;
+  color: #e5e5df;
+  background: #20201e;
+}
+
+.notice-error *,
+.notice-success *,
+.notice-warning *,
+.travel-estimate-card.is-warning *,
+.travel-estimate-card.is-error *,
+.mobile-status-banner *,
+.tracking-banner * {
+  color: inherit;
+}
+
+.badge-success,
+.badge-warning,
+.badge-danger,
+.status-badge {
+  color: #e9e9e3;
+  background: #2c2c29;
+}
+
+.field label,
+.panel-header h2,
+.panel-header h3,
+.service-card h3,
+.list-row strong,
+.booking-summary-lines strong,
+.compact-calendar strong {
+  color: var(--ink);
+}
+
+.field-help,
+.panel-description,
+.list-row small,
+.booking-summary-lines span,
+.compact-calendar small,
+.status-badge + span {
+  color: var(--muted);
+}
+
+.money-input input,
+.hero-search input,
+.input-with-icon input,
+.client-header-search input,
+.precise-location-search input {
+  color: var(--ink);
+  background: transparent;
+}
+
+.money-input input::placeholder,
+.hero-search input::placeholder,
+.input-with-icon input::placeholder,
+.client-header-search input::placeholder,
+.precise-location-search input::placeholder,
+.input::placeholder,
+.textarea::placeholder {
+  color: #73736e;
+  opacity: 1;
+}
+
+.toggle-track {
+  border-color: #4a4a46;
+  background: #292927;
+}
+
+.toggle-track::after {
+  background: #a3a39d;
+}
+
+input:checked + .toggle-track,
+.toggle-input:checked + .toggle-track {
+  border-color: #f3f3ee;
+  background: #f3f3ee;
+}
+
+input:checked + .toggle-track::after,
+.toggle-input:checked + .toggle-track::after {
+  background: #090909;
+}
+
+.table tr:hover td {
+  background: #181817;
+}
+
+.drawer-backdrop {
+  background: rgba(0, 0, 0, 0.74);
+}
+
+.auth-role-card:hover,
+.market-card:hover,
+.service-card:hover {
+  border-color: #4a4a46;
+}
+
+@media (max-width: 760px) {
+  .client-mobile-nav,
+  .mobile-nav {
+    border-top-color: var(--line);
+    background: rgba(9, 9, 9, 0.97);
+  }
+
+  .client-mobile-nav a,
+  .mobile-nav a {
+    color: #858580;
+    background: transparent;
+  }
+
+  .client-mobile-nav .client-nav-active,
+  .mobile-nav .nav-link-active {
+    color: #ffffff;
+    background: #20201e;
+  }
+}
+
+.button-danger {
+  border-color: #4a4a46;
+  color: #f0f0eb;
+  background: #242422;
+}
+
+.button-danger:hover:not(:disabled) {
+  border-color: #777772;
+  background: #30302d;
+}
+
+.auth-role-icon,
+.radius-badge,
+.mobile-badge,
+.travel-estimate-card.is-success {
+  border-color: #3d3d39;
+  color: #e7e7e1;
+  background: #252523;
+}
+
+.skeleton-line,
+.client-auth-skeleton,
+.skeleton-card {
+  background: linear-gradient(100deg, #1a1a19 20%, #292927 40%, #1a1a19 60%);
+  background-size: 220% 100%;
+}
+
+.mobile-service-callout,
+.static-map-fallback,
+.precise-location-map-wrap {
+  border-color: var(--line);
+  color: var(--ink);
+  background-color: #151514;
+}
+
+.landing-footer {
+  color: var(--ink);
+  background: #090909;
+}
+
+.landing-footer p,
+.landing-footer small,
+.landing-footer nav {
+  color: var(--muted);
+}

@@ -33,14 +33,7 @@ export const Button = ({
   >
     <View style={styles.content}>
       {icon}
-      <Text
-        style={[
-          styles.text,
-          (variant === 'ghost' || variant === 'secondary') && styles.secondaryText,
-        ]}
-      >
-        {title}
-      </Text>
+      <Text style={[styles.text, variant !== 'primary' && styles.secondaryText]}>{title}</Text>
     </View>
   </Pressable>
 );
@@ -68,7 +61,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   secondaryText: {
-    color: colors.textSecondary,
+    color: colors.textPrimary,
   },
   pressed: {
     opacity: 0.8,

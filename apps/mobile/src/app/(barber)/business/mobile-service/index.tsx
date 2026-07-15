@@ -92,7 +92,13 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
           <Text style={styles.title}>Offer mobile visits</Text>
           <Text style={styles.meta}>Travel to homes, offices, and hotels.</Text>
         </View>
-        <Switch value={enabled} onValueChange={setEnabled} />
+        <Switch
+          ios_backgroundColor={colors.surfaceRaised}
+          thumbColor={enabled ? colors.textPrimary : colors.textMuted}
+          trackColor={{ false: colors.surfaceRaised, true: colors.borderLight }}
+          value={enabled}
+          onValueChange={setEnabled}
+        />
       </Card>
       {enabled ? (
         <>
@@ -105,7 +111,14 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
                   onPress={() => setStructure(item.value)}
                   style={[styles.segment, structure === item.value && styles.segmentActive]}
                 >
-                  <Text style={styles.segmentText}>{item.label}</Text>
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      structure === item.value && styles.segmentTextActive,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -193,6 +206,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   segmentText: { ...typography.label, color: colors.textPrimary, textAlign: 'center' },
+  segmentTextActive: { color: colors.textOnAccent },
   title: { ...typography.h3, color: colors.textPrimary },
   toggleCard: { alignItems: 'center', flexDirection: 'row', gap: spacing.md },
 });

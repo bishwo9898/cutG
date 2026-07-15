@@ -158,6 +158,9 @@ export default function ConfirmBookingScreen(): React.ReactElement {
           </Text>
         </View>
         <Switch
+          ios_backgroundColor={colors.surfaceRaised}
+          thumbColor={payAtShop || !canPayOnline ? colors.textPrimary : colors.textMuted}
+          trackColor={{ false: colors.surfaceRaised, true: colors.borderLight }}
           value={payAtShop || !canPayOnline}
           onValueChange={setPayAtShop}
           disabled={!canPayOnline}

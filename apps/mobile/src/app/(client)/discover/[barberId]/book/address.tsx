@@ -136,7 +136,13 @@ export default function SelectAddressScreen(): React.ReactElement {
         {oneTime !== null ? (
           <View style={styles.row}>
             <Text style={[styles.meta, styles.flex]}>Save this address to my profile</Text>
-            <Switch value={saveAddress} onValueChange={setSaveAddress} />
+            <Switch
+              ios_backgroundColor={colors.surfaceRaised}
+              thumbColor={saveAddress ? colors.textPrimary : colors.textMuted}
+              trackColor={{ false: colors.surfaceRaised, true: colors.borderLight }}
+              value={saveAddress}
+              onValueChange={setSaveAddress}
+            />
           </View>
         ) : null}
       </Card>
