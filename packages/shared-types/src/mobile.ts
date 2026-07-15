@@ -43,6 +43,12 @@ export const TravelEstimateSchema = z.object({
 });
 export type TravelEstimateRequest = z.infer<typeof TravelEstimateSchema>;
 
+export const ReverseGeocodeSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+export type ReverseGeocodeRequest = z.infer<typeof ReverseGeocodeSchema>;
+
 const AddressFieldsSchema = z.object({
   label: z.string().trim().min(1).max(50),
   addressLine1: z.string().trim().min(1).max(200),

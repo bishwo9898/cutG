@@ -13,6 +13,7 @@ import { requireAuth, requireRoles } from '../middleware/auth';
 import {
   createAppointmentPaymentIntent,
   getAppointmentPaymentStatus,
+  getClientPaymentConfig,
   refundAppointmentPayment,
 } from '../services/payment/paymentService';
 import type { AuthenticatedRequest } from '../types/auth';
@@ -25,6 +26,10 @@ const asyncHandler =
   (request, response, next: NextFunction) => {
     void handler(request, response).catch(next);
   };
+
+paymentRouter.get('/config', requireAuth, requireRoles('CLIENT'), (_request, response) =>
+  response.json(getClientPaymentConfig()),
+);
 
 paymentRouter.post(
   '/create-intent',

@@ -13,9 +13,15 @@ type Row = Record<string, unknown>;
 type AddressInput = OneTimeAddressRequest | SaveAddressRequest;
 type GeocodeResponse = {
   status?: string;
+  error_message?: string;
   results?: Array<{
     formatted_address?: string;
     geometry?: { location?: { lat?: number; lng?: number } };
+    address_components?: Array<{
+      long_name?: string;
+      short_name?: string;
+      types?: string[];
+    }>;
   }>;
 };
 
@@ -36,6 +42,119 @@ const fullAddress = (input: AddressInput): string =>
   [input.addressLine1, input.addressLine2, input.city, input.state, input.zipCode, input.country]
     .filter((part): part is string => typeof part === 'string' && part.length > 0)
     .join(', ');
+
+const component = (
+  components: NonNullable<NonNullable<GeocodeResponse['results']>[number]['address_components']>,
+  types: string[],
+  short = false,
+): string | undefined => {
+  const match = components.find((candidate) =>
+    types.some((type) => candidate.types?.includes(type) === true),
+  );
+  return short ? match?.short_name : match?.long_name;
+};
+
+export const reverseGeocodeCoordinates = async (
+  latitude: number,
+  longitude: number,
+  fetcher: typeof fetch = fetch,
+): Promise<ResolvedAddress> => {
+  if (env.NODE_ENV === 'test' && fetcher === fetch) {
+    return {
+      addressLine1: 'Pinned service location',
+      city: 'Danville',
+      state: 'KY',
+      zipCode: '40422',
+      country: 'US',
+      latitude,
+      longitude,
+      formattedAddress: 'Pinned service location, Danville, KY 40422',
+    };
+  }
+  if (env.GOOGLE_MAPS_API_KEY.length === 0) {
+    throw new AppError(503, 'Reverse geocoding is not configured.', 'MAPS_NOT_CONFIGURED');
+  }
+
+  const parameters = new URLSearchParams({
+    latlng: `${latitude},${longitude}`,
+    key: env.GOOGLE_MAPS_API_KEY,
+  });
+  let response: Response;
+  try {
+    response = await fetcher(
+      `https://maps.googleapis.com/maps/api/geocode/json?${parameters.toString()}`,
+    );
+  } catch {
+    throw new AppError(503, 'Location lookup is temporarily unavailable.', 'MAPS_UNAVAILABLE');
+  }
+
+  const body = (await response.json()) as GeocodeResponse;
+  if (body.status === 'REQUEST_DENIED') {
+    throw new AppError(
+      503,
+      'Server-side reverse geocoding is not configured for this API key.',
+      'MAPS_NOT_CONFIGURED',
+    );
+  }
+  if (!response.ok || body.status === 'OVER_DAILY_LIMIT' || body.status === 'OVER_QUERY_LIMIT') {
+    throw new AppError(503, 'Location lookup is temporarily unavailable.', 'MAPS_UNAVAILABLE');
+  }
+  const results = body.results ?? [];
+  const result =
+    results.find((candidate) => {
+      const candidateComponents = candidate.address_components ?? [];
+      return (
+        (component(candidateComponents, ['street_number']) !== undefined ||
+          component(candidateComponents, ['premise']) !== undefined) &&
+        component(candidateComponents, ['route']) !== undefined
+      );
+    }) ?? results[0];
+  const components = result?.address_components ?? [];
+  const streetNumber = component(components, ['street_number']);
+  const route = component(components, ['route']);
+  const premise = component(components, ['premise']);
+  const addressLine1 = [streetNumber, route].filter(Boolean).join(' ') || premise;
+  const city = component(components, [
+    'locality',
+    'postal_town',
+    'sublocality',
+    'administrative_area_level_2',
+  ]);
+  const state = component(components, ['administrative_area_level_1'], true);
+  const zipCode =
+    component(components, ['postal_code']) ??
+    results
+      .map((candidate) => component(candidate.address_components ?? [], ['postal_code']))
+      .find((value) => value !== undefined);
+  const country = component(components, ['country'], true);
+
+  if (
+    body.status !== 'OK' ||
+    result === undefined ||
+    addressLine1 === undefined ||
+    city === undefined ||
+    state === undefined ||
+    zipCode === undefined ||
+    country === undefined
+  ) {
+    throw new AppError(
+      422,
+      'Move the pin closer to a building or street entrance and try again.',
+      'ADDRESS_NOT_FOUND',
+    );
+  }
+
+  return {
+    addressLine1,
+    city,
+    state,
+    zipCode,
+    country,
+    latitude,
+    longitude,
+    formattedAddress: result.formatted_address ?? `${addressLine1}, ${city}, ${state} ${zipCode}`,
+  };
+};
 
 export const geocodeAddress = async (
   input: AddressInput,

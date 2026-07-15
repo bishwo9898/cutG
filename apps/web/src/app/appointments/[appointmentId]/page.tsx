@@ -8,6 +8,7 @@ import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
 import { LiveTrackingMap } from '@/components/client/live-tracking-map';
+import { StripePaymentPanel } from '@/components/client/stripe-payment-panel';
 import { ClientHeader } from '@/components/client-header';
 import { AppointmentStatusBadge, StarRating, StatusTimeline } from '@/components/client-ui';
 import { Notice } from '@/components/notice';
@@ -28,6 +29,8 @@ type PaymentIntent = {
   amount: number;
   breakdown: { total: number; platformFee: number; barberEarns: number };
 };
+
+type PaymentConfig = { onlinePaymentsEnabled: boolean; publishableKey: string | null };
 
 export default function AppointmentDetailPage(): React.ReactElement {
   const params = useParams<{ appointmentId: string }>();
@@ -59,6 +62,10 @@ export default function AppointmentDetailPage(): React.ReactElement {
   const payment = useQuery({
     queryKey: ['appointment-payment', appointmentId],
     queryFn: () => paymentApi.appointmentStatus<PaymentStatus>(browserApi, appointmentId),
+  });
+  const paymentConfig = useQuery({
+    queryKey: ['client-payment-config'],
+    queryFn: () => paymentApi.config<PaymentConfig>(browserApi),
   });
   const cancel = useMutation({
     mutationFn: () => clientApi.cancelAppointment(browserApi, appointmentId),
@@ -98,9 +105,13 @@ export default function AppointmentDetailPage(): React.ReactElement {
   const canCancel =
     data !== undefined &&
     ['PENDING', 'CONFIRMED'].includes(data.status) &&
-    new Date(data.scheduledAt).getTime() > Date.now();
+    new Date(data.scheduledAt).getTime() > Date.now() &&
+    !(data.paymentMethod === 'CARD' && payment.data?.status === 'SUCCEEDED');
   const canReview = data?.status === 'COMPLETED' && data.review === null;
-  const canPay = data !== undefined && payment.data?.status === 'PENDING';
+  const canPay =
+    data?.paymentMethod === 'CARD' &&
+    payment.data?.status === 'PENDING' &&
+    paymentConfig.data?.onlinePaymentsEnabled === true;
   const canRefund =
     data !== undefined && payment.data?.status === 'SUCCEEDED' && data.status !== 'COMPLETED';
 
@@ -155,7 +166,10 @@ export default function AppointmentDetailPage(): React.ReactElement {
             />
           )}
           <p>
-            <strong>Payment:</strong> {payment.data?.status ?? data.paymentStatus}
+            <strong>Payment:</strong>{' '}
+            {data.paymentMethod === 'CASH'
+              ? 'Cash at appointment'
+              : (payment.data?.status ?? data.paymentStatus)}
           </p>
           <div className="appointment-price-breakdown">
             <span>
@@ -195,8 +209,19 @@ export default function AppointmentDetailPage(): React.ReactElement {
               </button>
             )}
           </div>
-          {createIntent.data !== undefined && (
-            <Notice>Payment intent ready: {createIntent.data.clientSecret}</Notice>
+          {createIntent.data !== undefined && paymentConfig.data?.publishableKey != null && (
+            <StripePaymentPanel
+              amount={createIntent.data.amount}
+              appointmentId={appointmentId}
+              clientSecret={createIntent.data.clientSecret}
+              publishableKey={paymentConfig.data.publishableKey}
+              onComplete={async () => {
+                createIntent.reset();
+                await queryClient.invalidateQueries({
+                  queryKey: ['appointment-payment', appointmentId],
+                });
+              }}
+            />
           )}
           {createIntent.error instanceof Error && <Notice>{createIntent.error.message}</Notice>}
           {refund.error instanceof Error && <Notice>{refund.error.message}</Notice>}

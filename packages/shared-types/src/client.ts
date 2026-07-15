@@ -4,12 +4,16 @@ import { ServiceCategoryEnum } from './barber';
 import { AppointmentStatusEnum } from './enums';
 import { BookMobileAppointmentExtensionSchema } from './mobile';
 
+export const AppointmentPaymentMethodEnum = z.enum(['CASH', 'CARD']);
+export type AppointmentPaymentMethod = z.infer<typeof AppointmentPaymentMethodEnum>;
+
 export const BookAppointmentSchema = z
   .object({
     barberId: z.string().uuid(),
     serviceId: z.string().uuid(),
     availabilitySlotId: z.string().uuid(),
     clientNotes: z.string().trim().max(1000).optional(),
+    paymentMethod: AppointmentPaymentMethodEnum.default('CASH'),
   })
   .and(BookMobileAppointmentExtensionSchema);
 export type BookAppointmentRequest = z.infer<typeof BookAppointmentSchema>;

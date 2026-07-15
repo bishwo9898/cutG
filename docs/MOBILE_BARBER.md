@@ -8,8 +8,8 @@ Phase 6 adds on-demand mobile service to cutG. BASIC and PREMIUM barbers can def
 
 1. A BASIC or PREMIUM barber enables mobile service and saves an origin, radius, fee structure, and client notes.
 2. Public search exposes a Mobile badge and supports `mobileOnly=true`.
-3. A client selects a saved or one-time address during booking.
-4. The API geocodes one-time addresses, estimates driving distance/time, validates the radius, and calculates the travel fee.
+3. The client map centers near the browser location and the client places an exact MapLibre destination pin.
+4. The API reverse-geocodes the pin for a meaningful address, estimates driving distance/time, validates the radius, and calculates the travel fee.
 5. The booking transaction locks the appointment slot and every required preceding buffer slot before writing anything.
 6. The payment intent total is the service quote plus `travel_fee_cents`.
 7. The barber advances a mobile visit through `CONFIRMED -> ON_THE_WAY -> ARRIVED -> IN_PROGRESS -> COMPLETED`.
@@ -81,9 +81,16 @@ The transaction locks the selected appointment slot and the exact preceding avai
 
 Travel buffers are excluded from public slot responses. Client cancellation, barber cancellation, and payment refunds release them atomically.
 
-## Saved Addresses
+## Client Pin And Saved Addresses
 
-Client addresses are owned by `users.id` and store coordinates after the first geocode. Web and native clients submit coordinates produced by Places, current location, map taps, or marker dragging; the API treats those paired coordinates as authoritative. Text-only address submissions continue to use server geocoding. The first address becomes the default. A partial update only geocodes again when physical address fields change without coordinates. Deleting the default promotes the most recently created remaining address. A partial unique index guarantees at most one default per client.
+Client addresses are owned by `users.id`. On web, browser location only selects the initial map area;
+the draggable pin selects the actual destination. Saved addresses are optional recenter shortcuts
+and still require pin confirmation. MapLibre renders the client map without a Google map UI, while
+the API uses the private server key to reverse-geocode the pin. Exact coordinates are authoritative
+and the nearest meaningful address is operational context for the barber.
+
+The first saved address becomes the default. Deleting the default promotes the most recently
+created remaining address. A partial unique index guarantees at most one default per client.
 
 Latitude and longitude must be supplied together. The shared contracts reject half-specified coordinates, while one-time booking addresses carry the same precise pair and optional apartment/suite/unit into the appointment snapshot.
 
@@ -102,6 +109,7 @@ Appointment rows copy the service address and coordinates. Removing a saved addr
 | `PATCH`  | `/clients/me/addresses/:addressId`             | CLIENT                   | Update an owned address.                            |
 | `DELETE` | `/clients/me/addresses/:addressId`             | CLIENT                   | Delete and repair the default selection.            |
 | `POST`   | `/clients/me/addresses/:addressId/set-default` | CLIENT                   | Make an owned address the default.                  |
+| `POST`   | `/clients/me/locations/reverse-geocode`        | CLIENT                   | Resolve an exact pin to a meaningful address.       |
 
 Existing routes extended in Phase 6:
 
@@ -119,19 +127,24 @@ Use separate keys with least-privilege restrictions:
 GOOGLE_MAPS_API_KEY=
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+NEXT_PUBLIC_MAP_STYLE_URL=
 ```
 
-- Server key: enable Geocoding API and Distance Matrix API; restrict by production server IP.
+- Server key: enable Geocoding API and Distance Matrix API; it handles client reverse geocoding and travel estimates and should be restricted by production server IP.
 - Mobile key: enable Places API and Maps SDK for Android/iOS; restrict to `com.cutg.mobile` and signing identifiers.
-- Web key: enable Maps JavaScript API, Places API, and Geocoding API; restrict by allowed HTTP referrers.
+- Web Google key: used only by the barber Mobile Service settings map. Client maps use MapLibre.
+- Map style URL: optional MapLibre style override; the default is a compact dark CARTO basemap.
 
-Use three distinct keys. For local web development, allow `http://localhost:3000/*` and optionally `http://127.0.0.1:3000/*` on the web key. A key with HTTP-referrer restrictions cannot call server-side Geocoding or Places REST endpoints.
+Map tile attribution is legally required and remains visible in compact form. Google branding is
+absent from client maps because Google is not the client map renderer.
 
 After changing Expo public values, restart Expo with `pnpm --filter @barber-saas/mobile dev --clear`. The Android native key is injected by `apps/mobile/app.config.js`.
 
 ## Local Verification
 
-The feature can be exercised without Maps keys using development mocks:
+Distance and fee estimation can be exercised without Maps keys using the deterministic development
+fallback. Outside automated tests, confirming a new client destination pin requires a server key
+with Geocoding API enabled:
 
 ```bash
 make setup

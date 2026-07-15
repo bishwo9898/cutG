@@ -142,6 +142,8 @@ export const clientApi = {
   addresses: <T>(client: ApiClient): Promise<T> => client.get<T>('/clients/me/addresses'),
   createAddress: <T>(client: ApiClient, body: unknown): Promise<T> =>
     client.post<T>('/clients/me/addresses', body),
+  reverseGeocode: <T>(client: ApiClient, latitude: number, longitude: number): Promise<T> =>
+    client.post<T>('/clients/me/locations/reverse-geocode', { latitude, longitude }),
   updateAddress: <T>(client: ApiClient, addressId: string, body: unknown): Promise<T> =>
     client.patch<T>(`/clients/me/addresses/${addressId}`, body),
   deleteAddress: <T>(client: ApiClient, addressId: string): Promise<T> =>
@@ -167,6 +169,7 @@ export const mobileBarberApi = {
 };
 
 export const paymentApi = {
+  config: <T>(client: ApiClient): Promise<T> => client.get<T>('/payments/config'),
   createIntent: <T>(client: ApiClient, appointmentId: string): Promise<T> =>
     client.post<T>('/payments/create-intent', { appointmentId }),
   appointmentStatus: <T>(client: ApiClient, appointmentId: string): Promise<T> =>

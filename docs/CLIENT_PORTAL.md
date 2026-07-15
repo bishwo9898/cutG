@@ -1,6 +1,6 @@
 # Client Portal
 
-Last updated: July 13, 2026
+Last updated: July 15, 2026
 
 Phase 8 turns the cutG client web experience into a cohesive consumer marketplace. Canonical client routes live under `/client`; legacy `/barbers`, `/appointments`, and `/saved` routes redirect through `apps/web/src/proxy.ts`.
 
@@ -38,9 +38,10 @@ Barber sessions are redirected away from client-only routes by the role-aware Ne
 - `AppointmentCard`: status, barber/service details, mobile destination, payment, and review shortcuts.
 - `TravelEstimateCard`: loading skeleton, success, outside-radius, and advisory-unavailable states.
 - `StatusTimeline`: chronological mobile appointment lifecycle.
-- `StaticMap`: Google Static Maps image when configured and an address fallback otherwise.
+- `ClientMap`: reusable MapLibre destination, route, and live-tracking presentation with compact tile attribution.
 - `SlotPicker`: compact available-date rail, previous/next controls, and a focused time grid.
-- `PreciseLocationPicker`: Places suggestions, current-location permission, map click, draggable pin, reverse geocoding, and exact coordinate confirmation.
+- `PinLocationPicker`: one-time foreground location request, saved-address recentering, map click, draggable pin, server reverse geocoding, and exact coordinate confirmation.
+- `BarberCover`: stable local/remote cover rendering with legacy-seed recovery and an error fallback.
 - `StarRating`, review cards, status badges, and booking steps.
 
 ## Mobile Booking Rules
@@ -51,15 +52,24 @@ The booking flow always passes `barber_profiles.id` as `barberId`. Address latit
 `nextAvailableSlot`. `POST /barbers/me/mobile/estimate` is public and returns only calculated travel
 policy data for a public barber profile.
 
-1. The default saved address is selected automatically.
-2. Address changes trigger a debounced estimate after 500 ms.
-3. `OUTSIDE_SERVICE_AREA` is a hard stop and disables booking progression.
-4. Other estimate failures show an advisory warning and preserve booking access.
-5. The API uses Google Distance Matrix when available and deterministic local distance math when the Google request fails or no server key is configured.
-6. Successful estimates filter slots for required travel lead time and show distance, drive time, travel fee, departure time, and projected finish time.
-7. Booking revalidates the address, radius, slot, and travel buffers transactionally.
+1. Browser location centers the map once; it does not confirm the destination.
+2. The client must tap or drag the pin to the exact arrival point. Saved addresses only recenter it.
+3. Pin changes trigger a debounced estimate after 500 ms.
+4. `OUTSIDE_SERVICE_AREA` is a hard stop and disables booking progression.
+5. Other estimate failures show an advisory warning and preserve booking access.
+6. The API uses Google Distance Matrix when available and deterministic local distance math when the Google request fails or no server key is configured.
+7. Successful estimates filter slots for required travel lead time and show distance, drive time, travel fee, departure time, and projected finish time.
+8. Booking revalidates the address, radius, slot, and travel buffers transactionally.
 
-Google Places powers web address suggestions and browser-location reverse geocoding when `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is configured. Search selection, map clicks, marker dragging, and browser location all update one authoritative address/coordinate value. The booking map follows a selected saved or one-time address at street-level zoom, and the saved-address form retains optional apartment/suite/unit details. Coordinates selected by the user are submitted with the address and preserved by the API instead of being geocoded a second time. Existing saved addresses and deterministic server travel estimates remain usable without a Maps key.
+Client maps use MapLibre and expose no Google browser key. The authenticated API reverse-geocodes a
+settled pin with `GOOGLE_MAPS_API_KEY`; this key must allow server requests and have Geocoding API
+enabled. A browser-referrer-restricted key returns `503 MAPS_NOT_CONFIGURED`. The exact coordinates,
+not the formatted address, remain the navigation authority. Existing saved addresses remain useful
+as map recenter shortcuts, and saved-address forms retain optional apartment/suite/unit details.
+
+Booking is progressive: service, appointment type, exact location when needed, time, review, and
+payment. Desktop keeps a sticky booking summary; mobile uses one focused column. Cash is always
+available. Card appears only when Stripe is configured and the selected barber is Connect-ready.
 
 The slot picker intentionally renders only one available date's times. A horizontal date rail and compact previous/next controls replace the former full-range calendar so booking remains usable on small screens without excessive scrolling.
 

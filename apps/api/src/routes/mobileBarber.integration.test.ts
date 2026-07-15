@@ -22,8 +22,13 @@ type SearchBody = {
 type AddressBody = { id: string; label: string; latitude: number; longitude: number };
 type AddressListBody = { addresses: unknown[] };
 type EstimateBody = { travelFee: number };
-type AppointmentBody = { id: string; status: string };
-type MobileConfigBody = { isEnabled: boolean; baseFee: number; originCity: string | null };
+type AppointmentBody = { id: string; status: string; paymentMethod: string };
+type MobileConfigBody = {
+  isEnabled: boolean;
+  baseFee: number;
+  originCity: string | null;
+  approximateOrigin: { latitude: number; longitude: number };
+};
 type PublicSlotsBody = { slots: Array<{ startTime: string; availableForMobile: boolean }> };
 type TimelineBody = { timeline: unknown[]; currentStatus: string; arrivedAt: string | null };
 
@@ -88,11 +93,34 @@ describe('Phase 6 mobile barber API', () => {
     expect(publicConfig.body as MobileConfigBody).toMatchObject({
       isEnabled: true,
       baseFee: 15,
+      approximateOrigin: { latitude: 40.68, longitude: -73.94 },
     });
     expect(publicConfig.body).not.toHaveProperty('originLatitude');
   });
 
   it('geocodes, defaults, lists, and updates owned client addresses', async () => {
+    await request(app)
+      .post('/clients/me/locations/reverse-geocode')
+      .send({ latitude: 37.6454, longitude: -84.7739 })
+      .expect(401);
+    await request(app)
+      .post('/clients/me/locations/reverse-geocode')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ latitude: 95, longitude: -84.7739 })
+      .expect(422);
+
+    const reversed = await request(app)
+      .post('/clients/me/locations/reverse-geocode')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ latitude: 37.6454, longitude: -84.7739 });
+    expect(reversed.status).toBe(200);
+    expect(reversed.body).toMatchObject({
+      city: 'Danville',
+      state: 'KY',
+      latitude: 37.6454,
+      longitude: -84.7739,
+    });
+
     const created = await request(app)
       .post('/clients/me/addresses')
       .set('Authorization', `Bearer ${clientToken}`)
@@ -174,6 +202,7 @@ describe('Phase 6 mobile barber API', () => {
     expect(booked.status).toBe(201);
     expect(booked.body).toMatchObject({
       isMobileService: true,
+      paymentMethod: 'CASH',
       travelFee: 15,
       bufferSlotsBlocked: 1,
     });

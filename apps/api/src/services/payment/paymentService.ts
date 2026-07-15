@@ -5,7 +5,13 @@ import { AppError } from '../../middleware/errorHandler';
 import type { AuthenticatedUser } from '../../types/auth';
 import { releaseTravelBufferSlots } from '../mobile/bufferSlotService';
 
-import { createPaymentIntent, createRefund } from './stripeService';
+import {
+  cancelPaymentIntent,
+  createPaymentIntent,
+  createRefund,
+  retrievePaymentIntent,
+  stripePaymentsConfigured,
+} from './stripeService';
 
 type Row = Record<string, unknown>;
 
@@ -28,6 +34,22 @@ const paymentBreakdown = (row: Row) => ({
   barberEarns: dollars(row.barber_payout_cents),
 });
 
+const clientPublishableKey = (): string | null => {
+  const candidate = [env.STRIPE_PUBLISHABLE_KEY, env.STRIPE_PUBLIC_KEY].find(
+    (value) => value.startsWith('pk_') && !value.includes('...'),
+  );
+  return candidate ?? null;
+};
+
+export const getClientPaymentConfig = () => {
+  const publishableKey = clientPublishableKey();
+  const onlinePaymentsEnabled = stripePaymentsConfigured() && publishableKey !== null;
+  return {
+    onlinePaymentsEnabled,
+    publishableKey: onlinePaymentsEnabled ? publishableKey : null,
+  };
+};
+
 export const createAppointmentPaymentIntent = async (clientId: string, appointmentId: string) =>
   withTransaction(async (trx) => {
     const appointmentRows = await query<Row>(
@@ -49,6 +71,9 @@ export const createAppointmentPaymentIntent = async (clientId: string, appointme
     }
     if (!['PENDING', 'CONFIRMED'].includes(String(appointment.status))) {
       throw new AppError(400, 'This appointment cannot be paid.', 'CANNOT_PAY_APPOINTMENT');
+    }
+    if (appointment.payment_method !== 'CARD') {
+      throw new AppError(409, 'This appointment is set to cash payment.', 'CASH_APPOINTMENT');
     }
     if (appointment.payment_status !== 'PENDING') {
       throw new AppError(409, 'This appointment has already been paid.', 'ALREADY_PAID');
@@ -81,8 +106,9 @@ export const createAppointmentPaymentIntent = async (clientId: string, appointme
       existing.status === 'PENDING' &&
       typeof existing.stripe_payment_intent_id === 'string'
     ) {
+      const intent = await retrievePaymentIntent(existing.stripe_payment_intent_id);
       return {
-        clientSecret: `${existing.stripe_payment_intent_id}_secret_existing`,
+        clientSecret: intent.client_secret,
         paymentIntentId: existing.stripe_payment_intent_id,
         amount: dollars(existing.amount_cents),
         currency: existing.currency,
@@ -104,6 +130,7 @@ export const createAppointmentPaymentIntent = async (clientId: string, appointme
         clientId,
         barberId: String(appointment.barber_id),
       },
+      idempotencyKey: `appointment:${appointmentId}`,
     });
 
     const paymentRows = await query<Row>(
@@ -111,6 +138,16 @@ export const createAppointmentPaymentIntent = async (clientId: string, appointme
         (appointment_id,client_id,barber_id,amount_cents,currency,stripe_payment_intent_id,
          status,platform_fee_cents,barber_payout_cents,metadata)
        VALUES ($1,$2,$3,$4,'usd',$5,'PENDING',$6,$7,$8::jsonb)
+       ON CONFLICT (appointment_id) DO UPDATE SET
+         amount_cents=EXCLUDED.amount_cents,
+         currency=EXCLUDED.currency,
+         stripe_payment_intent_id=EXCLUDED.stripe_payment_intent_id,
+         status='PENDING',
+         platform_fee_cents=EXCLUDED.platform_fee_cents,
+         barber_payout_cents=EXCLUDED.barber_payout_cents,
+         last_error_message=NULL,
+         failed_at=NULL,
+         metadata=EXCLUDED.metadata
        RETURNING *`,
       [
         appointmentId,
@@ -134,6 +171,39 @@ export const createAppointmentPaymentIntent = async (clientId: string, appointme
       breakdown: paymentBreakdown(payment),
     };
   });
+
+export const cancelPendingAppointmentPayment = async (
+  clientId: string,
+  appointmentId: string,
+): Promise<void> => {
+  const rows = await query<Row>(
+    `SELECT a.payment_method,p.id AS payment_id,p.status AS payment_record_status,
+            p.stripe_payment_intent_id
+     FROM appointments a
+     LEFT JOIN payments p ON p.appointment_id=a.id
+     WHERE a.id=$1 AND a.client_id=$2`,
+    [appointmentId, clientId],
+  );
+  const row = rows[0];
+  if (row === undefined || row.payment_method !== 'CARD' || row.payment_id === null) return;
+  if (row.payment_record_status === 'SUCCEEDED') {
+    throw new AppError(
+      409,
+      'Refund the card payment to cancel this appointment.',
+      'REFUND_REQUIRED',
+    );
+  }
+  if (row.payment_record_status === 'PENDING' && typeof row.stripe_payment_intent_id === 'string') {
+    await cancelPaymentIntent(row.stripe_payment_intent_id);
+    await query(
+      `UPDATE payments SET status='FAILED',failed_at=CURRENT_TIMESTAMP,
+         last_error_message='Appointment cancelled before payment completion.'
+       WHERE id=$1`,
+      [row.payment_id],
+    );
+    await query(`UPDATE appointments SET payment_status='FAILED' WHERE id=$1`, [appointmentId]);
+  }
+};
 
 export const getAppointmentPaymentStatus = async (
   user: AuthenticatedUser,

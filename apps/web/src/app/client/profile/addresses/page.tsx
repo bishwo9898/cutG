@@ -5,13 +5,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Home, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
+import {
+  PinLocationPicker,
+  type ResolvedPinAddress,
+} from '@/components/client/pin-location-picker';
 import { ClientHeader } from '@/components/client-header';
 import { Notice } from '@/components/notice';
-import { PreciseLocationPicker } from '@/components/precise-location-picker';
 import { browserApi } from '@/lib/browser-api';
 import type { ClientAddress } from '@/lib/contracts';
 import { errorMessage } from '@/lib/errors';
-import type { ResolvedGoogleAddress } from '@/lib/google-address';
 
 type AddressList = { addresses: ClientAddress[] };
 type AddressForm = {
@@ -32,13 +34,13 @@ const emptyForm: AddressForm = {
   state: '',
   zipCode: '',
 };
-const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
+const danvilleCenter = { latitude: 37.6456, longitude: -84.7722 };
 
 export default function ClientAddressesPage(): React.ReactElement {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyForm);
-  const [addressSearch, setAddressSearch] = useState('');
-  const [preciseLocation, setPreciseLocation] = useState<ResolvedGoogleAddress | null>(null);
+  const [mapPoint, setMapPoint] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [mapKey, setMapKey] = useState('new');
   const [editingId, setEditingId] = useState<string | null>(null);
   const addresses = useQuery({
     queryKey: ['client-addresses'],
@@ -51,8 +53,8 @@ export default function ClientAddressesPage(): React.ReactElement {
     mutationFn: () => clientApi.createAddress<ClientAddress>(browserApi, form),
     onSuccess: async () => {
       setForm(emptyForm);
-      setAddressSearch('');
-      setPreciseLocation(null);
+      setMapPoint(null);
+      setMapKey(`new-${Date.now()}`);
       await refresh();
     },
   });
@@ -64,8 +66,7 @@ export default function ClientAddressesPage(): React.ReactElement {
     mutationFn: () => clientApi.updateAddress<ClientAddress>(browserApi, editingId ?? '', form),
     onSuccess: async () => {
       setForm(emptyForm);
-      setAddressSearch('');
-      setPreciseLocation(null);
+      setMapPoint(null);
       setEditingId(null);
       await refresh();
     },
@@ -86,14 +87,15 @@ export default function ClientAddressesPage(): React.ReactElement {
       }
       return next;
     });
-    if (key !== 'label' && key !== 'addressLine2') setPreciseLocation(null);
   };
   const canSubmit =
     form.label.trim().length > 0 &&
     form.addressLine1.trim().length > 0 &&
     form.city.trim().length > 0 &&
     form.state.trim().length > 0 &&
-    form.zipCode.trim().length > 0;
+    form.zipCode.trim().length > 0 &&
+    form.latitude !== undefined &&
+    form.longitude !== undefined;
   const beginEdit = (address: ClientAddress): void => {
     setEditingId(address.id);
     setForm({
@@ -106,27 +108,16 @@ export default function ClientAddressesPage(): React.ReactElement {
       latitude: address.latitude,
       longitude: address.longitude,
     });
-    const formattedAddress = `${address.addressLine1}, ${address.city}, ${address.state} ${address.zipCode}`;
-    setAddressSearch(formattedAddress);
-    setPreciseLocation({
-      addressLine1: address.addressLine1,
-      city: address.city,
-      state: address.state,
-      zipCode: address.zipCode,
-      country: address.country,
-      latitude: address.latitude,
-      longitude: address.longitude,
-      formattedAddress,
-    });
+    setMapPoint({ latitude: address.latitude, longitude: address.longitude });
+    setMapKey(address.id);
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   };
 
-  const choosePreciseLocation = (resolved: ResolvedGoogleAddress): void => {
-    setPreciseLocation(resolved);
+  const choosePreciseLocation = (resolved: ResolvedPinAddress): void => {
     setForm((current) => ({
       ...current,
       addressLine1: resolved.addressLine1,
-      addressLine2: resolved.addressLine2 ?? '',
+      addressLine2: '',
       city: resolved.city,
       state: resolved.state,
       zipCode: resolved.zipCode,
@@ -205,8 +196,8 @@ export default function ClientAddressesPage(): React.ReactElement {
                   onClick={() => {
                     setEditingId(null);
                     setForm(emptyForm);
-                    setAddressSearch('');
-                    setPreciseLocation(null);
+                    setMapPoint(null);
+                    setMapKey(`new-${Date.now()}`);
                   }}
                   type="button"
                 >
@@ -225,36 +216,16 @@ export default function ClientAddressesPage(): React.ReactElement {
                 />
               </div>
               <div className="field">
-                <label htmlFor="addressLine1">Street address</label>
-                {mapsKey.length === 0 ? (
-                  <input
-                    className="input"
-                    id="addressLine1"
-                    value={form.addressLine1}
-                    onChange={(event) => update('addressLine1', event.target.value)}
-                  />
-                ) : (
-                  <PreciseLocationPicker
-                    inputId="addressLine1"
-                    onLocationChange={choosePreciseLocation}
-                    onSearchValueChange={(value) => {
-                      setAddressSearch(value);
-                      if (value !== preciseLocation?.formattedAddress) {
-                        setPreciseLocation(null);
-                        setForm((current) => {
-                          const next = { ...current, addressLine1: value };
-                          delete next.latitude;
-                          delete next.longitude;
-                          return next;
-                        });
-                      }
-                    }}
-                    searchValue={addressSearch}
-                    value={preciseLocation}
-                  />
-                )}
+                <label>Exact location</label>
+                <PinLocationPicker
+                  fallbackCenter={mapPoint ?? danvilleCenter}
+                  initialPoint={mapPoint}
+                  key={mapKey}
+                  onLocationChange={choosePreciseLocation}
+                />
                 <p className="field-help">
-                  Search, use your current location, or drag the pin to the exact entrance.
+                  Drag the pin to the entrance your barber should use. We will save the nearest
+                  meaningful street address with the exact coordinates.
                 </p>
               </div>
               <div className="field">
@@ -267,19 +238,17 @@ export default function ClientAddressesPage(): React.ReactElement {
                   placeholder="Optional"
                 />
               </div>
-              {(['city', 'state', 'zipCode'] as const).map((key) => (
-                <div className="field" key={key}>
-                  <label htmlFor={key}>
-                    {key === 'zipCode' ? 'ZIP code' : key[0]?.toUpperCase() + key.slice(1)}
-                  </label>
-                  <input
-                    className="input"
-                    id={key}
-                    value={form[key]}
-                    onChange={(event) => update(key, event.target.value)}
-                  />
+              {form.addressLine1.length > 0 && (
+                <div className="selected-address-card">
+                  <div>
+                    <strong>Resolved address</strong>
+                    <span>
+                      {form.addressLine1}, {form.city}, {form.state} {form.zipCode}
+                    </span>
+                  </div>
+                  <MapPin size={18} />
                 </div>
-              ))}
+              )}
               <button
                 className="button button-primary"
                 disabled={!canSubmit || create.isPending}

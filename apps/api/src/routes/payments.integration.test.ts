@@ -21,6 +21,7 @@ type StripeStatusBody = { onboardingComplete: boolean };
 type EarningsBody = { summary: Record<string, unknown> };
 type SubscriptionBody = { tier: string };
 type ErrorBody = { error: string };
+type PaymentConfigBody = { onlinePaymentsEnabled: boolean; publishableKey: string | null };
 
 beforeAll(async () => {
   await resetTestDatabase();
@@ -54,8 +55,8 @@ beforeAll(async () => {
   const appointment = await pool.query<{ id: string }>(
     `INSERT INTO appointments
       (client_id,barber_id,service_id,availability_slot_id,scheduled_at,duration_minutes,status,
-       payment_status,location_address,price_quoted)
-     VALUES ($1,$2,$3,$4,'2026-08-10 10:00:00',30,'PENDING','PENDING','1 Test Street',25)
+       payment_status,payment_method,location_address,price_quoted)
+     VALUES ($1,$2,$3,$4,'2026-08-10 10:00:00',30,'PENDING','PENDING','CARD','1 Test Street',25)
      RETURNING id`,
     [client.id, barberId, serviceId, slot.rows[0]?.id],
   );
@@ -78,6 +79,17 @@ beforeAll(async () => {
 afterAll(async () => closeDatabase());
 
 describe('Phase 4 payments and subscriptions API', () => {
+  it('returns a safe client payment configuration', async () => {
+    const response = await request(app)
+      .get('/payments/config')
+      .set('Authorization', `Bearer ${clientToken}`);
+    expect(response.status).toBe(200);
+    expect(response.body as PaymentConfigBody).toEqual({
+      onlinePaymentsEnabled: false,
+      publishableKey: null,
+    });
+  });
+
   it('creates a mobile-compatible payment intent for a client appointment', async () => {
     const response = await request(app)
       .post('/payments/create-intent')
@@ -87,6 +99,15 @@ describe('Phase 4 payments and subscriptions API', () => {
     expect(response.status).toBe(200);
     expect((response.body as IntentBody).clientSecret).toContain('_secret_');
     expect((response.body as IntentBody).breakdown.platformFee).toBe(2.5);
+
+    const retry = await request(app)
+      .post('/payments/create-intent')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ appointmentId });
+    expect(retry.status).toBe(200);
+    expect((retry.body as IntentBody).clientSecret).toBe(
+      (response.body as IntentBody).clientSecret,
+    );
   });
 
   it('returns barber stripe status, earnings, and subscription state', async () => {
@@ -113,5 +134,18 @@ describe('Phase 4 payments and subscriptions API', () => {
     const response = await request(app).post('/webhooks/stripe').send({ type: 'test' });
     expect(response.status).toBe(400);
     expect((response.body as ErrorBody).error).toBe('INVALID_SIGNATURE');
+  });
+
+  it('cancels a pending card intent with its appointment', async () => {
+    const response = await request(app)
+      .delete(`/clients/me/appointments/${appointmentId}`)
+      .set('Authorization', `Bearer ${clientToken}`);
+    expect(response.status).toBe(200);
+
+    const payment = await pool.query<{ status: string }>(
+      'SELECT status FROM payments WHERE appointment_id=$1',
+      [appointmentId],
+    );
+    expect(payment.rows[0]?.status).toBe('FAILED');
   });
 });

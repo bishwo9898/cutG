@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { BarberCover } from '@/components/client/barber-cover';
 import { ClientHeader } from '@/components/client-header';
 import { ReviewCard, SlotPicker, StarRating } from '@/components/client-ui';
 import { Notice } from '@/components/notice';
@@ -118,14 +119,11 @@ export default function BarberProfilePage(): React.ReactElement {
       <ClientHeader />
 
       <section className="profile-hero">
-        <div
+        <BarberCover
+          alt={`${profile.data.businessName} barbershop`}
           className="profile-photo"
-          style={{
-            backgroundImage:
-              profile.data.profilePhotoUrl === null
-                ? undefined
-                : `url(${profile.data.profilePhotoUrl})`,
-          }}
+          priority
+          src={profile.data.profilePhotoUrl}
         />
         <div>
           <p className="eyebrow">{profile.data.isVerified ? 'Verified barber' : 'Barber'}</p>

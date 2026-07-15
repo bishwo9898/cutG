@@ -21,6 +21,7 @@ GET /barbers/search
 GET /barbers/:barberId/reviews
 GET /barbers/:barberId/mobile
 GET /clients/me
+POST /clients/me/locations/reverse-geocode
 GET /clients/me/saved-barbers
 POST /clients/me/saved-barbers
 DELETE /clients/me/saved-barbers/:barberId
@@ -36,6 +37,7 @@ POST /clients/me/designs
 GET /clients/me/designs
 POST /clients/me/designs/:designId/attach
 POST /payments/create-intent
+GET /payments/config
 GET /payments/appointment/:appointmentId
 POST /payments/refund
 POST /webhooks/stripe
@@ -116,6 +118,7 @@ All `/clients/me/*` routes require a bearer token for a `CLIENT` account. Barber
 | `POST`   | `/clients/me/designs`                                     | Save a placeholder hair design brief.        |
 | `GET`    | `/clients/me/designs`                                     | List owned saved design briefs.              |
 | `POST`   | `/clients/me/designs/:designId/attach`                    | Attach a design to an owned appointment.     |
+| `POST`   | `/clients/me/locations/reverse-geocode`                   | Resolve an exact destination pin.            |
 
 ### Public Barber Search
 
@@ -141,14 +144,15 @@ The response includes each barber's public profile summary, `lowestServicePrice`
   "barberId": "barber_profiles.id",
   "serviceId": "services.id",
   "availabilitySlotId": "availability_slots.id",
+  "paymentMethod": "CASH",
   "clientNotes": "Optional note"
 }
 ```
 
 Booking runs in a single database transaction. The API locks the selected slot, verifies the barber
 and service, rejects past/booked/short slots, checks client appointment overlap, inserts the
-appointment, marks the slot `BOOKED`, and queues notifications. Payments are not collected in Phase
-3; new appointments use `paymentStatus = PENDING` and are paid at the shop.
+appointment, marks the slot `BOOKED`, and queues notifications. `paymentMethod` accepts `CASH` or
+`CARD`; card checkout occurs only after the appointment transaction succeeds.
 
 Common booking errors:
 
@@ -174,6 +178,7 @@ collect card details through Stripe's native SDK.
 
 | Method | Path                                   | Auth             | Purpose                                                   |
 | ------ | -------------------------------------- | ---------------- | --------------------------------------------------------- |
+| `GET`  | `/payments/config`                     | Client token     | Return safe browser Stripe configuration.                 |
 | `POST` | `/payments/create-intent`              | Client token     | Create a Payment Intent for an appointment.               |
 | `GET`  | `/payments/appointment/:appointmentId` | Client or barber | Read payment status for an owned appointment.             |
 | `POST` | `/payments/refund`                     | Client token     | Refund a paid, not-completed appointment.                 |
@@ -247,6 +252,7 @@ Validation errors include a `details.issues` array from Zod.
 | `PATCH`  | `/clients/me/addresses/:addressId`             | Client                   | Update an owned address.                          |
 | `DELETE` | `/clients/me/addresses/:addressId`             | Client                   | Remove an owned address.                          |
 | `POST`   | `/clients/me/addresses/:addressId/set-default` | Client                   | Set the default address.                          |
+| `POST`   | `/clients/me/locations/reverse-geocode`        | Client                   | Resolve a precise pin with the server map key.    |
 
 `POST /clients/me/appointments` accepts `isMobileService: true` plus exactly one of `clientAddressId` or `clientAddressOneTime`. `GET /barbers` supports `mobileOnly=true`. Public responses never include a barber's private origin coordinates or origin address.
 

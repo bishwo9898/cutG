@@ -14,6 +14,7 @@ import {
 } from '../mobile/bufferSlotService';
 import { geocodeAddress, getOwnedAddress } from '../mobile/geocodingService';
 import { estimateTravel } from '../mobile/mobileBarberService';
+import { cancelPendingAppointmentPayment } from '../payment/paymentService';
 
 type Row = Record<string, unknown>;
 
@@ -67,6 +68,7 @@ const mapAppointment = (row: Row) => ({
   durationMinutes: row.duration_minutes,
   status: row.status,
   paymentStatus: row.payment_status,
+  paymentMethod: row.payment_method ?? 'CASH',
   priceQuoted: money(row.price_quoted),
   price: money(row.price_quoted),
   clientNotes: row.client_notes,
@@ -364,11 +366,11 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
     const appointmentRows = await query<Row>(
       `INSERT INTO appointments
         (client_id,barber_id,service_id,availability_slot_id,scheduled_at,duration_minutes,status,
-         payment_status,price_quoted,location_address,location_latitude,location_longitude,client_notes,
+         payment_status,payment_method,price_quoted,location_address,location_latitude,location_longitude,client_notes,
          is_mobile_service,client_address_id,service_latitude,service_longitude,service_address_line1,
          service_address_city,service_address_state,service_address_zip,travel_fee_cents,
          estimated_travel_minutes,distance_miles)
-       VALUES ($1,$2,$3,$4,$5,$6,'PENDING','PENDING',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+       VALUES ($1,$2,$3,$4,$5,$6,'PENDING','PENDING',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
        RETURNING *`,
       [
         clientId,
@@ -377,6 +379,7 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
         input.availabilitySlotId,
         slot.scheduled_at,
         service.duration_minutes,
+        input.paymentMethod,
         service.price,
         mobile === null
           ? (barber.address ??
@@ -526,8 +529,9 @@ export const getAppointmentStatusUpdates = async (clientId: string, appointmentI
   };
 };
 
-export const cancelClientAppointment = async (clientId: string, appointmentId: string) =>
-  withTransaction(async (trx) => {
+export const cancelClientAppointment = async (clientId: string, appointmentId: string) => {
+  await cancelPendingAppointmentPayment(clientId, appointmentId);
+  return withTransaction(async (trx) => {
     const rows = await query<Row>(
       'SELECT * FROM appointments WHERE id = $1 AND client_id = $2 FOR UPDATE',
       [appointmentId, clientId],
@@ -571,6 +575,7 @@ export const cancelClientAppointment = async (clientId: string, appointmentId: s
     }
     return { message: 'Appointment cancelled successfully.', appointmentId, slotFreed };
   });
+};
 
 export const createClientReview = async (clientId: string, input: CreateReviewRequest) =>
   withTransaction(async (trx) => {

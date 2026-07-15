@@ -19,7 +19,7 @@ type LoginBody = { accessToken: string };
 type SearchBody = { barbers: Array<{ id: string; serviceCategories: string[] }> };
 type SavedBody = { savedBarbers: unknown[] };
 type SlotsBody = { slots: Array<{ id: string; isAvailable: boolean }> };
-type AppointmentBody = { id: string; status: string };
+type AppointmentBody = { id: string; status: string; paymentMethod: string };
 type AppointmentListBody = { appointments: unknown[] };
 type CancelBody = { slotFreed: boolean };
 type ErrorBody = { error: string };
@@ -103,6 +103,7 @@ describe('Phase 3 client discovery and booking API', () => {
       .send({ barberId, serviceId, availabilitySlotId: slotId, clientNotes: 'Clean neckline' });
     expect(booked.status).toBe(201);
     expect((booked.body as AppointmentBody).status).toBe('PENDING');
+    expect((booked.body as AppointmentBody).paymentMethod).toBe('CASH');
     const appointmentId = (booked.body as AppointmentBody).id;
 
     const duplicate = await request(app)

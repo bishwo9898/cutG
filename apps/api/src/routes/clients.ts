@@ -8,6 +8,7 @@ import {
   CreateHairDesignSchema,
   HairDesignParamsSchema,
   PaymentHistoryQuerySchema,
+  ReverseGeocodeSchema,
   SaveAddressSchema,
   SaveBarberSchema,
   UuidParamsSchema,
@@ -46,6 +47,7 @@ import {
   createClientAddress,
   deleteClientAddress,
   listClientAddresses,
+  reverseGeocodeCoordinates,
   setDefaultClientAddress,
   updateClientAddress,
 } from '../services/mobile/geocodingService';
@@ -74,6 +76,13 @@ clientRouter.get(
   '/me/addresses',
   asyncHandler(async (request, response) => {
     response.json(await listClientAddresses(userId(request)));
+  }),
+);
+clientRouter.post(
+  '/me/locations/reverse-geocode',
+  asyncHandler(async (request, response) => {
+    const { latitude, longitude } = ReverseGeocodeSchema.parse(request.body);
+    response.json(await reverseGeocodeCoordinates(latitude, longitude));
   }),
 );
 clientRouter.post(

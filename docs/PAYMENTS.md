@@ -5,8 +5,8 @@ barber payouts, refunds, webhook syncing, client payment history, and barber ear
 
 ## Environment
 
-Local development works with placeholder Stripe values. When `STRIPE_SECRET_KEY` contains the
-placeholder `...`, the API returns deterministic mock Stripe IDs and URLs.
+Automated tests use deterministic mock Stripe IDs. Browser card collection requires real Stripe
+test-mode values and a barber that has completed Connect onboarding.
 
 Required production/test-mode values:
 
@@ -17,19 +17,25 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 PLATFORM_FEE_PERCENT=10
 ```
 
+`STRIPE_PUBLISHABLE_KEY` is the canonical web variable. The API also accepts the older
+`STRIPE_PUBLIC_KEY` alias so existing local environments continue to work.
+
 ## Client Payment Flow
 
-Mobile-compatible payment flow:
+Web and mobile-compatible card flow:
 
-1. Client books an appointment.
-2. Client calls `POST /payments/create-intent`.
-3. API verifies appointment ownership, status, payment state, barber Stripe onboarding, and fee math.
-4. API creates a Stripe Payment Intent with `application_fee_amount` and
+1. Client chooses `CASH` or `CARD` while booking.
+2. Cash creates no Payment Intent and is paid at the appointment.
+3. Card reserves the appointment, then calls `POST /payments/create-intent`.
+4. API verifies appointment ownership, `paymentMethod = CARD`, status, payment state, barber Stripe onboarding, and fee math.
+5. API creates a Stripe Payment Intent with `application_fee_amount` and
    `transfer_data[destination]`.
-5. Client app passes `clientSecret` to Stripe React Native or web Stripe SDK.
-6. Stripe webhook `payment_intent.succeeded` marks the payment and appointment as paid.
+6. The web client renders Stripe Payment Element and confirms the full service-plus-travel total.
+7. Stripe webhook `payment_intent.succeeded` marks the payment and appointment as paid.
 
 The API does not trust client-side payment confirmation. Webhooks are the source of truth.
+Intent creation uses `appointment:<appointmentId>` as the Stripe idempotency key. Repeated requests
+retrieve the real existing client secret instead of creating a second payment.
 
 ## Fee Structure
 
@@ -44,6 +50,7 @@ API responses convert cents to JSON numbers for display.
 ## Endpoints
 
 ```http
+GET /payments/config
 POST /payments/create-intent
 GET /payments/appointment/:appointmentId
 POST /payments/refund
@@ -53,6 +60,9 @@ GET /barbers/me/stripe/status
 GET /barbers/me/earnings
 POST /webhooks/stripe
 ```
+
+`GET /payments/config` is client-authenticated and returns only the publishable key plus an
+`onlinePaymentsEnabled` flag. Secret Stripe credentials never reach the browser.
 
 ## Refunds
 
@@ -64,6 +74,10 @@ POST /payments/refund
 
 Refunds call Stripe, mark `payments.status = REFUNDED`, mark the appointment `CANCELLED`, update
 `appointments.payment_status = REFUNDED`, and free the linked availability slot.
+
+Cancelling an unpaid card appointment cancels its pending Payment Intent and marks the local
+payment attempt failed before releasing the appointment slot. Cash cancellations have no Stripe
+side effect.
 
 ## Webhooks
 
@@ -91,6 +105,10 @@ For local webhook testing with real Stripe test keys:
 stripe login
 stripe listen --forward-to localhost:4000/webhooks/stripe
 ```
+
+Stripe variables alone do not make a barber card-ready. Complete Connect onboarding from the
+barber payment dashboard and allow the resulting `account.updated` webhook to set charges and
+payouts enabled. Use Stripe test card `4242 4242 4242 4242` with any future expiry and CVC.
 
 Copy the printed `whsec_...` value into `STRIPE_WEBHOOK_SECRET`, then trigger events:
 

@@ -42,7 +42,7 @@ export type PublicBarber = {
   lowestServicePrice: number | null;
   serviceCategories: string[];
   nextAvailableSlot: string | null;
-  stripeChargesEnabled?: boolean;
+  onlinePaymentsAvailable?: boolean;
   mobileService?: PublicMobileService | null;
 };
 
@@ -63,6 +63,7 @@ export type PublicMobileConfig = {
   perMileRate?: number | null;
   mobileServiceNotes?: string | null;
   originCity?: string | null;
+  approximateOrigin?: { latitude: number; longitude: number };
 };
 
 export type BarberService = {
@@ -149,6 +150,7 @@ export type Appointment = {
   durationMinutes: number;
   status: string;
   paymentStatus: string;
+  paymentMethod: 'CASH' | 'CARD';
   priceQuoted: number;
   service: { id: string; name: string };
   client: {
@@ -180,6 +182,7 @@ export type ClientAppointment = {
   durationMinutes: number;
   status: string;
   paymentStatus: string;
+  paymentMethod: 'CASH' | 'CARD';
   priceQuoted: number;
   clientNotes: string | null;
   barberNotes: string | null;

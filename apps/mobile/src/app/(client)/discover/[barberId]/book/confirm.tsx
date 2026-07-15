@@ -65,6 +65,7 @@ export default function ConfirmBookingScreen(): React.ReactElement {
         barberId,
         serviceId,
         availabilitySlotId: slotId,
+        paymentMethod: canPayOnline && !payAtShop ? 'CARD' : 'CASH',
         clientNotes: notes || undefined,
         isMobileService: isMobile,
         ...(isMobile

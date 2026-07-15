@@ -81,6 +81,7 @@ Request body:
   "barberId": "uuid",
   "serviceId": "uuid",
   "availabilitySlotId": "uuid",
+  "paymentMethod": "CASH",
   "clientNotes": "Optional note"
 }
 ```
@@ -96,18 +97,20 @@ Booking is atomic. Inside one transaction the API:
 7. Marks the slot `BOOKED` and attaches `appointment_id`.
 8. Creates placeholder notifications for the client and barber.
 
-Mobile bookings add one address decision step before slot selection:
+Mobile bookings add one pin-confirmation step before slot selection:
 
-- Choose a saved address, search a one-time address, use browser location autofill, click the map, or drag the exact-location pin.
-- Places suggestions and map interactions share one selected value; accepted latitude/longitude coordinates are persisted without a second geocode.
+- The browser requests foreground location once and centers a MapLibre map near the client.
+- The client drags or taps the destination pin to select the exact driveway, entrance, or arrival point.
+- Saved addresses are optional recenter shortcuts and are never selected automatically.
+- If location permission is denied, the map starts near the barber's approximate service area and remains fully usable.
+- `POST /clients/me/locations/reverse-geocode` resolves the selected coordinates through the server key. The exact coordinates remain authoritative for navigation.
 - The web flow estimates distance, travel minutes, fee, travel-ready slots, barber departure timing, and projected finish time before confirmation.
 - Saved addresses can also be managed separately from `/client/profile/addresses`.
-- Address changes debounce travel estimation by 500 ms. Only `OUTSIDE_SERVICE_AREA` blocks progress;
-  other estimate failures remain advisory and let the client continue.
+- Pin changes debounce travel estimation. `OUTSIDE_SERVICE_AREA` blocks progress.
 - Google travel failures fall back to the deterministic local distance model, matching no-key local
   development behavior.
 
-No payment is collected in Phase 3. The web UI labels bookings as pay-at-the-shop.
+`paymentMethod` is `CASH` or `CARD`. Cash is always available. Card is offered only when Stripe is configured and the barber has completed Connect onboarding. Card appointments are reserved first and then paid through Stripe Elements; a failed payment remains retryable from appointment detail.
 
 ## Cancellation
 
@@ -122,6 +125,8 @@ Only `PENDING` and `CONFIRMED` appointments can be cancelled by the client. Canc
 setting it back to `AVAILABLE` with `appointment_id = NULL`.
 
 Completed, no-show, and already-cancelled appointments return `400 CANNOT_CANCEL`.
+Cancelling a pending card appointment also cancels its pending Payment Intent. A succeeded card
+payment must use the refund action, which refunds and cancels the appointment together.
 
 ## Reviews
 
@@ -158,15 +163,17 @@ Client-facing pages now exist in `apps/web`:
 - `/client`: hero search, quick filters, featured/mobile sections, and recently viewed barbers.
 - `/client/barbers`: search, filters, sort, Danville/mobile presets, and verified/mobile toggles.
 - `/client/barbers/:barberId`: tabbed public profile, mobile service, slots, reviews, and save action.
-- `/client/barbers/:barberId/book`: service, appointment type, address, estimate, slot, and confirmation flow.
+- `/client/barbers/:barberId/book`: progressive service, type, pin, time, review, and Stripe/cash checkout flow.
 - `/client/appointments`: upcoming/past appointment list with status and contextual actions.
 - `/client/appointments/:appointmentId`: status journey, map fallback, payment, cancellation, and review form.
 - `/client/saved`: saved barber list.
 - `/client/profile`: identity and client activity summary.
-- `/client/profile/addresses`: saved-address management with Places suggestions, current-location autofill, map selection, and a draggable precise-location pin.
+- `/client/profile/addresses`: saved-address management through the same MapLibre pin-first location workflow.
 - `/client/design`: preset-driven Hair Design Studio with saved briefs and appointment attachment.
 
-Phase 9 appointment details add correct service/travel/total pricing, both parties' notes, quick rebooking, a polished status journey, resilient static-map fallback, and 15-second live barber tracking while `ON_THE_WAY`.
+Appointment details include service/travel/total pricing, payment method, Stripe retry/refund actions,
+both parties' notes, quick rebooking, MapLibre destination maps, and 15-second live barber tracking
+while `ON_THE_WAY`.
 
 Legacy unprefixed routes redirect to these canonical client routes. The barber dashboard remains under
 `/barber/dashboard`.

@@ -1,12 +1,16 @@
 # Foundation Tracker
 
-Last updated: July 13, 2026
+Last updated: July 15, 2026
 
 This document tracks what has been built so far from the Phase 0 foundation plan and what still needs to be configured locally before the next phase.
 
 ## Current Status
 
-Phase 0 foundation through Phase 9 GPS tracking and Hair Design Studio are implemented. The repository is a pnpm monorepo for a barber operations and client booking platform with an Express API, Next.js web application, Expo application, PostgreSQL schema, JWT authentication, shared contracts, isolated test infrastructure, and onboarding documentation.
+Phase 0 foundation through Phase 9 GPS tracking and Hair Design Studio are implemented, followed by
+the client experience, pin-location, and Stripe web checkout upgrade. The repository is a pnpm
+monorepo for a barber operations and client booking platform with an Express API, Next.js web
+application, Expo application, PostgreSQL schema, JWT authentication, shared contracts, isolated
+test infrastructure, and onboarding documentation.
 
 Verified commands:
 
@@ -22,10 +26,10 @@ pnpm --filter @barber-saas/mobile typecheck
 pnpm --filter @barber-saas/web exec next build --webpack
 ```
 
-Latest Phase 9 automated results:
+Latest automated results:
 
-- API: 10 test files, 35 tests passed against the isolated PostgreSQL test database.
-- Web: 7 test files, 17 tests passed.
+- API: 11 test files, 39 tests passed against the isolated PostgreSQL test database.
+- Web: 9 test files, 20 tests passed.
 - API, web, mobile, shared packages: typecheck passed.
 - ESLint, Prettier check, API build, mobile build, and Next.js production build passed.
 
@@ -297,6 +301,18 @@ Phase 9 adds:
 - Categorized barber service menus on web/mobile, including color services and collapsed inactive rows
 - Polished status timeline, both-party notes, quick rebooking, and availability labels
 
+The July 15 client upgrade adds:
+
+- Migration `008_client_checkout.ts` and explicit `CASH`/`CARD` appointment payment methods
+- Server-side authenticated reverse geocoding for exact client destination pins
+- MapLibre client booking, saved-address, appointment, and live-tracking maps
+- Progressive client booking with a sticky summary and Stripe Payment Element card capture
+- Idempotent payment-intent retries using the real Stripe client secret
+- Pending-intent cancellation when an unpaid card appointment is cancelled
+- Matte-black and warm-cream client styling with no hover layout movement
+- Three optimized local barber cover assets and resilient image fallbacks
+- Clear `MAPS_NOT_CONFIGURED` handling for browser-restricted server geocoding keys
+
 Seed accounts use password `password123`:
 
 - `barber1@example.com`
@@ -338,6 +354,7 @@ Migrations:
 - `apps/api/src/db/migrations/005_payments_and_subscriptions.ts`
 - `apps/api/src/db/migrations/006_mobile_barber.ts`
 - `apps/api/src/db/migrations/007_new_features.ts`
+- `apps/api/src/db/migrations/008_client_checkout.ts`
 
 The initial schema includes 9 production-oriented tables:
 
@@ -405,6 +422,11 @@ The Phase 9 migration adds:
 | `client_hair_designs`   | Saved placeholder AI style briefs and appointment attachments. |
 
 It also extends appointments with `style_reference_id` and `style_notes`.
+
+The client checkout migration adds `appointment_payment_method_enum` with `CASH` and `CARD`, a
+non-null `appointments.payment_method` defaulting to `CASH`, and an index for payment-method
+reporting and operations. Existing rows are migrated safely to cash before seeded payment records
+are marked as card appointments.
 
 Additional Phase 4 database changes:
 
@@ -478,11 +500,16 @@ Current state:
 - Browser-side forms and state for profile/service/schedule workflows
 - Browser-side forms and state for client booking, cancellation, saved barbers, and reviews
 - Browser-side payment-intent, refund, Connect onboarding, and subscription checkout actions
+- Browser Stripe Payment Element checkout with cash/card choice and appointment-detail retry
+- Pin-first MapLibre booking and saved-address selection with browser geolocation fallback
+- Local optimized barber cover images with fixed-ratio loading and error fallback
 - Next.js API proxy routes for login, logout, and backend requests
 - TanStack Query server state and React Hook Form validation
 - Shared transport-independent API client package
 
-Important distinction: client payment intent creation is now functional, but card capture still needs Stripe SDK integration in the future mobile/web payment UI.
+Important distinction: web and native card capture are implemented. Live destination charges still
+require real Stripe test/production credentials, completed barber Connect onboarding, and webhook
+delivery.
 
 Current scripts:
 
@@ -709,6 +736,7 @@ ENABLE_AI_FEATURES=false
 GOOGLE_MAPS_API_KEY=
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+NEXT_PUBLIC_MAP_STYLE_URL=
 ```
 
 If port `55433` or `6380` is already taken, change all related local values together:
@@ -811,7 +839,9 @@ The foundation through Phase 9, including dual portals, Mobile Barber booking/li
 - Frontend URL: `http://localhost:3000`.
 - Client sign in: `http://localhost:3000/client/login`; barber sign in: `http://localhost:3000/barber/login`.
 - Client marketplace: `http://localhost:3000/client`; barber dashboard: `http://localhost:3000/barber/dashboard`.
-- The web Mobile Service map needs Maps JavaScript, Places, and Geocoding enabled on `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; restart `pnpm dev` after changing public env values.
+- Client maps use MapLibre and an optional `NEXT_PUBLIC_MAP_STYLE_URL`; compact provider attribution remains visible.
+- The barber Mobile Service origin map still uses `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
+- Stripe card checkout requires completed barber Connect onboarding in addition to populated Stripe environment values.
 - Mobile app: `pnpm --filter @barber-saas/mobile dev`; use `ios` or `android` scripts for simulators.
 - API URL: `http://localhost:4000`.
 - Stop active dev servers with `Ctrl+C` in the terminal running `make dev` or `pnpm dev`.
@@ -863,6 +893,7 @@ GET /barbers/:barberId/reviews
 GET /barbers/:barberId/mobile
 GET /barbers/search
 GET /clients/me
+POST /clients/me/locations/reverse-geocode
 GET /clients/me/saved-barbers
 POST /clients/me/saved-barbers
 DELETE /clients/me/saved-barbers/:barberId
@@ -878,6 +909,7 @@ POST /clients/me/designs
 GET /clients/me/designs
 POST /clients/me/designs/:designId/attach
 POST /payments/create-intent
+GET /payments/config
 GET /payments/appointment/:appointmentId
 POST /payments/refund
 POST /webhooks/stripe

@@ -82,6 +82,10 @@ export const getPublicMobileConfig = async (barberId: string) => {
       config.fee_structure === 'per_mile' ? Number(config.per_mile_rate_cents) / 100 : null,
     mobileServiceNotes: config.mobile_service_notes,
     originCity: [profile.city, profile.state].filter(Boolean).join(', ') || null,
+    approximateOrigin: {
+      latitude: Number(Number(config.origin_latitude).toFixed(2)),
+      longitude: Number(Number(config.origin_longitude).toFixed(2)),
+    },
   };
 };
 

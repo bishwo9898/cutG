@@ -473,7 +473,7 @@ export async function seed(knex: Knex): Promise<void> {
   ]);
 
   await knex('barber_profiles').insert(
-    barberSeeds.map((barber) => ({
+    barberSeeds.map((barber, index) => ({
       id: barber.profileId,
       user_id: barber.userId,
       business_name: barber.businessName,
@@ -488,19 +488,14 @@ export async function seed(knex: Knex): Promise<void> {
       city: barber.city,
       state: barber.state,
       zip_code: barber.zipCode,
-      profile_photo_url: `https://images.cutg.test/${barber.profileId}.jpg`,
-      profile_photo_key: `barbers/${barber.profileId}/profile.jpg`,
+      profile_photo_url: `/images/barbers/barber-${index + 1}.webp`,
+      profile_photo_key: `barbers/barber-${index + 1}.webp`,
       subscription_tier: barber.tier,
       subscription_valid_until: addDays(new Date(), 30),
-      stripe_account_id:
-        barber.email === 'barber1@example.com'
-          ? 'acct_test_barber1'
-          : barber.email === 'barber2@example.com'
-            ? 'acct_test_barber2'
-            : null,
-      stripe_onboarding_complete: barber.email === 'barber1@example.com',
-      stripe_charges_enabled: barber.email === 'barber1@example.com',
-      stripe_payouts_enabled: barber.email === 'barber1@example.com',
+      stripe_account_id: null,
+      stripe_onboarding_complete: false,
+      stripe_charges_enabled: false,
+      stripe_payouts_enabled: false,
       is_verified: barber.tier !== 'FREE',
       verified_at: barber.tier !== 'FREE' ? new Date() : null,
       metadata: { seeded: true, specialties: ['fades', 'lineups', 'classic cuts'] },
@@ -733,6 +728,12 @@ export async function seed(knex: Knex): Promise<void> {
     ...appointments.filter((appointment) => appointment.status === 'COMPLETED'),
     ...appointments.filter((appointment) => appointment.status === 'PENDING').slice(0, 2),
   ];
+  await knex('appointments')
+    .whereIn(
+      'id',
+      payableAppointments.map((appointment) => appointment.id),
+    )
+    .update({ payment_method: 'CARD' });
   const barber1CompletedPayments = payableAppointments.filter(
     (appointment) =>
       appointment.status === 'COMPLETED' &&

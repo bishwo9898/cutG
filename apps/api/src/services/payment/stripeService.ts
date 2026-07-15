@@ -26,7 +26,7 @@ type StripeCheckoutSession = {
   url: string;
 };
 
-const isConfigured = (): boolean =>
+export const stripePaymentsConfigured = (): boolean =>
   env.NODE_ENV !== 'test' &&
   env.STRIPE_SECRET_KEY.startsWith('sk_') &&
   !env.STRIPE_SECRET_KEY.includes('...');
@@ -39,13 +39,19 @@ const toFormBody = (params: Record<string, StripeFormValue>): URLSearchParams =>
   return body;
 };
 
-const stripePost = async <T>(path: string, params: Record<string, StripeFormValue>): Promise<T> => {
+const stripePost = async <T>(
+  path: string,
+  params: Record<string, StripeFormValue>,
+  idempotencyKey?: string,
+): Promise<T> => {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+  if (idempotencyKey !== undefined) headers['Idempotency-Key'] = idempotencyKey;
   const response = await fetch(`https://api.stripe.com/v1${path}`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers,
     body: toFormBody(params),
   });
 
@@ -56,35 +62,61 @@ const stripePost = async <T>(path: string, params: Record<string, StripeFormValu
   return body;
 };
 
+const stripeGet = async <T>(path: string): Promise<T> => {
+  const response = await fetch(`https://api.stripe.com/v1${path}`, {
+    headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` },
+  });
+  const body = (await response.json()) as T & { error?: { message?: string } };
+  if (!response.ok) throw new Error(body.error?.message ?? 'Stripe request failed.');
+  return body;
+};
+
 export const createPaymentIntent = async (input: {
   amountCents: number;
   currency: string;
   destinationAccountId: string;
   platformFeeCents: number;
   metadata: Record<string, string>;
+  idempotencyKey: string;
 }): Promise<StripePaymentIntent> => {
-  if (!isConfigured()) {
+  if (!stripePaymentsConfigured()) {
     const id = `pi_test_${randomUUID().replaceAll('-', '')}`;
     return { id, client_secret: `${id}_secret_test` };
   }
 
-  return stripePost<StripePaymentIntent>('/payment_intents', {
-    amount: input.amountCents,
-    currency: input.currency,
-    'transfer_data[destination]': input.destinationAccountId,
-    application_fee_amount: input.platformFeeCents,
-    'metadata[appointmentId]': input.metadata.appointmentId,
-    'metadata[clientId]': input.metadata.clientId,
-    'metadata[barberId]': input.metadata.barberId,
-    automatic_payment_methods: 'true',
-  });
+  return stripePost<StripePaymentIntent>(
+    '/payment_intents',
+    {
+      amount: input.amountCents,
+      currency: input.currency,
+      'transfer_data[destination]': input.destinationAccountId,
+      application_fee_amount: input.platformFeeCents,
+      'metadata[appointmentId]': input.metadata.appointmentId,
+      'metadata[clientId]': input.metadata.clientId,
+      'metadata[barberId]': input.metadata.barberId,
+      automatic_payment_methods: 'true',
+    },
+    input.idempotencyKey,
+  );
+};
+
+export const retrievePaymentIntent = async (
+  paymentIntentId: string,
+): Promise<StripePaymentIntent> =>
+  stripePaymentsConfigured()
+    ? stripeGet<StripePaymentIntent>(`/payment_intents/${paymentIntentId}`)
+    : { id: paymentIntentId, client_secret: `${paymentIntentId}_secret_test` };
+
+export const cancelPaymentIntent = async (paymentIntentId: string): Promise<void> => {
+  if (!stripePaymentsConfigured()) return;
+  await stripePost(`/payment_intents/${paymentIntentId}/cancel`, {});
 };
 
 export const createRefund = async (
   paymentIntentId: string,
   reason?: string,
 ): Promise<StripeRefund> => {
-  if (!isConfigured()) return { id: `re_test_${randomUUID().replaceAll('-', '')}` };
+  if (!stripePaymentsConfigured()) return { id: `re_test_${randomUUID().replaceAll('-', '')}` };
   return stripePost<StripeRefund>('/refunds', {
     payment_intent: paymentIntentId,
     reason: reason === undefined ? undefined : 'requested_by_customer',
@@ -93,7 +125,9 @@ export const createRefund = async (
 };
 
 export const createConnectAccount = async (email: string): Promise<StripeAccount> => {
-  if (!isConfigured()) return { id: `acct_test_${randomUUID().replaceAll('-', '').slice(0, 12)}` };
+  if (!stripePaymentsConfigured()) {
+    return { id: `acct_test_${randomUUID().replaceAll('-', '').slice(0, 12)}` };
+  }
   return stripePost<StripeAccount>('/accounts', {
     type: 'express',
     country: 'US',
@@ -104,7 +138,7 @@ export const createConnectAccount = async (email: string): Promise<StripeAccount
 };
 
 export const createAccountLink = async (accountId: string): Promise<StripeAccountLink> => {
-  if (!isConfigured()) {
+  if (!stripePaymentsConfigured()) {
     return { url: `https://connect.stripe.com/setup/e/mock_${accountId}` };
   }
 
@@ -121,7 +155,7 @@ export const createSubscriptionCheckout = async (input: {
   priceId: string;
   barberId: string;
 }): Promise<StripeCheckoutSession> => {
-  if (!isConfigured()) {
+  if (!stripePaymentsConfigured()) {
     return {
       id: `cs_test_${randomUUID().replaceAll('-', '')}`,
       url: `https://checkout.stripe.com/c/pay/mock_${input.priceId}`,
@@ -140,7 +174,9 @@ export const createSubscriptionCheckout = async (input: {
 };
 
 export const createCustomer = async (email: string, barberId: string): Promise<{ id: string }> => {
-  if (!isConfigured()) return { id: `cus_test_${barberId.replaceAll('-', '').slice(0, 14)}` };
+  if (!stripePaymentsConfigured()) {
+    return { id: `cus_test_${barberId.replaceAll('-', '').slice(0, 14)}` };
+  }
   return stripePost<{ id: string }>('/customers', {
     email,
     'metadata[barberId]': barberId,
@@ -151,7 +187,7 @@ export const updateSubscriptionCancellation = async (
   subscriptionId: string,
   cancelAtPeriodEnd: boolean,
 ): Promise<void> => {
-  if (!isConfigured()) return;
+  if (!stripePaymentsConfigured()) return;
   await stripePost(`/subscriptions/${subscriptionId}`, {
     cancel_at_period_end: cancelAtPeriodEnd,
   });

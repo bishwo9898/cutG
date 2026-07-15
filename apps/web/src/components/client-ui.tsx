@@ -11,7 +11,6 @@ import {
   Circle,
   Heart,
   MapPin,
-  Scissors,
   ShieldCheck,
   Star,
   Repeat2,
@@ -19,6 +18,7 @@ import {
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
+import { BarberCover } from '@/components/client/barber-cover';
 import { appointmentEndsAt, formatTimeRange, slotEndsAt, slotStartsAt } from '@/lib/booking-time';
 import { browserApi } from '@/lib/browser-api';
 import type {
@@ -97,15 +97,7 @@ export function BarberCard({
   return (
     <article className="market-card">
       <Link href={`/client/barbers/${barber.id}`}>
-        <div
-          className="barber-photo"
-          style={{
-            backgroundImage:
-              barber.profilePhotoUrl === null ? undefined : `url(${barber.profilePhotoUrl})`,
-          }}
-        >
-          {barber.profilePhotoUrl === null && <Scissors size={30} />}
-        </div>
+        <BarberCover alt={`${barber.businessName} barbershop`} src={barber.profilePhotoUrl} />
         <div className="card-body">
           <div className="card-title-row">
             <h3>{barber.businessName}</h3>

@@ -487,6 +487,7 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
       durationMinutes: row.duration_minutes,
       status: row.status,
       paymentStatus: row.payment_status,
+      paymentMethod: row.payment_method ?? 'CASH',
       priceQuoted: Number(row.price_quoted),
       price: Number(row.price_quoted),
       service: { id: row.service_id, name: row.service_name },
@@ -646,7 +647,7 @@ export const getPublicProfile = async (barberId: string) => {
     state: row.state,
     subscriptionTier: row.subscription_tier,
     isVerified: row.is_verified,
-    stripeChargesEnabled: row.stripe_charges_enabled === true,
+    onlinePaymentsAvailable: row.stripe_charges_enabled === true,
     mobileService:
       row.mobile_enabled === true
         ? {

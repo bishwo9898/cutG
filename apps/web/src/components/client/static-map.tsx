@@ -1,7 +1,8 @@
 'use client';
 
 import { ExternalLink, MapPin } from 'lucide-react';
-import { useState } from 'react';
+
+import { ClientMap } from '@/components/client/client-map';
 
 type MapFallbackProps = {
   address: string;
@@ -28,7 +29,7 @@ export function MapFallback({
           rel="noreferrer"
           target="_blank"
         >
-          Open in Google Maps <ExternalLink size={13} />
+          Open directions <ExternalLink size={13} />
         </a>
       </div>
     </div>
@@ -40,7 +41,6 @@ export function StaticMap({
   height = 220,
   latitude,
   longitude,
-  width = 600,
   zoom = 15,
 }: {
   address: string;
@@ -50,32 +50,15 @@ export function StaticMap({
   width?: number;
   height?: number;
 }): React.ReactElement {
-  const [failed, setFailed] = useState(false);
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
-  if (apiKey.length === 0 || latitude === null || longitude === null || failed) {
+  if (latitude === null || longitude === null) {
     return (
       <MapFallback address={address} height={height} latitude={latitude} longitude={longitude} />
     );
   }
-  const parameters = new URLSearchParams({
-    center: `${latitude},${longitude}`,
-    zoom: String(zoom),
-    size: `${width}x${height}`,
-    scale: '2',
-    maptype: 'roadmap',
-    markers: `color:red|${latitude},${longitude}`,
-    key: apiKey,
-  });
+  const point = { latitude, longitude };
   return (
-    <div className="static-map-frame" style={{ height }}>
-      {/* Static Maps is an external generated image, so Next image optimization is not useful. */}
-      <img
-        alt={`Map showing ${address}`}
-        height={height}
-        onError={() => setFailed(true)}
-        src={`https://maps.googleapis.com/maps/api/staticmap?${parameters.toString()}`}
-        width={width}
-      />
+    <div className="static-map-frame" style={{ height }} aria-label={`Map showing ${address}`}>
+      <ClientMap center={point} destination={point} interactive={false} zoom={zoom} />
     </div>
   );
 }

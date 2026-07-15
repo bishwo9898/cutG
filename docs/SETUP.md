@@ -76,11 +76,30 @@ Phase 6 runs with deterministic development/test map behavior until keys are add
 GOOGLE_MAPS_API_KEY=
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+NEXT_PUBLIC_MAP_STYLE_URL=
 ```
 
-Use separate restricted keys. Enable Geocoding and Distance Matrix for the server key, Places and native Maps SDKs for mobile, and Maps JavaScript, Places, and Geocoding for web. Restart API, web, and Expo after changing them. See `docs/MOBILE_BARBER.md` for restrictions and verification.
+Enable Geocoding and Distance Matrix for the server key. The client web portal uses MapLibre and
+does not need a public Google key; `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` remains for the barber's origin
+settings map. `NEXT_PUBLIC_MAP_STYLE_URL` is optional and defaults to a dark CARTO style. Restart
+API, web, and Expo after changing map values.
 
 The root `.env.local` and `.env` files are loaded by API, web, and Expo. `.env.local` takes precedence. Do not reuse a website-referrer key for server-side Geocoding or Places REST requests: Google rejects those requests even when Maps JavaScript works.
+
+### Stripe Card Checkout
+
+Set `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECRET`. Then complete Stripe
+Connect onboarding for the barber from the barber payment dashboard. Card payment remains hidden
+for barbers without charges enabled; cash remains available.
+
+For local webhook synchronization:
+
+```bash
+stripe listen --forward-to localhost:4000/webhooks/stripe
+```
+
+Copy the emitted `whsec_...` into `.env` and restart the API. See `docs/PAYMENTS.md` for the full
+test-card workflow.
 
 Run Expo separately from `make dev`:
 
