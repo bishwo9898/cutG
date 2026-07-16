@@ -41,6 +41,12 @@ export function ClientMap({
   const destinationMarker = useRef<Marker | null>(null);
   const originMarker = useRef<Marker | null>(null);
   const onChange = useRef(onDestinationChange);
+  const observer = useRef<ResizeObserver | null>(null);
+  type RouteData = {
+    type: 'Feature';
+    properties: Record<string, never>;
+    geometry: { type: 'LineString'; coordinates: [number, number][] };
+  };
 
   useEffect(() => {
     onChange.current = onDestinationChange;
@@ -60,7 +66,14 @@ export function ClientMap({
     if (interactive) {
       instance.addControl(new NavigationControl({ showCompass: false }), 'bottom-right');
     }
+    observer.current = new ResizeObserver(() => {
+      requestAnimationFrame(() => instance.resize());
+    });
+    observer.current.observe(container.current);
+    requestAnimationFrame(() => instance.resize());
     return (): void => {
+      observer.current?.disconnect();
+      observer.current = null;
       destinationMarker.current?.remove();
       originMarker.current?.remove();
       instance.remove();
@@ -117,7 +130,7 @@ export function ClientMap({
   useEffect(() => {
     const instance = map.current;
     if (instance === null || origin === null || destination === null) return;
-    const sourceData = {
+    const sourceData: RouteData = {
       type: 'Feature',
       properties: {},
       geometry: {
@@ -127,10 +140,10 @@ export function ClientMap({
           [destination.longitude, destination.latitude],
         ],
       },
-    } as Parameters<GeoJSONSource['setData']>[0];
+    };
     const drawRoute = (): void => {
       if (instance.getSource('client-route') === undefined) {
-        instance.addSource('client-route', { type: 'geojson', data: sourceData });
+        instance.addSource('client-route', { type: 'geojson', data: sourceData as never });
         instance.addLayer({
           id: 'client-route-line',
           type: 'line',
@@ -138,7 +151,7 @@ export function ClientMap({
           paint: { 'line-color': '#d7b968', 'line-width': 3, 'line-opacity': 0.85 },
         });
       } else {
-        (instance.getSource('client-route') as GeoJSONSource).setData(sourceData);
+        (instance.getSource('client-route') as GeoJSONSource).setData(sourceData as never);
       }
       const bounds = new LngLatBounds(
         [origin.longitude, origin.latitude] as LngLatLike,

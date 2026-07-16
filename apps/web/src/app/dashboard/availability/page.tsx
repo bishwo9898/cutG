@@ -127,13 +127,16 @@ export default function AvailabilityPage(): React.ReactElement {
       <div className="page-header">
         <div>
           <h1>Availability</h1>
-          <p>Define your week, make exceptions, then generate bookable time.</p>
+          <p>Keep the week tight, set exceptions fast, and generate clean bookable time.</p>
         </div>
       </div>
-      <section className="two-column">
-        <div className="panel">
+      <section className="two-column availability-layout">
+        <div className="panel availability-panel">
           <div className="panel-header">
-            <h2>Weekly schedule</h2>
+            <div>
+              <h2>Weekly schedule</h2>
+              <p className="panel-description">Toggle days on and off without leaving the page.</p>
+            </div>
             <button
               className="button button-primary"
               disabled={saveSchedule.isPending}
@@ -147,6 +150,14 @@ export default function AvailabilityPage(): React.ReactElement {
           <div className="panel-body">
             {saveSchedule.isError && <Notice>{errorMessage(saveSchedule.error)}</Notice>}
             {saveSchedule.isSuccess && <Notice tone="success">Weekly schedule saved.</Notice>}
+            <div className="schedule-summary">
+              <span className="badge badge-success">
+                {schedule.filter((entry) => entry.isActive).length} active days
+              </span>
+              <span className="badge badge-warning">
+                {schedule.filter((entry) => !entry.isActive).length} closed days
+              </span>
+            </div>
             <div className="schedule-list">
               {schedule.map((entry, index) => (
                 <div className="schedule-row" key={entry.dayOfWeek}>
@@ -199,9 +210,14 @@ export default function AvailabilityPage(): React.ReactElement {
           </div>
         </div>
         <div className="form-stack">
-          <section className="panel">
+          <section className="panel availability-panel">
             <div className="panel-header">
-              <h2>Generate slots</h2>
+              <div>
+                <h2>Generate slots</h2>
+                <p className="panel-description">
+                  Use a date range, then build time blocks in one pass.
+                </p>
+              </div>
             </div>
             <div className="panel-body form-stack">
               {generate.isError && <Notice>{errorMessage(generate.error)}</Notice>}
@@ -250,12 +266,18 @@ export default function AvailabilityPage(): React.ReactElement {
                 <span className="badge badge-warning">
                   {slots.data?.summary.booked ?? 0} booked
                 </span>
+                <span className="badge badge-danger">
+                  {slots.data?.summary.blocked ?? 0} blocked
+                </span>
               </div>
             </div>
           </section>
-          <section className="panel">
+          <section className="panel availability-panel">
             <div className="panel-header">
-              <h2>Block a date</h2>
+              <div>
+                <h2>Block a date</h2>
+                <p className="panel-description">Mark closures without disturbing booked slots.</p>
+              </div>
             </div>
             <div className="panel-body form-stack">
               {block.isError && <Notice>{errorMessage(block.error)}</Notice>}

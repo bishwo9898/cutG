@@ -7,6 +7,8 @@ import { AppError } from '../../middleware/errorHandler';
 import { getTravelMetrics } from './travelEstimateService';
 
 type Row = Record<string, unknown>;
+const DEFAULT_SERVICE_RADIUS_MILES = 15;
+const DEFAULT_ORIGIN = { latitude: 37.6456, longitude: -84.7722 };
 
 export const suggestTravelFee = (radiusMiles: number) => {
   if (radiusMiles <= 5)
@@ -29,24 +31,44 @@ const profileForUser = async (userId: string, executor?: DatabaseExecutor): Prom
   return rows[0];
 };
 
-export const mapMobileConfig = (row: Row | undefined) => {
-  const radius = Number(row?.service_radius_miles ?? 10);
+const profileAddress = (profile: Row | undefined): string | null => {
+  if (profile === undefined) return null;
+  const line = typeof profile.address === 'string' ? profile.address : null;
+  const city = typeof profile.city === 'string' ? profile.city : null;
+  const state = typeof profile.state === 'string' ? profile.state : null;
+  const zipCode = typeof profile.zip_code === 'string' ? profile.zip_code : null;
+  const cityLine = [city, [state, zipCode].filter(Boolean).join(' ')]
+    .filter((part) => part !== null && part.length > 0)
+    .join(', ');
+  return [line, cityLine].filter((part) => part !== null && part.length > 0).join(', ') || null;
+};
+
+export const mapMobileConfig = (row: Row | undefined, profile?: Row) => {
+  const radius = Number(row?.service_radius_miles ?? DEFAULT_SERVICE_RADIUS_MILES);
+  const profileLatitude =
+    profile?.latitude === null || profile?.latitude === undefined
+      ? undefined
+      : Number(profile.latitude);
+  const profileLongitude =
+    profile?.longitude === null || profile?.longitude === undefined
+      ? undefined
+      : Number(profile.longitude);
+  const originLatitude = Number(row?.origin_latitude ?? profileLatitude ?? DEFAULT_ORIGIN.latitude);
+  const originLongitude = Number(
+    row?.origin_longitude ?? profileLongitude ?? DEFAULT_ORIGIN.longitude,
+  );
+  const originAddress = row?.origin_address ?? profileAddress(profile);
   return {
     isEnabled: row?.is_enabled === true,
-    ...(row === undefined
-      ? {}
-      : {
-          id: row.id,
-          barberId: row.barber_id,
-          serviceRadiusMiles: radius,
-          feeStructure: row.fee_structure,
-          baseFeeCents: Number(row.base_fee_cents),
-          perMileRateCents: Number(row.per_mile_rate_cents),
-          originLatitude: Number(row.origin_latitude),
-          originLongitude: Number(row.origin_longitude),
-          originAddress: row.origin_address,
-          mobileServiceNotes: row.mobile_service_notes,
-        }),
+    ...(row === undefined ? {} : { id: row.id, barberId: row.barber_id }),
+    serviceRadiusMiles: radius,
+    feeStructure: row?.fee_structure ?? 'flat',
+    baseFeeCents: Number(row?.base_fee_cents ?? suggestTravelFee(radius).flat),
+    perMileRateCents: Number(row?.per_mile_rate_cents ?? 0),
+    originLatitude,
+    originLongitude,
+    originAddress,
+    mobileServiceNotes: row?.mobile_service_notes ?? null,
     suggestedFee: suggestTravelFee(radius),
   };
 };
@@ -56,7 +78,7 @@ export const getMobileConfig = async (userId: string) => {
   const rows = await query<Row>('SELECT * FROM mobile_barber_config WHERE barber_id = $1', [
     profile.id,
   ]);
-  return mapMobileConfig(rows[0]);
+  return mapMobileConfig(rows[0], profile);
 };
 
 export const getPublicMobileConfig = async (barberId: string) => {
@@ -127,7 +149,7 @@ export const setMobileConfig = async (userId: string, input: SetMobileConfigRequ
       input.mobileServiceNotes ?? null,
     ],
   );
-  return mapMobileConfig(rows[0]);
+  return mapMobileConfig(rows[0], profile);
 };
 
 export const disableMobileConfig = async (userId: string) => {

@@ -1816,7 +1816,24 @@ a {
   cursor: pointer;
 }
 
+.map-mode-control span {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-right: 1px solid var(--line);
+  padding: 7px 11px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .map-mode-control button:last-child {
+  border-right: 0;
+}
+
+.map-mode-control span:last-child {
   border-right: 0;
 }
 
@@ -1826,11 +1843,106 @@ a {
   font-weight: 750;
 }
 
+.service-area-map-frame {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #eef1ee;
+}
+
+.service-area-map {
+  width: 100%;
+  min-height: 340px;
+}
+
+.barber-map-pin {
+  width: 22px;
+  height: 22px;
+  border: 3px solid #f7f6ef;
+  border-radius: 50% 50% 50% 0;
+  background: #176b4d;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  transform: rotate(-45deg);
+  cursor: grab;
+}
+
+.barber-map-store {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #f7f6ef;
+  border-radius: 7px;
+  color: #f7f6ef;
+  background: #176b4d;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.barber-map-store::before {
+  width: 12px;
+  height: 12px;
+  background: currentColor;
+  content: '';
+  clip-path: polygon(10% 40%, 50% 10%, 90% 40%, 90% 90%, 10% 90%);
+}
+
+.availability-layout {
+  align-items: start;
+}
+
+.availability-panel {
+  background: #131311;
+}
+
+.schedule-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.schedule-row {
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #11110f;
+}
+
+.schedule-row .toggle-label {
+  min-width: 140px;
+}
+
+.schedule-row .input,
+.schedule-row .select {
+  min-width: 0;
+}
+
+.schedule-row .toggle-label input {
+  accent-color: var(--warning);
+}
+
+.availability-panel .toolbar .badge-danger {
+  color: #ffd2d2;
+  background: #3b1f22;
+}
+
+.availability-panel .badge-success {
+  color: #cbf0de;
+  background: #183629;
+}
+
+.availability-panel .badge-warning {
+  color: #f3dfb0;
+  background: #3a2d19;
+}
+
 .compact-calendar {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: white;
+  background: #11110f;
 }
 
 .compact-calendar-header,

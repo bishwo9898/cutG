@@ -1,17 +1,10 @@
 'use client';
 
-import {
-  Autocomplete,
-  CircleF,
-  GoogleMap,
-  LoadScript,
-  MarkerF,
-  type Libraries,
-} from '@react-google-maps/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Crosshair, LocateFixed, Map, MapPin, Navigation, Save } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Crosshair, Map, MapPin, Navigation, Save } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { ServiceAreaMap } from '@/components/client/service-area-map';
 import { Notice } from '@/components/notice';
 import { LoadingState } from '@/components/query-states';
 import { browserApi } from '@/lib/browser-api';
@@ -31,9 +24,6 @@ type MobileConfig = {
   suggestedFee: { flat: number; perMile: number; rationale: string };
 };
 
-const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
-const mapsLibraries: Libraries = ['places'];
-
 export default function MobileServicePage(): React.ReactElement {
   const queryClient = useQueryClient();
   const config = useQuery({
@@ -41,27 +31,19 @@ export default function MobileServicePage(): React.ReactElement {
     queryFn: () => browserApi.get<MobileConfig>('/barbers/me/mobile'),
   });
   const [enabled, setEnabled] = useState(false);
-  const [radius, setRadius] = useState(10);
+  const [radius, setRadius] = useState(15);
   const [feeStructure, setFeeStructure] = useState<FeeStructure>('flat');
   const [fee, setFee] = useState('15');
-  const [latitude, setLatitude] = useState(40.6782);
-  const [longitude, setLongitude] = useState(-73.9442);
+  const [latitude, setLatitude] = useState(37.6456);
+  const [longitude, setLongitude] = useState(-84.7722);
   const [originAddress, setOriginAddress] = useState('');
-  const [originResolved, setOriginResolved] = useState(false);
   const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState(false);
-  const [mapLoadError, setMapLoadError] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [locating, setLocating] = useState(false);
-  const [mapMode, setMapMode] = useState<'pin' | 'radius'>('radius');
-  const circle = useRef<google.maps.Circle | null>(null);
-  const map = useRef<google.maps.Map | null>(null);
-  const autocomplete = useRef<google.maps.places.Autocomplete | null>(null);
 
   useEffect(() => {
     if (config.data === undefined) return;
     setEnabled(config.data.isEnabled);
-    setRadius(config.data.serviceRadiusMiles ?? 10);
+    setRadius(config.data.serviceRadiusMiles ?? 15);
     setFeeStructure(config.data.feeStructure ?? 'flat');
     setFee(
       String(
@@ -70,79 +52,15 @@ export default function MobileServicePage(): React.ReactElement {
           : config.data.baseFeeCents) ?? config.data.suggestedFee.flat) / 100,
       ),
     );
-    setLatitude(config.data.originLatitude ?? 40.6782);
-    setLongitude(config.data.originLongitude ?? -73.9442);
+    setLatitude(config.data.originLatitude ?? 37.6456);
+    setLongitude(config.data.originLongitude ?? -84.7722);
     setOriginAddress(config.data.originAddress ?? '');
-    setOriginResolved(
-      config.data.originAddress !== null && config.data.originAddress !== undefined,
-    );
     setNotes(config.data.mobileServiceNotes ?? '');
   }, [config.data]);
 
-  useEffect(() => {
-    const mapsWindow = window as Window & { gm_authFailure?: () => void };
-    const previousHandler = mapsWindow.gm_authFailure;
-    mapsWindow.gm_authFailure = (): void => setMapLoadError(true);
-    return (): void => {
-      if (previousHandler === undefined) delete mapsWindow.gm_authFailure;
-      else mapsWindow.gm_authFailure = previousHandler;
-    };
-  }, []);
-
-  const setOrigin = (lat: number, lng: number, address?: string): void => {
+  const setOrigin = (lat: number, lng: number): void => {
     setLatitude(lat);
     setLongitude(lng);
-    setOriginResolved(address !== undefined);
-    if (address !== undefined) setOriginAddress(address);
-    setLocationError(null);
-  };
-
-  const reverseGeocode = (lat: number, lng: number): void => {
-    setOrigin(lat, lng);
-    const geocoder = new google.maps.Geocoder();
-    void geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-      const address = results?.[0]?.formatted_address;
-      if (status === google.maps.GeocoderStatus.OK && address !== undefined) {
-        setOrigin(lat, lng, address);
-      } else setLocationError('The location was selected, but its street address was not found.');
-    });
-  };
-
-  const selectAutocompletePlace = (): void => {
-    const place = autocomplete.current?.getPlace();
-    const lat = place?.geometry?.location?.lat();
-    const lng = place?.geometry?.location?.lng();
-    if (lat === undefined || lng === undefined) {
-      setLocationError('Select an address from the suggestions.');
-      return;
-    }
-    setOrigin(lat, lng, place?.formatted_address ?? place?.name);
-    setMapMode('pin');
-  };
-
-  const useCurrentLocation = (): void => {
-    setLocationError(null);
-    if (!('geolocation' in navigator)) {
-      setLocationError('Location access is not available in this browser.');
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setLocating(false);
-        reverseGeocode(coords.latitude, coords.longitude);
-        setMapMode('pin');
-      },
-      (geolocationError) => {
-        setLocating(false);
-        setLocationError(
-          geolocationError.code === geolocationError.PERMISSION_DENIED
-            ? 'Location permission was denied. Allow it in your browser settings and try again.'
-            : 'Your current location could not be determined.',
-        );
-      },
-      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
-    );
   };
 
   const mutation = useMutation({
@@ -164,15 +82,7 @@ export default function MobileServicePage(): React.ReactElement {
     },
   });
 
-  const origin = useMemo(() => ({ lat: latitude, lng: longitude }), [latitude, longitude]);
-
-  useEffect(() => {
-    map.current?.panTo(origin);
-    circle.current?.setCenter(origin);
-  }, [origin]);
-  useEffect(() => {
-    circle.current?.setRadius(radius * 1609.344);
-  }, [radius]);
+  const origin = useMemo(() => ({ latitude, longitude }), [latitude, longitude]);
 
   if (config.isPending) return <LoadingState />;
   const suggestion = config.data?.suggestedFee;
@@ -210,149 +120,46 @@ export default function MobileServicePage(): React.ReactElement {
           <div className="panel-header service-panel-header">
             <div>
               <h2>Service area</h2>
-              <p className="panel-description">Your origin anchors the travel radius.</p>
+              <p className="panel-description">Default area is 15 miles from your shop.</p>
             </div>
             <span className="radius-badge">{radius} mi</span>
           </div>
           <div className="panel-body service-area-body">
-            {mapsKey.length > 0 ? (
-              <LoadScript
-                googleMapsApiKey={mapsKey}
-                libraries={mapsLibraries}
-                onError={() => setMapLoadError(true)}
-                onLoad={() => setMapLoadError(false)}
-              >
-                <div className="origin-controls">
-                  <Autocomplete
-                    onLoad={(instance) => {
-                      autocomplete.current = instance;
-                    }}
-                    onPlaceChanged={selectAutocompletePlace}
-                    onUnmount={() => {
-                      autocomplete.current = null;
-                    }}
-                    options={{
-                      componentRestrictions: { country: 'us' },
-                      fields: ['formatted_address', 'geometry', 'name'],
-                      types: ['address'],
-                    }}
-                  >
-                    <div className="input-with-icon origin-input">
-                      <MapPin size={18} />
-                      <input
-                        aria-label="Origin address"
-                        autoComplete="off"
-                        id="originAddress"
-                        placeholder="Search for your starting address"
-                        value={originAddress}
-                        onChange={(event) => {
-                          setOriginAddress(event.target.value);
-                          setOriginResolved(false);
-                        }}
-                      />
-                    </div>
-                  </Autocomplete>
-                  <button
-                    className="button button-secondary location-button"
-                    disabled={locating}
-                    onClick={useCurrentLocation}
-                    type="button"
-                  >
-                    <LocateFixed size={17} />
-                    {locating ? 'Locating...' : 'Use my location'}
-                  </button>
-                </div>
-                {locationError !== null && <Notice>{locationError}</Notice>}
-                <div className="map-mode-control" role="group" aria-label="Map view">
-                  <button
-                    className={mapMode === 'pin' ? 'is-active' : ''}
-                    onClick={() => setMapMode('pin')}
-                    type="button"
-                  >
-                    <Crosshair size={15} /> Exact pin
-                  </button>
-                  <button
-                    className={mapMode === 'radius' ? 'is-active' : ''}
-                    onClick={() => setMapMode('radius')}
-                    type="button"
-                  >
-                    <Map size={15} /> Service area
-                  </button>
-                </div>
-                <GoogleMap
-                  center={origin}
-                  mapContainerClassName="mobile-service-map"
-                  onClick={(event) => {
-                    const lat = event.latLng?.lat();
-                    const lng = event.latLng?.lng();
-                    if (lat !== undefined && lng !== undefined) {
-                      reverseGeocode(lat, lng);
-                      setMapMode('pin');
-                    }
+            <div className="origin-controls">
+              <div className="input-with-icon origin-input">
+                <MapPin size={18} />
+                <input
+                  aria-label="Origin address"
+                  autoComplete="off"
+                  id="originAddress"
+                  placeholder="Write the store address manually"
+                  value={originAddress}
+                  onChange={(event) => {
+                    setOriginAddress(event.target.value);
                   }}
-                  zoom={mapMode === 'pin' ? 18 : radius <= 5 ? 12 : radius <= 15 ? 10 : 9}
-                  options={{
-                    fullscreenControl: false,
-                    mapTypeControl: false,
-                    streetViewControl: false,
-                    zoomControl: true,
-                  }}
-                  onLoad={(instance) => {
-                    map.current = instance;
-                  }}
-                  onUnmount={() => {
-                    map.current = null;
-                  }}
-                >
-                  <MarkerF
-                    draggable
-                    position={origin}
-                    onDragEnd={(event) => {
-                      const lat = event.latLng?.lat();
-                      const lng = event.latLng?.lng();
-                      if (lat !== undefined && lng !== undefined) {
-                        reverseGeocode(lat, lng);
-                        setMapMode('pin');
-                      }
-                    }}
-                  />
-                  <CircleF
-                    center={origin}
-                    radius={radius * 1609.344}
-                    options={{
-                      editable: true,
-                      fillColor: '#13795b',
-                      fillOpacity: 0.16,
-                      strokeColor: '#13795b',
-                      strokeOpacity: 0.9,
-                      strokeWeight: 2,
-                    }}
-                    onLoad={(instance) => {
-                      circle.current = instance;
-                    }}
-                    onRadiusChanged={() => {
-                      const meters = circle.current?.getRadius();
-                      if (meters !== undefined) {
-                        setRadius(
-                          Math.min(50, Math.max(1, Math.round((meters / 1609.344) * 10) / 10)),
-                        );
-                      }
-                    }}
-                    onUnmount={() => {
-                      circle.current = null;
-                    }}
-                  />
-                </GoogleMap>
-              </LoadScript>
-            ) : (
-              <Notice>Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to display the editable map.</Notice>
-            )}
-            {mapLoadError && (
-              <Notice>
-                Google Maps could not load. Enable Maps JavaScript, Places, and Geocoding APIs, then
-                allow http://localhost:3000/* in this key's website restrictions.
-              </Notice>
-            )}
+                />
+              </div>
+            </div>
+            <div className="map-mode-control map-legend" aria-label="Map view">
+              <span className="is-active">
+                <Crosshair size={15} /> Exact pin
+              </span>
+              <span>
+                <Map size={15} /> Service area
+              </span>
+            </div>
+            <div className="service-area-map-frame">
+              <ServiceAreaMap
+                center={origin}
+                destination={origin}
+                markerVariant={originAddress.trim().length > 0 ? 'store' : 'pin'}
+                onDestinationChange={(point) => {
+                  setOrigin(point.latitude, point.longitude);
+                }}
+                radiusMiles={radius}
+                zoom={radius <= 5 ? 12 : radius <= 15 ? 10 : 9}
+              />
+            </div>
             <div className="radius-control">
               <div className="radius-control-copy">
                 <Navigation size={17} />
@@ -379,6 +186,10 @@ export default function MobileServicePage(): React.ReactElement {
                 {latitude.toFixed(6)}, {longitude.toFixed(6)}
               </code>
             </div>
+            <p className="panel-description">
+              Write the store address manually, then place the marker on the exact arrival point. We
+              keep the coordinates for routing and show the store marker once it is saved.
+            </p>
           </div>
         </section>
 
@@ -470,12 +281,7 @@ export default function MobileServicePage(): React.ReactElement {
 
           <button
             className="button button-primary button-full save-mobile-settings"
-            disabled={
-              mutation.isPending ||
-              originAddress.trim().length === 0 ||
-              !originResolved ||
-              !feeIsValid
-            }
+            disabled={mutation.isPending || originAddress.trim().length === 0 || !feeIsValid}
             onClick={() => mutation.mutate()}
             type="button"
           >
