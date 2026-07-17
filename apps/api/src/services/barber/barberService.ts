@@ -13,8 +13,13 @@ import { SUBSCRIPTION_TIERS, type SubscriptionTierName } from '../../config/subs
 import { query, withTransaction, type DatabaseExecutor } from '../../db/queries/barber.queries';
 import { AppError } from '../../middleware/errorHandler';
 import { datesBetween, dayName, generateDaySlots, isoDayOfWeek } from '../../utils/slotGenerator';
-import { calculateTravelBufferSlots, getTravelBufferSlotTimes } from '../../utils/travelBuffer';
+import {
+  calculateTravelBufferSlots,
+  getReturnTravelBufferSlotTimes,
+  getTravelBufferSlotTimes,
+} from '../../utils/travelBuffer';
 import { releaseTravelBufferSlots } from '../mobile/bufferSlotService';
+import { createPresignedDownloadUrl } from '../storage/objectStorage';
 
 type Row = Record<string, unknown>;
 type AppointmentFilters = z.infer<typeof AppointmentFilterSchema>;
@@ -467,7 +472,7 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
   const rows = await query<Row>(
     `SELECT a.*,s.name AS service_name,u.first_name,u.last_name,u.phone,
       hd.id AS style_design_id,hd.style_name,hd.description AS style_description,
-      hd.generated_preview_url,hd.source_photo_url
+      hd.generated_preview_url,hd.generated_asset_key,hd.source_photo_url
      FROM appointments a JOIN services s ON s.id=a.service_id JOIN users u ON u.id=a.client_id
      LEFT JOIN client_hair_designs hd ON hd.id=a.style_reference_id
      WHERE ${where.join(' AND ')} ORDER BY a.scheduled_at DESC
@@ -476,61 +481,69 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
   );
   const total = Number(countRows[0]?.total ?? 0);
   return {
-    appointments: rows.map((row) => ({
-      id: row.id,
-      barberId: row.barber_id,
-      clientId: row.client_id,
-      serviceId: row.service_id,
-      scheduledAt: dateTime(row.scheduled_at),
-      scheduledDate: dateTime(row.scheduled_at).slice(0, 10),
-      startTime: dateTime(row.scheduled_at).slice(11, 16),
-      durationMinutes: row.duration_minutes,
-      status: row.status,
-      paymentStatus: row.payment_status,
-      paymentMethod: row.payment_method ?? 'CASH',
-      priceQuoted: Number(row.price_quoted),
-      price: Number(row.price_quoted),
-      service: { id: row.service_id, name: row.service_name },
-      serviceName: row.service_name,
-      client: {
-        id: row.client_id,
-        firstName: row.first_name,
-        lastName: row.last_name,
-        phone: row.phone,
-      },
-      clientName: `${String(row.first_name)} ${String(row.last_name)}`,
-      clientPhone: row.phone,
-      clientNotes: row.client_notes,
-      barberNotes: row.barber_notes,
-      isMobileService: row.is_mobile_service === true,
-      serviceAddress:
-        row.is_mobile_service === true
-          ? {
-              addressLine1: row.service_address_line1,
-              city: row.service_address_city,
-              state: row.service_address_state,
-              zipCode: row.service_address_zip,
-              latitude: numberOrNull(row.service_latitude),
-              longitude: numberOrNull(row.service_longitude),
-            }
-          : null,
-      distanceMiles: numberOrNull(row.distance_miles),
-      estimatedTravelMinutes: row.estimated_travel_minutes,
-      travelFeeCents: Number(row.travel_fee_cents ?? 0),
-      travelFee: Number(row.travel_fee_cents ?? 0) / 100,
-      barberDepartedAt: row.barber_departed_at === null ? null : dateTime(row.barber_departed_at),
-      barberArrivedAt: row.barber_arrived_at === null ? null : dateTime(row.barber_arrived_at),
-      styleReference:
-        row.style_design_id === null || row.style_design_id === undefined
-          ? null
-          : {
-              id: row.style_design_id,
-              styleName: row.style_name,
-              description: row.style_description,
-              previewImageUrl: row.generated_preview_url,
-              sourcePhotoUrl: row.source_photo_url,
-            },
-    })),
+    appointments: await Promise.all(
+      rows.map(async (row) => ({
+        id: row.id,
+        barberId: row.barber_id,
+        clientId: row.client_id,
+        serviceId: row.service_id,
+        scheduledAt: dateTime(row.scheduled_at),
+        scheduledDate: dateTime(row.scheduled_at).slice(0, 10),
+        startTime: dateTime(row.scheduled_at).slice(11, 16),
+        durationMinutes: row.duration_minutes,
+        status: row.status,
+        paymentStatus: row.payment_status,
+        paymentMethod: row.payment_method ?? 'CASH',
+        priceQuoted: Number(row.price_quoted),
+        price: Number(row.price_quoted),
+        service: { id: row.service_id, name: row.service_name },
+        serviceName: row.service_name,
+        client: {
+          id: row.client_id,
+          firstName: row.first_name,
+          lastName: row.last_name,
+          phone: row.phone,
+        },
+        clientName: `${String(row.first_name)} ${String(row.last_name)}`,
+        clientPhone: row.phone,
+        clientNotes: row.client_notes,
+        barberNotes: row.barber_notes,
+        isMobileService: row.is_mobile_service === true,
+        serviceAddress:
+          row.is_mobile_service === true
+            ? {
+                addressLine1: row.service_address_line1,
+                city: row.service_address_city,
+                state: row.service_address_state,
+                zipCode: row.service_address_zip,
+                latitude: numberOrNull(row.service_latitude),
+                longitude: numberOrNull(row.service_longitude),
+                formattedAddress: row.service_address_formatted,
+                source: row.service_address_source,
+                isApproximateAddress: row.service_address_is_approximate,
+              }
+            : null,
+        distanceMiles: numberOrNull(row.distance_miles),
+        estimatedTravelMinutes: row.estimated_travel_minutes,
+        travelFeeCents: Number(row.travel_fee_cents ?? 0),
+        travelFee: Number(row.travel_fee_cents ?? 0) / 100,
+        barberDepartedAt: row.barber_departed_at === null ? null : dateTime(row.barber_departed_at),
+        barberArrivedAt: row.barber_arrived_at === null ? null : dateTime(row.barber_arrived_at),
+        styleReference:
+          row.style_design_id === null || row.style_design_id === undefined
+            ? null
+            : {
+                id: row.style_design_id,
+                styleName: row.style_name,
+                description: row.style_description,
+                previewImageUrl:
+                  typeof row.generated_asset_key === 'string'
+                    ? await createPresignedDownloadUrl(row.generated_asset_key)
+                    : row.generated_preview_url,
+                sourcePhotoUrl: row.source_photo_url,
+              },
+      })),
+    ),
     pagination: {
       page: filters.page,
       limit: filters.limit,
@@ -703,7 +716,7 @@ export const getPublicSlots = async (
       ? []
       : await query<Row>(
           `SELECT * FROM availability_slots
-           WHERE barber_id=$1 AND slot_date BETWEEN ($2::date - INTERVAL '1 day') AND $3::date
+           WHERE barber_id=$1 AND slot_date BETWEEN ($2::date - INTERVAL '1 day') AND ($3::date + INTERVAL '1 day')
            ORDER BY slot_date,start_time`,
           [barberId, startDate, endDate],
         );
@@ -717,12 +730,20 @@ export const getPublicSlots = async (
       const required =
         travelMinutes === undefined
           ? []
-          : getTravelBufferSlotTimes(
-              date(row.slot_date),
-              time(row.start_time),
-              calculateTravelBufferSlots(travelMinutes, durationMinutes),
-              durationMinutes,
-            );
+          : [
+              ...getTravelBufferSlotTimes(
+                date(row.slot_date),
+                time(row.start_time),
+                calculateTravelBufferSlots(travelMinutes, durationMinutes),
+                durationMinutes,
+              ),
+              ...getReturnTravelBufferSlotTimes(
+                date(row.slot_date),
+                time(row.end_time),
+                calculateTravelBufferSlots(travelMinutes, durationMinutes),
+                durationMinutes,
+              ),
+            ];
       const availableForMobile =
         travelMinutes === undefined
           ? undefined

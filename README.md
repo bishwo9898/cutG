@@ -9,7 +9,8 @@ Barber operations and client booking platform.
 - Express.js with TypeScript strict mode
 - PostgreSQL 14+ with Knex migrations
 - Zod for runtime validation and inferred TypeScript types
-- Docker Compose for local PostgreSQL and Redis
+- Docker Compose for local PostgreSQL, Redis, and private MinIO object storage
+- BullMQ TypeScript AI worker with mock and Gemini providers
 
 ## Quick Start
 
@@ -18,7 +19,9 @@ make setup
 make dev
 ```
 
-`make setup` installs dependencies, creates `.env` only when it is missing, starts PostgreSQL and Redis, then migrates and seeds the database.
+`make setup` installs dependencies, creates `.env` only when it is missing, starts PostgreSQL,
+Redis, and MinIO, then migrates and seeds the database. `make dev` starts the API, web app, and AI
+worker together.
 
 Open the frontend at [http://localhost:3000](http://localhost:3000). The API runs at [http://localhost:4000](http://localhost:4000). Start mobile separately with `pnpm --filter @barber-saas/mobile dev`.
 
@@ -27,6 +30,7 @@ Web entry points:
 - Public landing: [http://localhost:3000](http://localhost:3000)
 - Client marketplace: [http://localhost:3000/client](http://localhost:3000/client)
 - Client sign in: [http://localhost:3000/client/login](http://localhost:3000/client/login)
+- AI Hair Studio: [http://localhost:3000/client/design](http://localhost:3000/client/design)
 - Barber dashboard: [http://localhost:3000/barber/dashboard](http://localhost:3000/barber/dashboard)
 - Barber sign in: [http://localhost:3000/barber/login](http://localhost:3000/barber/login)
 
@@ -54,6 +58,7 @@ Expected response shape:
 ## Workspace Layout
 
 - `apps/api`: Express API, database migrations, seeds, and runtime config.
+- `apps/ai-worker`: BullMQ provider jobs, private image processing, usage ledger, and retention cleanup.
 - `apps/web`: Next.js frontend.
 - `apps/mobile`: Expo React Native app for iOS and Android client/barber flows.
 - `packages/shared-types`: Zod schemas and inferred TypeScript types.
@@ -93,7 +98,7 @@ For setup without Make:
 ```bash
 pnpm install
 test -f .env || cp .env.example .env
-docker compose up -d postgres redis
+docker compose up -d postgres redis minio minio-init
 pnpm db:migrate
 pnpm db:seed
 pnpm dev

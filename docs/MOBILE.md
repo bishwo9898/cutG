@@ -69,11 +69,8 @@ The mobile auth store lives at `apps/mobile/src/store/authStore.ts`.
 
 Seed credentials for local testing all use `password123`:
 
-- `client1@example.com`
-- `client2@example.com`
-- `barber1@example.com`
-- `barber2@example.com`
-- `barber3@example.com`
+- `client.test@example.com`
+- `barber.test@example.com`
 
 ## Client Flows
 

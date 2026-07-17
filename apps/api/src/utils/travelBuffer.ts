@@ -44,3 +44,30 @@ export const getTravelBufferSlotTimes = (
     };
   });
 };
+
+export const getReturnTravelBufferSlotTimes = (
+  appointmentDate: string,
+  appointmentEndTime: string,
+  bufferCount: number,
+  slotDurationMinutes: number,
+): Array<{ date: string; startTime: string; endTime: string }> => {
+  if (bufferCount <= 0) return [];
+  const [hours, minutes] = appointmentEndTime.split(':').map(Number);
+  if (hours === undefined || minutes === undefined || slotDurationMinutes <= 0) {
+    throw new Error('Invalid appointment time or slot duration.');
+  }
+
+  const appointmentEndMinutes = hours * 60 + minutes;
+  return Array.from({ length: bufferCount }, (_, index) => {
+    const rawStart = appointmentEndMinutes + index * slotDurationMinutes;
+    const rawEnd = rawStart + slotDurationMinutes;
+    const dayOffset = Math.floor(rawStart / MINUTES_PER_DAY);
+    const normalizedStart = ((rawStart % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+    const normalizedEnd = ((rawEnd % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+    return {
+      date: addDays(appointmentDate, dayOffset),
+      startTime: formatTime(normalizedStart),
+      endTime: formatTime(normalizedEnd),
+    };
+  });
+};

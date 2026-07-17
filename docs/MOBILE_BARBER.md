@@ -2,7 +2,7 @@
 
 Last updated: July 13, 2026
 
-Phase 6 adds on-demand mobile service to cutG. BASIC and PREMIUM barbers can define a travel area and fee, clients can manage service addresses, and mobile appointments reserve travel time before the booked slot.
+Phase 6 adds on-demand mobile service to cutG. BASIC and PREMIUM barbers can define a travel area and fee, clients can manage service addresses, mobile appointments reserve outbound and return travel time, and active mobile visits can share foreground web GPS while the barber is on the way or servicing the appointment.
 
 ## Feature Flow
 
@@ -10,9 +10,10 @@ Phase 6 adds on-demand mobile service to cutG. BASIC and PREMIUM barbers can def
 2. Public search exposes a Mobile badge and supports `mobileOnly=true`.
 3. The client map centers near the browser location and the client places an exact MapLibre destination pin.
 4. The API reverse-geocodes the pin for a meaningful address, estimates driving distance/time, validates the radius, and calculates the travel fee.
-5. The booking transaction locks the appointment slot and every required preceding buffer slot before writing anything.
+5. The booking transaction locks the appointment slot plus required outbound and return buffer slots before writing anything.
 6. The payment intent total is the service quote plus `travel_fee_cents`.
 7. The barber advances a mobile visit through `CONFIRMED -> ON_THE_WAY -> ARRIVED -> IN_PROGRESS -> COMPLETED`.
+8. When the barber starts the journey from the web dashboard, browser geolocation sends foreground pings every few seconds until the appointment is completed, cancelled, or manually stopped.
 
 ## Configuration
 
@@ -75,11 +76,11 @@ export const calculateTravelBufferSlots = (
 };
 ```
 
-`getTravelBufferSlotTimes` walks backward from the appointment start and returns slots in chronological order. It supports a midnight boundary. A 14-minute trip against 30-minute inventory reserves one slot; a 31-minute trip reserves two. The cap is four slots.
+`getTravelBufferSlotTimes` walks backward from the appointment start and returns outbound slots in chronological order. `getReturnTravelBufferSlotTimes` walks forward from the appointment end so the barber is also unavailable while returning from a mobile visit. Both support midnight boundaries. A 14-minute trip against 30-minute inventory reserves one outbound slot and one return slot; a 31-minute trip reserves two of each kind. The cap is four slots per direction.
 
-The transaction locks the selected appointment slot and the exact preceding availability rows using `FOR UPDATE`. It verifies every row is still `AVAILABLE`, inserts the appointment, books the selected slot, and marks preceding rows with `is_travel_buffer=true` and `travel_buffer_for=<appointment id>`. Any missing or unavailable row rolls back the entire transaction with `BUFFER_SLOTS_UNAVAILABLE`.
+The transaction locks the selected appointment slot, the exact preceding outbound rows, and the exact following return rows using `FOR UPDATE`. It verifies every row is still `AVAILABLE`, inserts the appointment, books the selected slot, and marks buffer rows with `is_travel_buffer=true`, `travel_buffer_for=<appointment id>`, and `travel_buffer_kind=OUTBOUND|RETURN`. Any missing or unavailable row rolls back the entire transaction with `BUFFER_SLOTS_UNAVAILABLE`.
 
-Travel buffers are excluded from public slot responses. Client cancellation, barber cancellation, and payment refunds release them atomically.
+Travel buffers are excluded from public slot responses. A public mobile slot is only marked `availableForMobile=true` when the appointment slot and both buffer directions are available. Client cancellation, barber cancellation, and failed/cancelled card-payment cleanup release both buffer kinds atomically.
 
 ## Client Pin And Saved Addresses
 
@@ -94,22 +95,44 @@ created remaining address. A partial unique index guarantees at most one default
 
 Latitude and longitude must be supplied together. The shared contracts reject half-specified coordinates, while one-time booking addresses carry the same precise pair and optional apartment/suite/unit into the appointment snapshot.
 
-Appointment rows copy the service address and coordinates. Removing a saved address therefore does not erase historical appointment location details.
+Appointment rows copy the service address, exact coordinates, reverse-geocode source, formatted address, and approximate-address flag. Removing a saved address therefore does not erase historical appointment location details.
+
+## Live Tracking
+
+Live tracking is foreground web tracking for now. It does not run in the background after the browser tab is closed; native background GPS is a later mobile-app upgrade.
+
+On the barber dashboard appointment list:
+
+- `Start journey` requests browser geolocation, transitions the mobile appointment to `ON_THE_WAY`, sends an immediate GPS ping, and starts `watchPosition`.
+- Pings are accepted while the appointment is `ON_THE_WAY`, `ARRIVED`, or `IN_PROGRESS`.
+- Pings include latitude, longitude, and optional accuracy, heading, and speed when the browser provides them.
+- Sharing stops on `COMPLETED`, `CANCELLED`, `NO_SHOW`, page unload, or manual stop.
+- If permission is denied, the barber can still update the appointment status, but the client sees that live location is unavailable.
+
+On the client appointment detail page:
+
+- The status timeline refetches every 5 seconds during `CONFIRMED`, `ON_THE_WAY`, `ARRIVED`, and `IN_PROGRESS`.
+- Barber location refetches every 5 seconds during `ON_THE_WAY`, `ARRIVED`, and `IN_PROGRESS`.
+- The map shows the destination pin first, then the live barber marker and route while the barber is traveling.
+- After arrival or service start, the UI keeps the exact destination pin visible and shows the current journey state without requiring refresh.
 
 ## API
 
-| Method   | Path                                           | Access                   | Purpose                                             |
-| -------- | ---------------------------------------------- | ------------------------ | --------------------------------------------------- |
-| `GET`    | `/barbers/me/mobile`                           | BARBER                   | Read config and platform fee suggestion.            |
-| `PUT`    | `/barbers/me/mobile`                           | BARBER, BASIC+ to enable | Create or replace config.                           |
-| `POST`   | `/barbers/me/mobile/disable`                   | BARBER                   | Disable without deleting config.                    |
-| `POST`   | `/barbers/me/mobile/estimate`                  | Public                   | Validate radius and return distance, time, and fee. |
-| `GET`    | `/clients/me/addresses`                        | CLIENT                   | List owned saved addresses.                         |
-| `POST`   | `/clients/me/addresses`                        | CLIENT                   | Geocode and save an address.                        |
-| `PATCH`  | `/clients/me/addresses/:addressId`             | CLIENT                   | Update an owned address.                            |
-| `DELETE` | `/clients/me/addresses/:addressId`             | CLIENT                   | Delete and repair the default selection.            |
-| `POST`   | `/clients/me/addresses/:addressId/set-default` | CLIENT                   | Make an owned address the default.                  |
-| `POST`   | `/clients/me/locations/reverse-geocode`        | CLIENT                   | Resolve an exact pin to a meaningful address.       |
+| Method   | Path                                                      | Access                   | Purpose                                                  |
+| -------- | --------------------------------------------------------- | ------------------------ | -------------------------------------------------------- |
+| `GET`    | `/barbers/me/mobile`                                      | BARBER                   | Read config and platform fee suggestion.                 |
+| `PUT`    | `/barbers/me/mobile`                                      | BARBER, BASIC+ to enable | Create or replace config.                                |
+| `POST`   | `/barbers/me/mobile/disable`                              | BARBER                   | Disable without deleting config.                         |
+| `POST`   | `/barbers/me/mobile/estimate`                             | Public                   | Validate radius and return distance, time, and fee.      |
+| `GET`    | `/clients/me/addresses`                                   | CLIENT                   | List owned saved addresses.                              |
+| `POST`   | `/clients/me/addresses`                                   | CLIENT                   | Geocode and save an address.                             |
+| `PATCH`  | `/clients/me/addresses/:addressId`                        | CLIENT                   | Update an owned address.                                 |
+| `DELETE` | `/clients/me/addresses/:addressId`                        | CLIENT                   | Delete and repair the default selection.                 |
+| `POST`   | `/clients/me/addresses/:addressId/set-default`            | CLIENT                   | Make an owned address the default.                       |
+| `POST`   | `/clients/me/locations/reverse-geocode`                   | CLIENT                   | Resolve an exact pin to a meaningful address.            |
+| `POST`   | `/barbers/me/appointments/:appointmentId/location`        | BARBER                   | Record a foreground GPS ping for an active mobile visit. |
+| `GET`    | `/clients/me/appointments/:appointmentId/status-updates`  | CLIENT                   | Poll the owned appointment timeline.                     |
+| `GET`    | `/clients/me/appointments/:appointmentId/barber-location` | CLIENT                   | Poll the assigned barber's latest active GPS ping.       |
 
 Existing routes extended in Phase 6:
 
@@ -130,9 +153,9 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
 NEXT_PUBLIC_MAP_STYLE_URL=
 ```
 
-- Server key: enable Geocoding API and Distance Matrix API; it handles client reverse geocoding and travel estimates and should be restricted by production server IP.
+- Server key: enable Geocoding API and Distance Matrix API; it improves client address labels and travel estimates and should be restricted by production server IP. If the key is missing, browser-restricted, quota-limited, or temporarily unavailable, exact pin coordinates still work with fallback address context.
 - Mobile key: enable Places API and Maps SDK for Android/iOS; restrict to `com.cutg.mobile` and signing identifiers.
-- Web Google key: used only by the barber Mobile Service settings map. Client maps use MapLibre.
+- Web Google key: reserved for future browser-only Google features. Current web client and barber maps use MapLibre.
 - Map style URL: optional MapLibre style override; the default is a compact dark CARTO basemap.
 
 Map tile attribution is legally required and remains visible in compact form. Google branding is
@@ -142,9 +165,9 @@ After changing Expo public values, restart Expo with `pnpm --filter @barber-saas
 
 ## Local Verification
 
-Distance and fee estimation can be exercised without Maps keys using the deterministic development
-fallback. Outside automated tests, confirming a new client destination pin requires a server key
-with Geocoding API enabled:
+Distance and fee estimation can be exercised without Maps keys using deterministic development
+fallbacks. Confirming a new client destination pin also works without Google; a server-capable
+Geocoding key only improves the street-address label shown next to the exact pin:
 
 ```bash
 make setup
@@ -154,11 +177,16 @@ curl http://localhost:4000/barbers?mobileOnly=true
 curl http://localhost:4000/barbers/<barber-profile-id>
 ```
 
-Use `barber1@example.com`, `barber2@example.com`, `client1@example.com`, or `client2@example.com` with `password123`. The first two barber accounts are seeded in Danville, Kentucky so mobile visits can be tested locally from both sides without leaving the same area. Barber 1 has a flat $15 travel fee and a 10-mile radius. Barber 2 uses $2 per mile and a 5-mile radius. Client 1 and Client 2 both have Danville saved addresses.
+Use `barber.test@example.com` and `client.test@example.com` with `password123`. Both accounts are
+seeded in Danville, Kentucky so mobile visits can be tested locally from both sides without leaving
+the same area. Barber Test is the fully eligible local test barber: PREMIUM, verified, mobile
+enabled, fake Stripe Connect flags enabled, a flat $15 travel fee, and a 10-mile radius. Client Test
+has Home and Office saved addresses. Seed data also includes near-term mobile-ready slots and one
+confirmed mobile appointment for testing `Start journey`.
 
 ## Tests
 
-Unit tests cover fee suggestions, fee structures, rounding, the four-buffer cap, chronological slot generation, and midnight rollover. Integration tests cover config, public discovery, address ownership, deterministic estimates, atomic buffer booking, and mobile status transitions. Tests never call Google.
+Unit tests cover fee suggestions, fee structures, rounding, the four-buffer cap, outbound and return slot generation, and midnight rollover. Integration tests cover config, public discovery, address ownership, deterministic estimates, atomic buffer booking, buffer release, foreground location pings, and mobile status transitions. Tests never call Google.
 
 ```bash
 pnpm test:api:local
@@ -169,7 +197,7 @@ pnpm build
 
 ## Planned
 
-- Phase 7: GPS streaming while `ON_THE_WAY`, WebSocket status delivery, and push alerts.
-- Phase 8: travel-time, service-area, and profitability analytics.
-- Phase 9: near-term availability recommendations that include travel feasibility.
-- Future: generalized on-demand service providers beyond barbering.
+- Native background GPS, push alerts, and WebSocket delivery.
+- Travel-time, service-area, and profitability analytics.
+- Near-term availability recommendations that include travel feasibility.
+- Future generalized on-demand service providers beyond barbering.

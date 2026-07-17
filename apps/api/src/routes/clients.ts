@@ -4,11 +4,19 @@ import {
   BookAppointmentSchema,
   ClientAppointmentParamsSchema,
   ClientAppointmentQuerySchema,
+  CompleteHairCaptureSchema,
+  CompleteHairScanSchema,
+  CreateHairScanSchema,
   CreateReviewSchema,
   CreateHairDesignSchema,
+  GenerateHairDesignSchema,
+  HairCaptureParamsSchema,
   HairDesignParamsSchema,
+  HairScanParamsSchema,
   PaymentHistoryQuerySchema,
+  PresignHairCaptureSchema,
   ReverseGeocodeSchema,
+  RetryHairDesignSchema,
   SaveAddressSchema,
   SaveBarberSchema,
   UuidParamsSchema,
@@ -42,6 +50,18 @@ import {
   createHairDesign,
   listHairDesigns,
 } from '../services/design/hairDesignService';
+import {
+  completeHairCapture,
+  completeHairScan,
+  createHairScan,
+  deleteHairDesign,
+  generateHairDesign,
+  getHairDesign,
+  getHairScan,
+  getHairStudioConfig,
+  presignHairCapture,
+  retryHairDesign,
+} from '../services/design/hairStudioService';
 import { getLatestBarberLocation } from '../services/location/locationTrackingService';
 import {
   createClientAddress,
@@ -81,8 +101,12 @@ clientRouter.get(
 clientRouter.post(
   '/me/locations/reverse-geocode',
   asyncHandler(async (request, response) => {
-    const { latitude, longitude } = ReverseGeocodeSchema.parse(request.body);
-    response.json(await reverseGeocodeCoordinates(latitude, longitude));
+    const { barberId, latitude, longitude } = ReverseGeocodeSchema.parse(request.body);
+    response.json(
+      await reverseGeocodeCoordinates(latitude, longitude, {
+        ...(barberId === undefined ? {} : { barberId }),
+      }),
+    );
   }),
 );
 clientRouter.post(
@@ -159,12 +183,106 @@ clientRouter.get(
     response.json(await listHairDesigns(userId(request)));
   }),
 );
+clientRouter.get(
+  '/me/hair-studio/config',
+  asyncHandler(async (_request, response) => {
+    response.json(await Promise.resolve(getHairStudioConfig()));
+  }),
+);
+clientRouter.post(
+  '/me/hair-scans',
+  asyncHandler(async (request, response) => {
+    response
+      .status(201)
+      .json(await createHairScan(userId(request), CreateHairScanSchema.parse(request.body)));
+  }),
+);
+clientRouter.get(
+  '/me/hair-scans/:scanId',
+  asyncHandler(async (request, response) => {
+    const { scanId } = HairScanParamsSchema.parse(request.params);
+    response.json(await getHairScan(userId(request), scanId));
+  }),
+);
+clientRouter.post(
+  '/me/hair-scans/:scanId/captures/presign',
+  asyncHandler(async (request, response) => {
+    const { scanId } = HairScanParamsSchema.parse(request.params);
+    response.json(
+      await presignHairCapture(
+        userId(request),
+        scanId,
+        PresignHairCaptureSchema.parse(request.body),
+      ),
+    );
+  }),
+);
+clientRouter.post(
+  '/me/hair-scans/:scanId/captures/:captureId/complete',
+  asyncHandler(async (request, response) => {
+    const { captureId, scanId } = HairCaptureParamsSchema.parse(request.params);
+    response.json(
+      await completeHairCapture(
+        userId(request),
+        scanId,
+        captureId,
+        CompleteHairCaptureSchema.parse(request.body),
+      ),
+    );
+  }),
+);
+clientRouter.post(
+  '/me/hair-scans/:scanId/complete',
+  asyncHandler(async (request, response) => {
+    const { scanId } = HairScanParamsSchema.parse(request.params);
+    response
+      .status(202)
+      .json(
+        await completeHairScan(userId(request), scanId, CompleteHairScanSchema.parse(request.body)),
+      );
+  }),
+);
 clientRouter.post(
   '/me/designs',
   asyncHandler(async (request, response) => {
     response
       .status(201)
       .json(await createHairDesign(userId(request), CreateHairDesignSchema.parse(request.body)));
+  }),
+);
+clientRouter.post(
+  '/me/designs/generate',
+  asyncHandler(async (request, response) => {
+    response
+      .status(202)
+      .json(
+        await generateHairDesign(userId(request), GenerateHairDesignSchema.parse(request.body)),
+      );
+  }),
+);
+clientRouter.get(
+  '/me/designs/:designId',
+  asyncHandler(async (request, response) => {
+    const { designId } = HairDesignParamsSchema.parse(request.params);
+    response.json(await getHairDesign(userId(request), designId));
+  }),
+);
+clientRouter.post(
+  '/me/designs/:designId/retry',
+  asyncHandler(async (request, response) => {
+    const { designId } = HairDesignParamsSchema.parse(request.params);
+    response
+      .status(202)
+      .json(
+        await retryHairDesign(userId(request), designId, RetryHairDesignSchema.parse(request.body)),
+      );
+  }),
+);
+clientRouter.delete(
+  '/me/designs/:designId',
+  asyncHandler(async (request, response) => {
+    const { designId } = HairDesignParamsSchema.parse(request.params);
+    response.json(await deleteHairDesign(userId(request), designId));
   }),
 );
 clientRouter.post(

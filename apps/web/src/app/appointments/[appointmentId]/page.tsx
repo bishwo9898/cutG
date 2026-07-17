@@ -2,7 +2,16 @@
 
 import { clientApi, paymentApi } from '@barber-saas/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Paperclip, Repeat2 } from 'lucide-react';
+import {
+  CalendarClock,
+  Car,
+  CreditCard,
+  MapPinned,
+  Navigation,
+  Paperclip,
+  Repeat2,
+  Wallet,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
@@ -50,12 +59,9 @@ export default function AppointmentDetailPage(): React.ReactElement {
     enabled: appointment.data?.isMobileService === true,
     refetchInterval: (query) => {
       const status = query.state.data?.currentStatus;
-      const scheduled = appointment.data?.scheduledAt.slice(0, 10);
-      const today = new Date().toISOString().slice(0, 10);
-      return scheduled === today &&
-        status !== undefined &&
-        ['CONFIRMED', 'ON_THE_WAY', 'ARRIVED'].includes(status)
-        ? 30_000
+      return status !== undefined &&
+        ['CONFIRMED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(status)
+        ? 5_000
         : false;
     },
   });
@@ -114,101 +120,262 @@ export default function AppointmentDetailPage(): React.ReactElement {
     paymentConfig.data?.onlinePaymentsEnabled === true;
   const canRefund =
     data !== undefined && payment.data?.status === 'SUCCEEDED' && data.status !== 'COMPLETED';
+  const scheduledDate =
+    data === undefined
+      ? null
+      : new Date(data.scheduledAt).toLocaleString([], {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        });
+  const serviceAddressLabel =
+    serviceAddress == null
+      ? null
+      : (serviceAddress.formattedAddress ??
+        `${serviceAddress.addressLine1}, ${serviceAddress.city}, ${serviceAddress.state} ${serviceAddress.zipCode}`);
+  const directionsHref =
+    serviceAddress == null
+      ? null
+      : `https://www.google.com/maps/dir/?api=1&destination=${serviceAddress.latitude},${serviceAddress.longitude}`;
+  const paymentLabel =
+    data?.paymentMethod === 'CASH'
+      ? 'Cash at appointment'
+      : (payment.data?.status ?? data?.paymentStatus ?? 'Pending');
 
   return (
-    <main className="market-page narrow-page">
+    <main className="market-page appointment-detail-page">
       <ClientHeader />
       {data === undefined ? (
         <p className="muted">Loading appointment...</p>
       ) : (
-        <section className="summary-panel">
-          <div className="card-title-row">
-            <h1>{data.service.name}</h1>
-            <AppointmentStatusBadge status={data.status} />
-          </div>
-          <p>{data.barber.businessName}</p>
-          <p>{new Date(data.scheduledAt).toLocaleString()}</p>
-          <p>{formatPrice(data.pricing?.total ?? data.priceQuoted)}</p>
-          {data.isMobileService === true && serviceAddress != null && (
-            <div className="list-row">
+        <section className="appointment-command-center">
+          <header className="appointment-detail-header">
+            <Link className="booking-back-link" href="/client/appointments">
+              Back to appointments
+            </Link>
+            <div className="card-title-row">
               <div>
-                <strong>Mobile service</strong>
-                <small style={{ display: 'block' }}>
-                  {serviceAddress.addressLine1}, {serviceAddress.city}, {serviceAddress.state}{' '}
-                  {serviceAddress.zipCode}
-                </small>
-                <small style={{ display: 'block' }}>
-                  {data.distanceMiles?.toFixed(1)} miles · about {data.estimatedTravelMinutes} min ·
-                  travel ${(data.travelFee ?? 0).toFixed(2)}
-                </small>
+                <p className="eyebrow">Appointment details</p>
+                <h1>{data.service.name}</h1>
+                <p>
+                  {data.barber.businessName} · {scheduledDate}
+                </p>
               </div>
-              <a
-                className="button button-secondary"
-                href={`https://www.google.com/maps/dir/?api=1&destination=${serviceAddress.latitude},${serviceAddress.longitude}`}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Directions
-              </a>
+              <AppointmentStatusBadge status={data.status} />
             </div>
-          )}
-          {data.isMobileService === true && timeline.data !== undefined && (
-            <StatusTimeline timeline={timeline.data} />
-          )}
-          {data.isMobileService === true && serviceAddress != null && (
-            <LiveTrackingMap
-              address={`${serviceAddress.addressLine1}, ${serviceAddress.city}, ${serviceAddress.state} ${serviceAddress.zipCode}`}
-              appointmentId={appointmentId}
-              arrivedAt={timeline.data?.arrivedAt}
-              clientLatitude={serviceAddress.latitude}
-              clientLongitude={serviceAddress.longitude}
-              status={timeline.data?.currentStatus ?? data.status}
-            />
-          )}
-          <p>
-            <strong>Payment:</strong>{' '}
-            {data.paymentMethod === 'CASH'
-              ? 'Cash at appointment'
-              : (payment.data?.status ?? data.paymentStatus)}
-          </p>
-          <div className="appointment-price-breakdown">
-            <span>
-              Service <strong>{formatPrice(data.pricing?.serviceFee ?? data.priceQuoted)}</strong>
-            </span>
-            {data.isMobileService === true && (
+          </header>
+
+          <div className="appointment-quick-grid">
+            <div>
+              <CalendarClock size={18} />
               <span>
-                Travel <strong>{formatPrice(data.pricing?.travelFee ?? data.travelFee)}</strong>
+                <small>Date and time</small>
+                <strong>{scheduledDate}</strong>
               </span>
-            )}
-            <span>
-              Total{' '}
-              <strong>
-                {formatPrice(data.pricing?.total ?? data.priceQuoted + (data.travelFee ?? 0))}
-              </strong>
-            </span>
+            </div>
+            <div>
+              {data.isMobileService === true ? <Car size={18} /> : <MapPinned size={18} />}
+              <span>
+                <small>Appointment type</small>
+                <strong>{data.isMobileService === true ? 'Mobile visit' : 'Shop visit'}</strong>
+              </span>
+            </div>
+            <div>
+              {data.paymentMethod === 'CASH' ? <Wallet size={18} /> : <CreditCard size={18} />}
+              <span>
+                <small>Payment</small>
+                <strong>{paymentLabel}</strong>
+              </span>
+            </div>
           </div>
-          <div className="button-row">
-            {canPay && (
-              <button
-                className="button button-primary"
-                disabled={createIntent.isPending}
-                onClick={() => createIntent.mutate()}
-                type="button"
-              >
-                {createIntent.isPending ? 'Preparing payment...' : 'Pay now'}
-              </button>
-            )}
-            {canRefund && (
-              <button
-                className="button button-danger"
-                disabled={refund.isPending}
-                onClick={() => refund.mutate()}
-                type="button"
-              >
-                {refund.isPending ? 'Refunding...' : 'Request refund'}
-              </button>
-            )}
+
+          <div className="appointment-detail-grid">
+            <div className="appointment-detail-main">
+              {data.isMobileService === true && serviceAddress != null && (
+                <section className="appointment-map-card">
+                  <div className="appointment-section-heading">
+                    <div>
+                      <p className="eyebrow">Mobile service location</p>
+                      <h2>Your exact arrival pin</h2>
+                    </div>
+                    {directionsHref !== null && (
+                      <a
+                        className="button button-secondary"
+                        href={directionsHref}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        <Navigation size={16} /> Directions
+                      </a>
+                    )}
+                  </div>
+                  <LiveTrackingMap
+                    address={serviceAddressLabel ?? 'Pinned service location'}
+                    appointmentId={appointmentId}
+                    arrivedAt={timeline.data?.arrivedAt}
+                    clientLatitude={serviceAddress.latitude}
+                    clientLongitude={serviceAddress.longitude}
+                    status={timeline.data?.currentStatus ?? data.status}
+                  />
+                  <div className="appointment-location-card">
+                    <MapPinned size={18} />
+                    <div>
+                      <strong>
+                        {serviceAddress.source === 'coordinate_fallback'
+                          ? 'Pinned service location'
+                          : serviceAddress.addressLine1}
+                      </strong>
+                      <span>
+                        {serviceAddress.formattedAddress ??
+                          `${serviceAddress.city}, ${serviceAddress.state} ${serviceAddress.zipCode}`}
+                      </span>
+                      <small>
+                        {serviceAddress.isApproximateAddress === true
+                          ? 'Address lookup was approximate. The exact pin is saved for navigation.'
+                          : 'Exact coordinates are saved for navigation. Address text is supporting context.'}
+                      </small>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {data.isMobileService === true && timeline.data !== undefined && (
+                <section className="appointment-info-card">
+                  <StatusTimeline timeline={timeline.data} />
+                </section>
+              )}
+
+              <section className="appointment-info-card">
+                <div className="appointment-section-heading">
+                  <div>
+                    <p className="eyebrow">Notes</p>
+                    <h2>Details for the visit</h2>
+                  </div>
+                </div>
+                <div className="appointment-notes-grid">
+                  <div>
+                    <strong>Your notes</strong>
+                    <p>{data.clientNotes ?? 'No notes added.'}</p>
+                  </div>
+                  <div>
+                    <strong>Barber's response</strong>
+                    <p>{data.barberNotes ?? 'No response yet.'}</p>
+                  </div>
+                </div>
+                {data.styleReference != null && (
+                  <div className="style-reference-card">
+                    <Paperclip size={18} />
+                    <div>
+                      <strong>{data.styleReference.styleName ?? 'Style reference'}</strong>
+                      <p>
+                        {data.styleReference.description ?? 'Reference attached for your barber.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </section>
+            </div>
+
+            <aside className="appointment-side-panel">
+              <section className="appointment-info-card">
+                <p className="eyebrow">Payment summary</p>
+                <h2>{formatPrice(data.pricing?.total ?? data.priceQuoted)}</h2>
+                <div className="appointment-price-breakdown">
+                  <span>
+                    Service{' '}
+                    <strong>{formatPrice(data.pricing?.serviceFee ?? data.priceQuoted)}</strong>
+                  </span>
+                  {data.isMobileService === true && (
+                    <span>
+                      Travel{' '}
+                      <strong>{formatPrice(data.pricing?.travelFee ?? data.travelFee)}</strong>
+                    </span>
+                  )}
+                  <span>
+                    Total{' '}
+                    <strong>
+                      {formatPrice(data.pricing?.total ?? data.priceQuoted + (data.travelFee ?? 0))}
+                    </strong>
+                  </span>
+                </div>
+                <p className="appointment-payment-note">
+                  {data.paymentMethod === 'CASH'
+                    ? 'You will pay your barber at the appointment.'
+                    : 'Online payment is handled securely through Stripe.'}
+                </p>
+                <div className="button-row">
+                  {canPay && (
+                    <button
+                      className="button button-primary"
+                      disabled={createIntent.isPending}
+                      onClick={() => createIntent.mutate()}
+                      type="button"
+                    >
+                      {createIntent.isPending ? 'Preparing payment...' : 'Pay now'}
+                    </button>
+                  )}
+                  {canRefund && (
+                    <button
+                      className="button button-danger"
+                      disabled={refund.isPending}
+                      onClick={() => refund.mutate()}
+                      type="button"
+                    >
+                      {refund.isPending ? 'Refunding...' : 'Request refund'}
+                    </button>
+                  )}
+                </div>
+              </section>
+
+              {data.isMobileService === true && serviceAddress != null && (
+                <section className="appointment-info-card">
+                  <p className="eyebrow">Travel</p>
+                  <h2>Mobile visit</h2>
+                  <div className="appointment-travel-list">
+                    <span>
+                      <strong>{data.distanceMiles?.toFixed(1) ?? '--'} miles</strong>
+                      Distance
+                    </span>
+                    <span>
+                      <strong>{data.estimatedTravelMinutes ?? '--'} min</strong>
+                      Estimated drive
+                    </span>
+                    <span>
+                      <strong>{formatPrice(data.travelFee ?? 0)}</strong>
+                      Travel fee
+                    </span>
+                  </div>
+                </section>
+              )}
+
+              <section className="appointment-info-card">
+                <p className="eyebrow">Actions</p>
+                <div className="appointment-action-stack">
+                  {data.status === 'COMPLETED' && (
+                    <Link
+                      className="button button-secondary"
+                      href={`/client/barbers/${data.barber.id}/book?serviceId=${data.service.id}`}
+                    >
+                      <Repeat2 size={16} /> Book again
+                    </Link>
+                  )}
+                  {canCancel && (
+                    <button
+                      className="button button-danger"
+                      disabled={cancel.isPending}
+                      onClick={() => {
+                        if (window.confirm('Cancel this appointment?')) cancel.mutate();
+                      }}
+                      type="button"
+                    >
+                      {cancel.isPending ? 'Cancelling...' : 'Cancel appointment'}
+                    </button>
+                  )}
+                </div>
+                {cancel.error instanceof Error && <Notice>{cancel.error.message}</Notice>}
+              </section>
+            </aside>
           </div>
+
           {createIntent.data !== undefined && paymentConfig.data?.publishableKey != null && (
             <StripePaymentPanel
               amount={createIntent.data.amount}
@@ -225,50 +392,10 @@ export default function AppointmentDetailPage(): React.ReactElement {
           )}
           {createIntent.error instanceof Error && <Notice>{createIntent.error.message}</Notice>}
           {refund.error instanceof Error && <Notice>{refund.error.message}</Notice>}
-          <div className="appointment-notes-grid">
-            <div>
-              <strong>Your notes</strong>
-              <p>{data.clientNotes ?? 'No notes added.'}</p>
-            </div>
-            <div>
-              <strong>Barber's response</strong>
-              <p>{data.barberNotes ?? 'No response yet.'}</p>
-            </div>
-          </div>
-          {data.styleReference != null && (
-            <div className="style-reference-card">
-              <Paperclip size={18} />
-              <div>
-                <strong>{data.styleReference.styleName ?? 'Style reference'}</strong>
-                <p>{data.styleReference.description ?? 'Reference attached for your barber.'}</p>
-              </div>
-            </div>
-          )}
-          {data.status === 'COMPLETED' && (
-            <Link
-              className="button button-secondary"
-              href={`/client/barbers/${data.barber.id}/book?serviceId=${data.service.id}`}
-            >
-              <Repeat2 size={16} /> Book again
-            </Link>
-          )}
-          {canCancel && (
-            <button
-              className="button button-danger"
-              disabled={cancel.isPending}
-              onClick={() => {
-                if (window.confirm('Cancel this appointment?')) cancel.mutate();
-              }}
-              type="button"
-            >
-              {cancel.isPending ? 'Cancelling...' : 'Cancel appointment'}
-            </button>
-          )}
-          {cancel.error instanceof Error && <Notice>{cancel.error.message}</Notice>}
         </section>
       )}
       {canReview && (
-        <section className="summary-panel">
+        <section className="appointment-review-panel">
           <h2>Leave a review</h2>
           <StarRating value={rating} interactive onChange={setRating} />
           <input

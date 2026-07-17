@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { calculateTravelBufferSlots, getTravelBufferSlotTimes } from './travelBuffer';
+import {
+  calculateTravelBufferSlots,
+  getReturnTravelBufferSlotTimes,
+  getTravelBufferSlotTimes,
+} from './travelBuffer';
 
 describe('travel buffers', () => {
   it.each([
@@ -19,6 +23,13 @@ describe('travel buffers', () => {
     expect(getTravelBufferSlotTimes('2026-08-03', '00:30', 2, 30)).toEqual([
       { date: '2026-08-02', startTime: '23:30', endTime: '00:00' },
       { date: '2026-08-03', startTime: '00:00', endTime: '00:30' },
+    ]);
+  });
+
+  it('walks return buffers forward and crosses midnight safely', () => {
+    expect(getReturnTravelBufferSlotTimes('2026-08-03', '23:30', 2, 30)).toEqual([
+      { date: '2026-08-03', startTime: '23:30', endTime: '00:00' },
+      { date: '2026-08-04', startTime: '00:00', endTime: '00:30' },
     ]);
   });
 });

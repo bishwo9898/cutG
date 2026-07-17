@@ -40,4 +40,7 @@ Enable Maps JavaScript, Places, Geocoding, and Maps Static APIs for the appropri
 
 ## Verification
 
-The seed includes an `ON_THE_WAY` mobile appointment for `barber1@example.com` and `client1@example.com`; password: `password123`. Integration tests verify inactive-status rejection, ping recording, ownership, latest-location retrieval, and ETA calculation without calling Google.
+The seed includes a `CONFIRMED` mobile appointment for `barber.test@example.com` and
+`client.test@example.com`; password: `password123`. Use the barber dashboard `Start journey` action
+to transition into live tracking. Integration tests verify inactive-status rejection, ping recording,
+ownership, latest-location retrieval, and ETA calculation without calling Google.

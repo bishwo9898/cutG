@@ -1,16 +1,17 @@
 # Foundation Tracker
 
-Last updated: July 15, 2026
+Last updated: July 16, 2026
 
 This document tracks what has been built so far from the Phase 0 foundation plan and what still needs to be configured locally before the next phase.
 
 ## Current Status
 
-Phase 0 foundation through Phase 9 GPS tracking and Hair Design Studio are implemented, followed by
-the client experience, pin-location, and Stripe web checkout upgrade. The repository is a pnpm
-monorepo for a barber operations and client booking platform with an Express API, Next.js web
-application, Expo application, PostgreSQL schema, JWT authentication, shared contracts, isolated
-test infrastructure, and onboarding documentation.
+Phase 0 foundation through Phase 10 AI Hair Studio are implemented, followed by the client
+experience, pin-location, Stripe web checkout, and live mobile-barber tracking upgrade.
+The repository is a pnpm monorepo for a barber operations and client booking platform with an
+Express API, Next.js web application, Expo application, PostgreSQL schema, JWT authentication,
+shared contracts, a BullMQ/Redis AI worker, private MinIO/S3-compatible image storage, isolated test
+infrastructure, and onboarding documentation.
 
 Verified commands:
 
@@ -28,9 +29,10 @@ pnpm --filter @barber-saas/web exec next build --webpack
 
 Latest automated results:
 
-- API: 11 test files, 39 tests passed against the isolated PostgreSQL test database.
-- Web: 9 test files, 20 tests passed.
-- API, web, mobile, shared packages: typecheck passed.
+- API: 12 test files, 47 tests passed against the isolated PostgreSQL test database.
+- Web: 11 test files, 24 tests passed.
+- AI worker: 1 test file, 2 prompt/provider foundation tests passed.
+- API, web, AI worker, mobile, shared packages: typecheck passed.
 - ESLint, Prettier check, API build, mobile build, and Next.js production build passed.
 
 Verified live endpoints:
@@ -63,6 +65,7 @@ Current API root response:
 .
 ├── apps/
 │   ├── api/
+│   ├── ai-worker/
 │   ├── web/
 │   └── mobile/
 ├── packages/
@@ -131,52 +134,55 @@ Current backend routes:
 
 Current Phase 2 barber routes:
 
-| Method   | Path                                             | Auth required | Purpose                                   |
-| -------- | ------------------------------------------------ | ------------- | ----------------------------------------- |
-| `GET`    | `/barbers/me`                                    | Barber token  | Read the authenticated barber profile.    |
-| `POST`   | `/barbers/me/profile`                            | Barber token  | Create the barber profile once.           |
-| `PATCH`  | `/barbers/me/profile`                            | Barber token  | Update barber profile fields.             |
-| `POST`   | `/barbers/me/photo`                              | Barber token  | Update the profile photo URL.             |
-| `POST`   | `/barbers/me/services`                           | Barber token  | Create a tier-limited service.            |
-| `GET`    | `/barbers/me/services`                           | Barber token  | List/filter owned services.               |
-| `GET`    | `/barbers/me/services/:serviceId`                | Barber token  | Read one owned service.                   |
-| `PATCH`  | `/barbers/me/services/:serviceId`                | Barber token  | Update one owned service.                 |
-| `DELETE` | `/barbers/me/services/:serviceId`                | Barber token  | Soft-delete one owned service.            |
-| `GET`    | `/barbers/me/schedule`                           | Barber token  | Read weekly schedule rules.               |
-| `PUT`    | `/barbers/me/schedule`                           | Barber token  | Transactionally replace weekly schedule.  |
-| `GET`    | `/barbers/me/slots`                              | Barber token  | List private slots by date range.         |
-| `POST`   | `/barbers/me/slots/generate`                     | Barber token  | Idempotently generate availability slots. |
-| `POST`   | `/barbers/me/blocked-dates`                      | Barber token  | Block a local calendar date.              |
-| `DELETE` | `/barbers/me/blocked-dates/:date`                | Barber token  | Unblock and regenerate availability.      |
-| `GET`    | `/barbers/me/appointments`                       | Barber token  | List paginated owned appointments.        |
-| `PATCH`  | `/barbers/me/appointments/:appointmentId/status` | Barber token  | Apply allowed appointment transitions.    |
-| `POST`   | `/barbers/me/stripe/connect`                     | Barber token  | Start Stripe Connect onboarding.          |
-| `GET`    | `/barbers/me/stripe/status`                      | Barber token  | Read Connect onboarding status.           |
-| `GET`    | `/barbers/me/earnings`                           | Barber token  | Read earnings and payout summaries.       |
-| `GET`    | `/barbers/me/subscription`                       | Barber token  | Read subscription status and features.    |
-| `POST`   | `/barbers/me/subscription/checkout`              | Barber token  | Create subscription checkout URL.         |
-| `POST`   | `/barbers/me/subscription/cancel`                | Barber token  | Cancel renewal at period end.             |
-| `POST`   | `/barbers/me/subscription/resume`                | Barber token  | Resume renewal.                           |
-| `GET`    | `/barbers/me/analytics`                          | Basic+ token  | Subscription-gated analytics placeholder. |
-| `GET`    | `/barbers/:barberId`                             | No            | Read sanitized public barber profile.     |
-| `GET`    | `/barbers/:barberId/services`                    | No            | List active public services.              |
-| `GET`    | `/barbers/:barberId/slots`                       | No            | List safe public availability.            |
-| `GET`    | `/barbers/:barberId/reviews`                     | No            | List public reviews and rating summary.   |
+| Method   | Path                                               | Auth required | Purpose                                            |
+| -------- | -------------------------------------------------- | ------------- | -------------------------------------------------- |
+| `GET`    | `/barbers/me`                                      | Barber token  | Read the authenticated barber profile.             |
+| `POST`   | `/barbers/me/profile`                              | Barber token  | Create the barber profile once.                    |
+| `PATCH`  | `/barbers/me/profile`                              | Barber token  | Update barber profile fields.                      |
+| `POST`   | `/barbers/me/photo`                                | Barber token  | Update the profile photo URL.                      |
+| `POST`   | `/barbers/me/services`                             | Barber token  | Create a tier-limited service.                     |
+| `GET`    | `/barbers/me/services`                             | Barber token  | List/filter owned services.                        |
+| `GET`    | `/barbers/me/services/:serviceId`                  | Barber token  | Read one owned service.                            |
+| `PATCH`  | `/barbers/me/services/:serviceId`                  | Barber token  | Update one owned service.                          |
+| `DELETE` | `/barbers/me/services/:serviceId`                  | Barber token  | Soft-delete one owned service.                     |
+| `GET`    | `/barbers/me/schedule`                             | Barber token  | Read weekly schedule rules.                        |
+| `PUT`    | `/barbers/me/schedule`                             | Barber token  | Transactionally replace weekly schedule.           |
+| `GET`    | `/barbers/me/slots`                                | Barber token  | List private slots by date range.                  |
+| `POST`   | `/barbers/me/slots/generate`                       | Barber token  | Idempotently generate availability slots.          |
+| `POST`   | `/barbers/me/blocked-dates`                        | Barber token  | Block a local calendar date.                       |
+| `DELETE` | `/barbers/me/blocked-dates/:date`                  | Barber token  | Unblock and regenerate availability.               |
+| `GET`    | `/barbers/me/appointments`                         | Barber token  | List paginated owned appointments.                 |
+| `PATCH`  | `/barbers/me/appointments/:appointmentId/status`   | Barber token  | Apply allowed appointment transitions.             |
+| `POST`   | `/barbers/me/appointments/:appointmentId/location` | Barber token  | Record foreground GPS during active mobile visits. |
+| `POST`   | `/barbers/me/stripe/connect`                       | Barber token  | Start Stripe Connect onboarding.                   |
+| `GET`    | `/barbers/me/stripe/status`                        | Barber token  | Read Connect onboarding status.                    |
+| `GET`    | `/barbers/me/earnings`                             | Barber token  | Read earnings and payout summaries.                |
+| `GET`    | `/barbers/me/subscription`                         | Barber token  | Read subscription status and features.             |
+| `POST`   | `/barbers/me/subscription/checkout`                | Barber token  | Create subscription checkout URL.                  |
+| `POST`   | `/barbers/me/subscription/cancel`                  | Barber token  | Cancel renewal at period end.                      |
+| `POST`   | `/barbers/me/subscription/resume`                  | Barber token  | Resume renewal.                                    |
+| `GET`    | `/barbers/me/analytics`                            | Basic+ token  | Subscription-gated analytics placeholder.          |
+| `GET`    | `/barbers/:barberId`                               | No            | Read sanitized public barber profile.              |
+| `GET`    | `/barbers/:barberId/services`                      | No            | List active public services.                       |
+| `GET`    | `/barbers/:barberId/slots`                         | No            | List safe public availability.                     |
+| `GET`    | `/barbers/:barberId/reviews`                       | No            | List public reviews and rating summary.            |
 
 Current Phase 3 client routes:
 
-| Method   | Path                                      | Auth required | Purpose                                |
-| -------- | ----------------------------------------- | ------------- | -------------------------------------- |
-| `GET`    | `/clients/me`                             | Client token  | Read the authenticated client profile. |
-| `GET`    | `/clients/me/saved-barbers`               | Client token  | List saved barbers.                    |
-| `POST`   | `/clients/me/saved-barbers`               | Client token  | Save a barber.                         |
-| `DELETE` | `/clients/me/saved-barbers/:barberId`     | Client token  | Remove a saved barber.                 |
-| `POST`   | `/clients/me/appointments`                | Client token  | Book an appointment atomically.        |
-| `GET`    | `/clients/me/appointments`                | Client token  | List paginated client appointments.    |
-| `GET`    | `/clients/me/appointments/:appointmentId` | Client token  | Read one owned appointment.            |
-| `DELETE` | `/clients/me/appointments/:appointmentId` | Client token  | Cancel pending/confirmed appointments. |
-| `POST`   | `/clients/me/reviews`                     | Client token  | Review a completed owned appointment.  |
-| `GET`    | `/clients/me/payment-history`             | Client token  | List payment history.                  |
+| Method   | Path                                                      | Auth required | Purpose                                                 |
+| -------- | --------------------------------------------------------- | ------------- | ------------------------------------------------------- |
+| `GET`    | `/clients/me`                                             | Client token  | Read the authenticated client profile.                  |
+| `GET`    | `/clients/me/saved-barbers`                               | Client token  | List saved barbers.                                     |
+| `POST`   | `/clients/me/saved-barbers`                               | Client token  | Save a barber.                                          |
+| `DELETE` | `/clients/me/saved-barbers/:barberId`                     | Client token  | Remove a saved barber.                                  |
+| `POST`   | `/clients/me/appointments`                                | Client token  | Book an appointment atomically.                         |
+| `GET`    | `/clients/me/appointments`                                | Client token  | List paginated client appointments.                     |
+| `GET`    | `/clients/me/appointments/:appointmentId`                 | Client token  | Read one owned appointment.                             |
+| `GET`    | `/clients/me/appointments/:appointmentId/status-updates`  | Client token  | Poll an owned appointment timeline.                     |
+| `GET`    | `/clients/me/appointments/:appointmentId/barber-location` | Client token  | Poll active barber GPS for an owned mobile appointment. |
+| `DELETE` | `/clients/me/appointments/:appointmentId`                 | Client token  | Cancel pending/confirmed appointments.                  |
+| `POST`   | `/clients/me/reviews`                                     | Client token  | Review a completed owned appointment.                   |
+| `GET`    | `/clients/me/payment-history`                             | Client token  | List payment history.                                   |
 
 Current Phase 4 payment routes:
 
@@ -311,27 +317,50 @@ The July 15 client upgrade adds:
 - Pending-intent cancellation when an unpaid card appointment is cancelled
 - Matte-black and warm-cream client styling with no hover layout movement
 - Three optimized local barber cover assets and resilient image fallbacks
-- Clear `MAPS_NOT_CONFIGURED` handling for browser-restricted server geocoding keys
+- Coordinate-backed reverse-geocode fallback for missing, browser-restricted, quota-limited, or unavailable Google server geocoding keys
+
+The July 16 live mobile tracking upgrade adds:
+
+- Migration `009_live_mobile_tracking.ts` for mobile address metadata and typed outbound/return travel buffers
+- Mobile booking reservation of both outbound and return travel inventory
+- Public mobile-slot filtering that only marks slots mobile-ready when both buffer directions are available
+- Foreground web GPS tracking from the barber dashboard during `ON_THE_WAY`, `ARRIVED`, and `IN_PROGRESS`
+- 5-second client polling for active mobile appointment status and barber location without manual refresh
+- Coordinate-backed appointment address snapshots with `formattedAddress`, `source`, and `isApproximateAddress`
+- Seeded fake local Stripe Connect eligibility for `barber.test@example.com` so online-payment UI can be tested locally
+- Seed cleanup is scoped to seed-owned users, profiles, and dependent rows instead of wiping every local row
+
+Phase 10 AI Hair Studio adds:
+
+- Migration `010_ai_hair_studio.ts` for consented scans, private captures, generation state, and usage accounting
+- `apps/ai-worker`, a horizontally scalable TypeScript BullMQ worker using the existing Redis service
+- Private local MinIO storage with presigned browser uploads and short-lived authorized preview URLs
+- Deterministic zero-cost mock provider and production Gemini provider behind one interface
+- Three-angle camera-only web capture with local MediaPipe pose guidance and quality rejection
+- Controlled hairstyle recommendations, one-image generation, progress polling, explicit retry, deletion, and appointment attachment
+- One-active-job, three-attempt daily defaults, idempotency keys, a kill switch, and optional monthly cost ceiling
+- 24-hour raw-scan retention cleanup and no automatic retry after uncertain paid provider submission
+- Versioned hair-only prompts that preserve identity and prohibit sensitive-trait inference
 
 Seed accounts use password `password123`:
 
-- `barber1@example.com`
-- `barber2@example.com`
-- `barber3@example.com`
-- `client1@example.com`
-- `client2@example.com`
+- `barber.test@example.com` (`Barber Test`)
+- `client.test@example.com` (`Client Test`)
 
 Local seeded geography for mobile-service testing:
 
-- `barber1@example.com`, `barber2@example.com`, `client1@example.com`, and `client2@example.com` are all centered in Danville, Kentucky.
-- `client1@example.com` and `client2@example.com` both include saved local addresses for shop and mobile-booking testing.
+- `barber.test@example.com` and `client.test@example.com` are centered in Danville, Kentucky.
+- `client.test@example.com` includes Home and Office saved local addresses for shop and mobile-booking testing.
+- `barber.test@example.com` is the fully eligible local test barber: PREMIUM, verified, mobile enabled, fake local Stripe Connect flags, online payment visible in UI, and near-term mobile-ready availability.
 
 Not built yet:
 
-- Real AI hairstyle generation or analysis
-- Durable S3-backed hair reference uploads
+- Production Gemini acceptance testing with a paid project and real client consent review
+- Self-hosted GPU hairstyle generation or Python model adapter
+- Native Expo three-angle camera flow
 - Native push notification delivery
 - Real-time slot updates through WebSockets
+- Native background GPS, push notifications, and WebSocket delivery for mobile journeys
 - Admin endpoints and admin mobile screens
 - Production email delivery
 - S3-backed barber photo upload
@@ -355,6 +384,8 @@ Migrations:
 - `apps/api/src/db/migrations/006_mobile_barber.ts`
 - `apps/api/src/db/migrations/007_new_features.ts`
 - `apps/api/src/db/migrations/008_client_checkout.ts`
+- `apps/api/src/db/migrations/009_live_mobile_tracking.ts`
+- `apps/api/src/db/migrations/010_ai_hair_studio.ts`
 
 The initial schema includes 9 production-oriented tables:
 
@@ -428,6 +459,22 @@ non-null `appointments.payment_method` defaulting to `CASH`, and an index for pa
 reporting and operations. Existing rows are migrated safely to cash before seeded payment records
 are marked as card appointments.
 
+The live mobile tracking migration adds `availability_slots.travel_buffer_kind` (`OUTBOUND` or
+`RETURN`) plus appointment address metadata fields for `service_address_formatted`,
+`service_address_source`, and `service_address_is_approximate`.
+
+The AI Hair Studio migration adds:
+
+| Table                     | Purpose                                                       |
+| ------------------------- | ------------------------------------------------------------- |
+| `hair_scan_sessions`      | Consent, preferences, recommendation state, and expiry.       |
+| `hair_scan_captures`      | Private three-angle object metadata and local quality scores. |
+| `hair_design_generations` | Durable idempotent provider jobs, outputs, usage, and errors. |
+| `ai_usage_events`         | Provider usage and estimated cost ledger.                     |
+
+It extends `client_hair_designs` with the current generation, private generated asset key, failure
+metadata, and soft deletion while preserving existing text briefs and appointment attachments.
+
 Additional Phase 4 database changes:
 
 - Extends `payments` with platform fee, barber payout, refund, transfer, payout batch, and capture/failure fields.
@@ -450,33 +497,24 @@ Seed file: `apps/api/src/db/seeds/seed.ts`
 
 Seed data currently creates:
 
-- 3 barber users and profiles
-- 12 client users
-- 9 services
+- 1 barber user and profile
+- 1 client user
+- 4 services
 - recurring barber schedules
 - future blocked dates
 - approximately two weeks of availability slots
-- 20 appointments
-- 10 payments
-- 3 subscriptions
-- 8 reviews
-- 2 saved-barber examples
-- 1 paid payout batch
-- 12 notifications
+- 1 confirmed mobile appointment with outbound and return travel buffers
+- 1 subscription
+- 1 saved-barber example
+- 1 notification
 
 Appointment status mix:
 
-- 8 `COMPLETED`
-- 4 `CONFIRMED`
-- 1 `ON_THE_WAY` mobile appointment owned by `client1@example.com` and `barber1@example.com`
-- 4 `PENDING`
-- 2 `CANCELLED`
-- 1 `NO_SHOW`
+- 1 `CONFIRMED` mobile appointment owned by `client.test@example.com` and `barber.test@example.com`
 
 Payment record mix:
 
-- 8 `SUCCEEDED`
-- 2 `PENDING`
+- No seeded payment rows. The test barber is payment-eligible so card checkout can be tested with a new booking.
 
 ## Frontend
 
@@ -502,10 +540,13 @@ Current state:
 - Browser-side payment-intent, refund, Connect onboarding, and subscription checkout actions
 - Browser Stripe Payment Element checkout with cash/card choice and appointment-detail retry
 - Pin-first MapLibre booking and saved-address selection with browser geolocation fallback
+- Barber dashboard foreground GPS sharing for active mobile appointments
+- Client appointment detail 5-second status and live-location polling for mobile visits
 - Local optimized barber cover images with fixed-ratio loading and error fallback
 - Next.js API proxy routes for login, logout, and backend requests
 - TanStack Query server state and React Hook Form validation
 - Shared transport-independent API client package
+- Full-screen three-angle AI Hair Studio camera flow with consent, 18+ confirmation, local pose and quality checks, preferences, recommendations, progress, comparison, retry, delete, and appointment attachment
 
 Important distinction: web and native card capture are implemented. Live destination charges still
 require real Stripe test/production credentials, completed barber Connect onboarding, and webhook
@@ -633,8 +674,9 @@ Local services:
 
 - PostgreSQL 15 Alpine
 - Redis 7 Alpine
+- MinIO private S3-compatible storage plus one-shot private bucket initialization
 
-Both services include health checks and persistent Docker volumes.
+PostgreSQL, Redis, and MinIO include health checks and persistent Docker volumes.
 
 Ports are configurable:
 
@@ -674,26 +716,26 @@ Generated output:
 
 ## Documentation Already Added
 
-| Document                     | Purpose                                               |
-| ---------------------------- | ----------------------------------------------------- |
-| `README.md`                  | Quick project overview and startup commands.          |
-| `docs/SETUP.md`              | Local developer setup and troubleshooting.            |
-| `docs/DATABASE.md`           | Schema summary and ER diagram.                        |
-| `docs/API.md`                | Current API patterns and route conventions.           |
-| `docs/ARCHITECTURE.md`       | System architecture and scaling path.                 |
-| `docs/BARBERS.md`            | Barber schedule, slot, blocking, and status behavior. |
-| `docs/CLIENTS.md`            | Client discovery, booking, cancellation, and reviews. |
-| `docs/CLIENT_PORTAL.md`      | Client navigation, pages, components, and UX rules.   |
-| `docs/PAYMENTS.md`           | Stripe intents, Connect, webhooks, refunds, and fees. |
-| `docs/SUBSCRIPTIONS.md`      | Tier features, checkout, billing, and gates.          |
-| `docs/DEPLOYMENT.md`         | Deployment notes and production expectations.         |
-| `docs/MOBILE.md`             | Expo mobile setup, flows, Stripe, and limitations.    |
-| `docs/MOBILE_BARBER.md`      | Mobile service, maps, addresses, fees, and buffers.   |
-| `docs/GPS_TRACKING.md`       | Foreground GPS lifecycle, API, storage, and privacy.  |
-| `docs/HAIR_DESIGN.md`        | Style studio and Phase 10 AI integration plan.        |
-| `docs/PORTALS.md`            | Canonical web portals, redirects, and role routing.   |
-| `docs/FOUNDATION_TRACKER.md` | This running tracker of what exists so far.           |
-| `docs/ROADMAP.md`            | Forward-looking product and engineering plan.         |
+| Document                     | Purpose                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| `README.md`                  | Quick project overview and startup commands.                             |
+| `docs/SETUP.md`              | Local developer setup and troubleshooting.                               |
+| `docs/DATABASE.md`           | Schema summary and ER diagram.                                           |
+| `docs/API.md`                | Current API patterns and route conventions.                              |
+| `docs/ARCHITECTURE.md`       | System architecture and scaling path.                                    |
+| `docs/BARBERS.md`            | Barber schedule, slot, blocking, and status behavior.                    |
+| `docs/CLIENTS.md`            | Client discovery, booking, cancellation, and reviews.                    |
+| `docs/CLIENT_PORTAL.md`      | Client navigation, pages, components, and UX rules.                      |
+| `docs/PAYMENTS.md`           | Stripe intents, Connect, webhooks, refunds, and fees.                    |
+| `docs/SUBSCRIPTIONS.md`      | Tier features, checkout, billing, and gates.                             |
+| `docs/DEPLOYMENT.md`         | Deployment notes and production expectations.                            |
+| `docs/MOBILE.md`             | Expo mobile setup, flows, Stripe, and limitations.                       |
+| `docs/MOBILE_BARBER.md`      | Mobile service, maps, addresses, fees, and buffers.                      |
+| `docs/GPS_TRACKING.md`       | Foreground GPS lifecycle, API, storage, and privacy.                     |
+| `docs/HAIR_DESIGN.md`        | Implemented AI studio, privacy, queue, storage, and provider operations. |
+| `docs/PORTALS.md`            | Canonical web portals, redirects, and role routing.                      |
+| `docs/FOUNDATION_TRACKER.md` | This running tracker of what exists so far.                              |
+| `docs/ROADMAP.md`            | Forward-looking product and engineering plan.                            |
 
 ## What You Need To Do
 
@@ -801,7 +843,9 @@ make logs
 make down
 ```
 
-`make setup` installs dependencies, creates `.env` only when it is missing, starts PostgreSQL/Redis, migrates, and seeds. `make dev` keeps application servers local through pnpm for fast reloads.
+`make setup` installs dependencies, creates `.env` only when it is missing, starts PostgreSQL,
+Redis, and MinIO, migrates, and seeds. `make dev` starts API, web, and the AI worker locally for fast
+reloads.
 
 ### 5. Verify the API
 
@@ -823,11 +867,12 @@ Expected health state:
 
 ## Next Phase Readiness
 
-The foundation through Phase 9, including dual portals, Mobile Barber booking/live tracking, and placeholder AI style briefs, is ready for continued implementation. The remaining natural steps are:
+The foundation through Phase 10, including dual portals, Mobile Barber booking/live tracking, and
+the web AI Hair Studio, is ready for continued implementation. The remaining natural steps are:
 
 - Complete simulator/device QA and live Stripe/Google Maps acceptance testing with restricted keys
-- Realtime GPS tracking, WebSockets, and push notifications
-- Later phases: S3 uploads, travel analytics, and AI-assisted near-term availability
+- Native background GPS, WebSockets, and push notifications
+- Paid Gemini quality/privacy acceptance testing, native scan UI, travel analytics, and AI-assisted near-term availability
 
 ## Known Local Notes
 
@@ -835,12 +880,14 @@ The foundation through Phase 9, including dual portals, Mobile Barber booking/li
 - `GET /` was added so browser visits to the API root no longer return `ROUTE_NOT_FOUND`.
 - The API root now advertises `/auth`, `/barbers`, `/clients`, `/health`, and `/payments`.
 - `GET /health` is database-aware; if it returns `database.status = "error"`, check `DATABASE_URL`, Docker health, and port conflicts first.
-- `pnpm dev` starts both the API and the web app through `concurrently`.
+- `pnpm dev` starts the API, web app, and AI worker through `concurrently`.
+- AI studio: `http://localhost:3000/client/design`; local `AI_PROVIDER=mock` incurs no API cost.
+- MinIO API: `http://localhost:9000`; local console: `http://localhost:9001`.
 - Frontend URL: `http://localhost:3000`.
 - Client sign in: `http://localhost:3000/client/login`; barber sign in: `http://localhost:3000/barber/login`.
 - Client marketplace: `http://localhost:3000/client`; barber dashboard: `http://localhost:3000/barber/dashboard`.
-- Client maps use MapLibre and an optional `NEXT_PUBLIC_MAP_STYLE_URL`; compact provider attribution remains visible.
-- The barber Mobile Service origin map still uses `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
+- Client and barber web maps use MapLibre and an optional `NEXT_PUBLIC_MAP_STYLE_URL`; compact provider attribution remains visible.
+- Mobile booking stores exact pin coordinates even when Google reverse geocoding is unavailable; Google only improves the supporting address label.
 - Stripe card checkout requires completed barber Connect onboarding in addition to populated Stripe environment values.
 - Mobile app: `pnpm --filter @barber-saas/mobile dev`; use `ios` or `android` scripts for simulators.
 - API URL: `http://localhost:4000`.
@@ -893,6 +940,16 @@ GET /barbers/:barberId/reviews
 GET /barbers/:barberId/mobile
 GET /barbers/search
 GET /clients/me
+GET /clients/me/hair-studio/config
+POST /clients/me/hair-scans
+GET /clients/me/hair-scans/:scanId
+POST /clients/me/hair-scans/:scanId/captures/presign
+POST /clients/me/hair-scans/:scanId/captures/:captureId/complete
+POST /clients/me/hair-scans/:scanId/complete
+POST /clients/me/designs/generate
+GET /clients/me/designs/:designId
+POST /clients/me/designs/:designId/retry
+DELETE /clients/me/designs/:designId
 POST /clients/me/locations/reverse-geocode
 GET /clients/me/saved-barbers
 POST /clients/me/saved-barbers

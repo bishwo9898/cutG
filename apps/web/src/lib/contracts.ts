@@ -169,6 +169,9 @@ export type Appointment = {
     zipCode: string;
     latitude: number | null;
     longitude: number | null;
+    formattedAddress?: string | null;
+    source?: 'google' | 'coordinate_fallback' | null;
+    isApproximateAddress?: boolean | null;
   } | null;
   distanceMiles?: number | null;
   estimatedTravelMinutes?: number | null;
@@ -210,6 +213,9 @@ export type ClientAppointment = {
     zipCode: string;
     latitude: number;
     longitude: number;
+    formattedAddress?: string | null;
+    source?: 'google' | 'coordinate_fallback' | null;
+    isApproximateAddress?: boolean | null;
   } | null;
   distanceMiles?: number | null;
   estimatedTravelMinutes?: number | null;
@@ -233,9 +239,61 @@ export type HairDesign = {
   description: string | null;
   sourcePhotoUrl: string | null;
   generatedPreviewUrl: string | null;
-  aiStatus: 'placeholder' | 'pending' | 'processing' | 'completed' | 'failed';
+  aiStatus:
+    'placeholder' | 'pending' | 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  generationStatus?: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | null;
+  progress?: number;
+  provider?: string | null;
+  model?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
   appointmentId: string | null;
   createdAt: string;
+};
+
+export type HairScanAngle = 'FRONT' | 'LEFT' | 'RIGHT';
+
+export type HairCaptureQuality = {
+  brightness: number;
+  sharpness: number;
+  poseScore: number;
+};
+
+export type HairStyleSuggestion = {
+  id: string;
+  name: string;
+  category: 'haircut' | 'beard' | 'color';
+  description: string;
+  reason: string;
+};
+
+export type HairScan = {
+  id: string;
+  status: 'CAPTURING' | 'READY' | 'EXPIRED' | 'DELETED';
+  analysisStatus: 'NOT_STARTED' | 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  analysisError: string | null;
+  suggestions: HairStyleSuggestion[];
+  captures: Array<{
+    id: string;
+    angle: HairScanAngle;
+    uploadStatus: 'PENDING' | 'VERIFIED';
+    width: number | null;
+    height: number | null;
+    quality: Partial<HairCaptureQuality>;
+  }>;
+  expiresAt: string;
+  createdAt: string;
+};
+
+export type HairStudioConfig = {
+  enabled: boolean;
+  provider: 'demo' | 'gemini';
+  consentVersion: string;
+  requiredAngles: HairScanAngle[];
+  maxCaptureBytes: number;
+  retentionHours: number;
+  dailyGenerationLimit: number;
+  isMock: boolean;
 };
 
 export type BarberLocation =

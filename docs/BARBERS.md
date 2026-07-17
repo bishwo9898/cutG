@@ -31,8 +31,6 @@ Completed, cancelled, and no-show appointments are terminal. Cancelling releases
 After `pnpm db:seed`, use password `password123` with:
 
 ```text
-barber1@example.com
-barber2@example.com
-barber3@example.com
-client1@example.com
+barber.test@example.com
+client.test@example.com
 ```

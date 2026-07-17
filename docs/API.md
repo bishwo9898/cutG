@@ -35,6 +35,16 @@ POST /clients/me/reviews
 GET /clients/me/payment-history
 POST /clients/me/designs
 GET /clients/me/designs
+GET /clients/me/hair-studio/config
+POST /clients/me/hair-scans
+GET /clients/me/hair-scans/:scanId
+POST /clients/me/hair-scans/:scanId/captures/presign
+POST /clients/me/hair-scans/:scanId/captures/:captureId/complete
+POST /clients/me/hair-scans/:scanId/complete
+POST /clients/me/designs/generate
+GET /clients/me/designs/:designId
+POST /clients/me/designs/:designId/retry
+DELETE /clients/me/designs/:designId
 POST /clients/me/designs/:designId/attach
 POST /payments/create-intent
 GET /payments/config
@@ -101,24 +111,34 @@ location, Stripe fields, metadata, and client information.
 All `/clients/me/*` routes require a bearer token for a `CLIENT` account. Barbers and admins receive
 `403` from these routes.
 
-| Method   | Path                                                      | Purpose                                      |
-| -------- | --------------------------------------------------------- | -------------------------------------------- |
-| `GET`    | `/clients/me`                                             | Read the authenticated client profile.       |
-| `GET`    | `/clients/me/saved-barbers`                               | List saved/favorite barbers.                 |
-| `POST`   | `/clients/me/saved-barbers`                               | Save a barber by `barber_profiles.id`.       |
-| `DELETE` | `/clients/me/saved-barbers/:barberId`                     | Remove a saved barber.                       |
-| `POST`   | `/clients/me/appointments`                                | Book an available slot atomically.           |
-| `GET`    | `/clients/me/appointments`                                | List paginated client appointments.          |
-| `GET`    | `/clients/me/appointments/:appointmentId`                 | Read one client-owned appointment.           |
-| `GET`    | `/clients/me/appointments/:appointmentId/status-updates`  | Read the owned appointment timeline.         |
-| `GET`    | `/clients/me/appointments/:appointmentId/barber-location` | Read the latest active barber GPS position.  |
-| `DELETE` | `/clients/me/appointments/:appointmentId`                 | Cancel a pending/confirmed appointment.      |
-| `POST`   | `/clients/me/reviews`                                     | Review a completed client-owned appointment. |
-| `GET`    | `/clients/me/payment-history`                             | List client payment history.                 |
-| `POST`   | `/clients/me/designs`                                     | Save a placeholder hair design brief.        |
-| `GET`    | `/clients/me/designs`                                     | List owned saved design briefs.              |
-| `POST`   | `/clients/me/designs/:designId/attach`                    | Attach a design to an owned appointment.     |
-| `POST`   | `/clients/me/locations/reverse-geocode`                   | Resolve an exact destination pin.            |
+| Method   | Path                                                          | Purpose                                       |
+| -------- | ------------------------------------------------------------- | --------------------------------------------- |
+| `GET`    | `/clients/me`                                                 | Read the authenticated client profile.        |
+| `GET`    | `/clients/me/saved-barbers`                                   | List saved/favorite barbers.                  |
+| `POST`   | `/clients/me/saved-barbers`                                   | Save a barber by `barber_profiles.id`.        |
+| `DELETE` | `/clients/me/saved-barbers/:barberId`                         | Remove a saved barber.                        |
+| `POST`   | `/clients/me/appointments`                                    | Book an available slot atomically.            |
+| `GET`    | `/clients/me/appointments`                                    | List paginated client appointments.           |
+| `GET`    | `/clients/me/appointments/:appointmentId`                     | Read one client-owned appointment.            |
+| `GET`    | `/clients/me/appointments/:appointmentId/status-updates`      | Read the owned appointment timeline.          |
+| `GET`    | `/clients/me/appointments/:appointmentId/barber-location`     | Read the latest active barber GPS position.   |
+| `DELETE` | `/clients/me/appointments/:appointmentId`                     | Cancel a pending/confirmed appointment.       |
+| `POST`   | `/clients/me/reviews`                                         | Review a completed client-owned appointment.  |
+| `GET`    | `/clients/me/payment-history`                                 | List client payment history.                  |
+| `POST`   | `/clients/me/designs`                                         | Save a placeholder hair design brief.         |
+| `GET`    | `/clients/me/designs`                                         | List owned saved design briefs.               |
+| `POST`   | `/clients/me/designs/:designId/attach`                        | Attach a design to an owned appointment.      |
+| `GET`    | `/clients/me/hair-studio/config`                              | Read safe feature, retention, and limit data. |
+| `POST`   | `/clients/me/hair-scans`                                      | Start an adult, consented scan session.       |
+| `GET`    | `/clients/me/hair-scans/:scanId`                              | Poll owned scan and recommendation state.     |
+| `POST`   | `/clients/me/hair-scans/:scanId/captures/presign`             | Sign one private direct capture upload.       |
+| `POST`   | `/clients/me/hair-scans/:scanId/captures/:captureId/complete` | Verify upload metadata and quality.           |
+| `POST`   | `/clients/me/hair-scans/:scanId/complete`                     | Queue three-angle recommendation analysis.    |
+| `POST`   | `/clients/me/designs/generate`                                | Queue one idempotent image generation.        |
+| `GET`    | `/clients/me/designs/:designId`                               | Poll generation state and signed output.      |
+| `POST`   | `/clients/me/designs/:designId/retry`                         | Explicitly retry a failed generation.         |
+| `DELETE` | `/clients/me/designs/:designId`                               | Soft-delete output and remove image access.   |
+| `POST`   | `/clients/me/locations/reverse-geocode`                       | Resolve an exact destination pin.             |
 
 ### Public Barber Search
 
@@ -151,8 +171,10 @@ The response includes each barber's public profile summary, `lowestServicePrice`
 
 Booking runs in a single database transaction. The API locks the selected slot, verifies the barber
 and service, rejects past/booked/short slots, checks client appointment overlap, inserts the
-appointment, marks the slot `BOOKED`, and queues notifications. `paymentMethod` accepts `CASH` or
-`CARD`; card checkout occurs only after the appointment transaction succeeds.
+appointment, marks the slot `BOOKED`, and queues notifications. Mobile bookings also lock and mark
+outbound plus return travel buffer slots so shop inventory stays unavailable while the barber is away
+and returning. `paymentMethod` accepts `CASH` or `CARD`; card checkout occurs only after the
+appointment transaction succeeds.
 
 Common booking errors:
 
@@ -163,7 +185,7 @@ Common booking errors:
 | `APPOINTMENT_CONFLICT` | `409`  | Client already has a pending/confirmed overlap. |
 
 Cancelling a `PENDING` or `CONFIRMED` appointment sets status to `CANCELLED`, stamps
-`cancelled_at`, and frees the availability slot.
+`cancelled_at`, frees the availability slot, and releases any mobile outbound/return buffer slots.
 
 ### Reviews
 
@@ -256,7 +278,17 @@ Validation errors include a `details.issues` array from Zod.
 
 `POST /clients/me/appointments` accepts `isMobileService: true` plus exactly one of `clientAddressId` or `clientAddressOneTime`. `GET /barbers` supports `mobileOnly=true`. Public responses never include a barber's private origin coordinates or origin address.
 
-Mobile status transitions are `CONFIRMED -> ON_THE_WAY -> ARRIVED -> IN_PROGRESS -> COMPLETED`. The two travel statuses are rejected for shop appointments. See `docs/MOBILE_BARBER.md` for fee, buffer, Maps, and request details.
+Mobile status transitions are `CONFIRMED -> ON_THE_WAY -> ARRIVED -> IN_PROGRESS -> COMPLETED`. The two travel statuses are rejected for shop appointments. `POST /barbers/me/appointments/:appointmentId/location` accepts foreground GPS pings only while a mobile appointment is `ON_THE_WAY`, `ARRIVED`, or `IN_PROGRESS`; pings are rejected after `COMPLETED`, `CANCELLED`, or `NO_SHOW`.
+
+Reverse geocoding is best effort. Successful Google geocoding returns `source: "google"` and a
+street-level formatted address. Missing, restricted, quota-limited, or failed Google geocoding returns
+`source: "coordinate_fallback"` with exact latitude/longitude and approximate pinned-location text.
+Appointment responses preserve `formattedAddress`, `source`, and `isApproximateAddress`; exact
+coordinates remain the navigation authority for assigned clients and barbers.
+
+Clients poll `GET /clients/me/appointments/:appointmentId/status-updates` and
+`GET /clients/me/appointments/:appointmentId/barber-location` for active mobile appointments. See
+`docs/MOBILE_BARBER.md` for fee, buffer, Maps, and live-tracking details.
 
 ## Phase 7 Booking Support
 

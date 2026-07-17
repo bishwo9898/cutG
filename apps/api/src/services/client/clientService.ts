@@ -9,12 +9,13 @@ import { query, withTransaction, type DatabaseExecutor } from '../../db/queries/
 import { AppError } from '../../middleware/errorHandler';
 import {
   blockTravelBufferSlots,
-  lockTravelBufferSlots,
+  lockMobileTravelBufferSlots,
   releaseTravelBufferSlots,
 } from '../mobile/bufferSlotService';
 import { geocodeAddress, getOwnedAddress } from '../mobile/geocodingService';
 import { estimateTravel } from '../mobile/mobileBarberService';
 import { cancelPendingAppointmentPayment } from '../payment/paymentService';
+import { createPresignedDownloadUrl } from '../storage/objectStorage';
 
 type Row = Record<string, unknown>;
 
@@ -57,7 +58,7 @@ const mapService = (row: Row) => ({
   category: row.category,
 });
 
-const mapAppointment = (row: Row) => ({
+const mapAppointment = async (row: Row) => ({
   id: row.id,
   barberId: row.barber_id,
   clientId: row.client_id,
@@ -83,6 +84,9 @@ const mapAppointment = (row: Row) => ({
           zipCode: row.service_address_zip,
           latitude: Number(row.service_latitude),
           longitude: Number(row.service_longitude),
+          formattedAddress: row.service_address_formatted,
+          source: row.service_address_source,
+          isApproximateAddress: row.service_address_is_approximate,
         }
       : null,
   distanceMiles: row.distance_miles === null ? null : Number(row.distance_miles),
@@ -114,7 +118,10 @@ const mapAppointment = (row: Row) => ({
           id: row.style_design_id,
           styleName: row.style_name,
           description: row.style_description,
-          previewImageUrl: row.generated_preview_url,
+          previewImageUrl:
+            typeof row.generated_asset_key === 'string'
+              ? await createPresignedDownloadUrl(row.generated_asset_key)
+              : row.generated_preview_url,
           sourcePhotoUrl: row.source_photo_url,
         },
   slot:
@@ -162,6 +169,7 @@ const appointmentSelect = `
     ,hd.style_name
     ,hd.description AS style_description
     ,hd.generated_preview_url
+    ,hd.generated_asset_key
     ,hd.source_photo_url
   FROM appointments a
   JOIN services s ON s.id = a.service_id
@@ -272,6 +280,9 @@ const prepareMobileBooking = async (clientId: string, input: BookAppointmentRequ
     zipCode: string;
     latitude: number;
     longitude: number;
+    formattedAddress?: string;
+    source?: 'google' | 'coordinate_fallback';
+    isApproximateAddress?: boolean;
   };
   if (input.clientAddressId !== undefined) {
     const row = await getOwnedAddress(clientId, input.clientAddressId);
@@ -283,6 +294,11 @@ const prepareMobileBooking = async (clientId: string, input: BookAppointmentRequ
       zipCode: String(row.zip_code),
       latitude: Number(row.latitude),
       longitude: Number(row.longitude),
+      formattedAddress: [row.address_line1, row.city, row.state, row.zip_code]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .join(', '),
+      source: 'coordinate_fallback',
+      isApproximateAddress: false,
     };
   } else if (input.clientAddressOneTime !== undefined) {
     const resolved = await geocodeAddress(input.clientAddressOneTime);
@@ -335,10 +351,11 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
     const bufferSlots =
       mobile === null
         ? []
-        : await lockTravelBufferSlots(
+        : await lockMobileTravelBufferSlots(
             input.barberId,
             date(slot.slot_date),
             time(slot.start_time),
+            time(slot.end_time),
             mobile.estimate.estimatedTravelMinutes,
             Number(slot.duration_minutes),
             trx,
@@ -369,8 +386,9 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
          payment_status,payment_method,price_quoted,location_address,location_latitude,location_longitude,client_notes,
          is_mobile_service,client_address_id,service_latitude,service_longitude,service_address_line1,
          service_address_city,service_address_state,service_address_zip,travel_fee_cents,
-         estimated_travel_minutes,distance_miles)
-       VALUES ($1,$2,$3,$4,$5,$6,'PENDING','PENDING',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+         estimated_travel_minutes,distance_miles,service_address_formatted,service_address_source,
+         service_address_is_approximate)
+       VALUES ($1,$2,$3,$4,$5,$6,'PENDING','PENDING',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
        RETURNING *`,
       [
         clientId,
@@ -406,6 +424,17 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
         mobile?.estimate.travelFeeCents ?? 0,
         mobile?.estimate.estimatedTravelMinutes ?? null,
         mobile?.estimate.distanceMiles ?? null,
+        mobile?.address.formattedAddress ??
+          (mobile === null
+            ? null
+            : [
+                mobile.address.addressLine1,
+                mobile.address.city,
+                mobile.address.state,
+                mobile.address.zipCode,
+              ].join(', ')),
+        mobile?.address.source ?? null,
+        mobile?.address.isApproximateAddress ?? null,
       ],
       trx,
     );
@@ -435,7 +464,7 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
       [appointment.id, clientId],
       trx,
     );
-    return { ...mapAppointment(rows[0] as Row), bufferSlotsBlocked: bufferSlots.length };
+    return { ...(await mapAppointment(rows[0] as Row)), bufferSlotsBlocked: bufferSlots.length };
   });
 };
 
@@ -463,7 +492,7 @@ export const listClientAppointments = async (clientId: string, filters: ClientAp
     [...values, filters.limit, (filters.page - 1) * filters.limit],
   );
   return {
-    appointments: rows.map(mapAppointment),
+    appointments: await Promise.all(rows.map(mapAppointment)),
     pagination: pagination(filters.page, filters.limit, total),
   };
 };

@@ -4,6 +4,7 @@ import { app } from './app';
 import { APP_NAME, SHUTDOWN_GRACE_PERIOD_MS } from './config/constants';
 import { closeDatabase } from './config/database';
 import { env } from './config/env';
+import { closeHairStudioQueue } from './services/design/hairStudioQueue';
 import { logger } from './utils/logger';
 
 const server: Server = app.listen(env.PORT, env.HOST, (): void => {
@@ -55,6 +56,7 @@ const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
       });
     });
 
+    await closeHairStudioQueue();
     await closeDatabase();
     clearTimeout(forceExitTimer);
     logger.info('Graceful shutdown complete');

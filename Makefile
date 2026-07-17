@@ -15,20 +15,20 @@ setup: ## Install dependencies, prepare the environment, and initialize local da
 	$(MAKE) migrate
 	$(MAKE) seed
 
-up: ## Start PostgreSQL and Redis
-	docker compose up -d postgres redis
+up: ## Start PostgreSQL, Redis, and private object storage
+	docker compose up -d postgres redis minio minio-init
 
 down: ## Stop local containers without deleting data
 	docker compose down
 
-restart: ## Restart PostgreSQL and Redis
-	docker compose restart postgres redis
+restart: ## Restart PostgreSQL, Redis, and private object storage
+	docker compose restart postgres redis minio
 
 status: ## Show container status and health
 	docker compose ps
 
-logs: ## Follow PostgreSQL and Redis logs
-	docker compose logs -f postgres redis
+logs: ## Follow PostgreSQL, Redis, and MinIO logs
+	docker compose logs -f postgres redis minio minio-init
 
 migrate: ## Apply database migrations
 	pnpm db:migrate
@@ -36,7 +36,7 @@ migrate: ## Apply database migrations
 seed: ## Recreate development seed data
 	pnpm db:seed
 
-dev: ## Start the API and web development servers
+dev: ## Start the API, web, and AI worker development servers
 	pnpm dev
 
 test: ## Start the test database and run the test suite
@@ -44,7 +44,7 @@ test: ## Start the test database and run the test suite
 	pnpm test
 
 reset: ## Delete local data, recreate infrastructure, migrate, and seed
-	@printf "This deletes all local PostgreSQL and Redis data. Continue? [y/N] "; \
+	@printf "This deletes local PostgreSQL, Redis, and MinIO data. Continue? [y/N] "; \
 	read answer; \
 	case "$$answer" in \
 		y|Y|yes|YES) ;; \

@@ -4,25 +4,12 @@
     "baseUrl": ".",
     "strict": true,
     "paths": {
-      "@/*": [
-        "src/*"
-      ],
-      "@barber-saas/api-client": [
-        "../../packages/api-client/src"
-      ],
-      "@barber-saas/shared-types": [
-        "../../packages/shared-types/src"
-      ],
-      "@barber-saas/shared-utils": [
-        "../../packages/shared-utils/src"
-      ]
+      "@/*": ["src/*"],
+      "@barber-saas/api-client": ["../../packages/api-client/src"],
+      "@barber-saas/shared-types": ["../../packages/shared-types/src"],
+      "@barber-saas/shared-utils": ["../../packages/shared-utils/src"]
     }
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules"]
 }

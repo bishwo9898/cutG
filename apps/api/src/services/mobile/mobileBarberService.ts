@@ -58,9 +58,16 @@ export const mapMobileConfig = (row: Row | undefined, profile?: Row) => {
     row?.origin_longitude ?? profileLongitude ?? DEFAULT_ORIGIN.longitude,
   );
   const originAddress = row?.origin_address ?? profileAddress(profile);
+  const originSource =
+    row !== undefined
+      ? 'custom'
+      : profileLatitude !== undefined && profileLongitude !== undefined
+        ? 'profile'
+        : 'default';
   return {
     isEnabled: row?.is_enabled === true,
     ...(row === undefined ? {} : { id: row.id, barberId: row.barber_id }),
+    originSource,
     serviceRadiusMiles: radius,
     feeStructure: row?.fee_structure ?? 'flat',
     baseFeeCents: Number(row?.base_fee_cents ?? suggestTravelFee(radius).flat),

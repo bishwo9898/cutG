@@ -16,13 +16,16 @@ make setup
 make dev
 ```
 
-`make setup` is repeatable and does not overwrite an existing `.env`. It installs dependencies, starts PostgreSQL and Redis, waits for PostgreSQL, then runs migrations and seed data.
+`make setup` is repeatable and does not overwrite an existing `.env`. It installs dependencies,
+starts PostgreSQL, Redis, and private MinIO object storage, waits for PostgreSQL, then runs migrations
+and seed data.
 
 Open the applications:
 
 - Frontend: [http://localhost:3000](http://localhost:3000)
 - API: [http://localhost:4000](http://localhost:4000)
 - API health: [http://localhost:4000/health](http://localhost:4000/health)
+- MinIO console: [http://localhost:9001](http://localhost:9001)
 - Mobile Expo app: `pnpm --filter @barber-saas/mobile dev`
 
 Useful Make commands:
@@ -36,7 +39,8 @@ make down
 make test
 ```
 
-`make reset` deletes all local PostgreSQL and Redis data and asks for confirmation before continuing.
+`make reset` deletes all local PostgreSQL, Redis, and MinIO data and asks for confirmation before
+continuing.
 
 ### Setup Without Make
 
@@ -45,7 +49,7 @@ The equivalent direct commands are:
 ```bash
 pnpm install
 test -f .env || cp .env.example .env
-docker compose up -d postgres redis
+docker compose up -d postgres redis minio minio-init
 pnpm db:migrate
 pnpm db:seed
 pnpm dev
@@ -79,18 +83,61 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
 NEXT_PUBLIC_MAP_STYLE_URL=
 ```
 
-Enable Geocoding and Distance Matrix for the server key. The client web portal uses MapLibre and
-does not need a public Google key; `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` remains for the barber's origin
-settings map. `NEXT_PUBLIC_MAP_STYLE_URL` is optional and defaults to a dark CARTO style. Restart
-API, web, and Expo after changing map values.
+Enable Geocoding and Distance Matrix for the server key when you want Google-backed address labels
+and driving estimates. Local booking remains usable without Google because exact pin coordinates and
+deterministic travel estimates are used as fallbacks. The client and barber web portals use
+MapLibre and do not need a public Google browser key. `NEXT_PUBLIC_MAP_STYLE_URL` is optional and
+defaults to a dark CARTO style. Restart API, web, and Expo after changing map values.
 
 The root `.env.local` and `.env` files are loaded by API, web, and Expo. `.env.local` takes precedence. Do not reuse a website-referrer key for server-side Geocoding or Places REST requests: Google rejects those requests even when Maps JavaScript works.
+
+Browser geolocation is optional for client booking setup and required only for true live barber
+tracking. If a client denies location, the booking map centers near the barber service area and the
+client can place the exact pin manually. If a barber denies location while starting a journey,
+appointment status updates still work, but the client will not receive live GPS movement.
+
+### AI Hair Studio
+
+Local development is free and deterministic:
+
+```env
+ENABLE_AI_FEATURES=true
+AI_PROVIDER=mock
+REDIS_URL=redis://localhost:6380
+S3_ENDPOINT=http://localhost:9000
+S3_BUCKET=cutg-ai-local
+S3_ACCESS_KEY_ID=cutg-local
+S3_SECRET_ACCESS_KEY=cutg-local-secret
+```
+
+`pnpm dev` and `make dev` start API, web, and `apps/ai-worker`. `make setup` creates the private
+MinIO bucket. Camera access requires `localhost` or HTTPS. MediaPipe downloads its browser model and
+WASM runtime from the official configured URLs, then processes frames locally.
+
+For production Gemini processing:
+
+```env
+AI_PROVIDER=gemini
+GEMINI_API_KEY=replace_with_paid_server_key
+GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
+GEMINI_SUGGESTION_MODEL=gemini-3.1-flash-lite
+```
+
+Use a paid Gemini project for client face images. Configure private production S3 credentials,
+restrict worker network access, and set `AI_MONTHLY_BUDGET_CENTS` to a non-zero safety ceiling.
+`AI_GENERATION_DAILY_LIMIT` defaults to `3`; `AI_SCAN_RETENTION_HOURS` defaults to `24`.
 
 ### Stripe Card Checkout
 
 Set `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECRET`. Then complete Stripe
 Connect onboarding for the barber from the barber payment dashboard. Card payment remains hidden
 for barbers without charges enabled; cash remains available.
+
+For local UI testing, seed data creates exactly one fake, Danville-based, payment-ready PREMIUM
+barber: `barber.test@example.com` / `password123`. The matching client is
+`client.test@example.com` / `password123`. The barber's local-only Stripe Connect flags are only a
+development convenience. Real destination charges still require real Stripe credentials, Connect
+onboarding, and webhook delivery.
 
 For local webhook synchronization:
 

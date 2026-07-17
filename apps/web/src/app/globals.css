@@ -487,6 +487,505 @@
   }
 }
 
+/* AI Hair Studio */
+.hair-studio-page {
+  --studio-cream: #f3eddc;
+  --studio-cream-soft: #d8d0bd;
+  --studio-gold: #d7b960;
+  --studio-panel: #131311;
+  --studio-line: #353229;
+  min-height: 100vh;
+  color: var(--studio-cream);
+  background: #0b0b09;
+}
+
+.hair-studio-header {
+  min-height: 245px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 32px;
+  border-bottom: 1px solid var(--studio-line);
+  padding-block: 54px 38px;
+}
+
+.hair-studio-header h1 {
+  max-width: 720px;
+  margin: 4px 0 10px;
+  color: var(--studio-cream);
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.hair-studio-header p {
+  max-width: 650px;
+  margin: 0;
+  color: #a9a394;
+}
+
+.hair-studio-trust,
+.hair-camera-privacy,
+.hair-result-heading > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--studio-cream-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hair-studio-content {
+  padding-block: 36px 72px;
+}
+
+.hair-consent-panel {
+  min-height: 470px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  gap: 64px;
+  align-items: center;
+}
+
+.hair-consent-copy h2,
+.hair-preferences-step h2,
+.hair-style-step > h2,
+.hair-result-heading h2,
+.hair-studio-waiting h2,
+.hair-camera-topbar h2,
+.hair-camera-unavailable h2 {
+  margin: 7px 0 12px;
+  color: var(--studio-cream);
+  font-size: 28px;
+  letter-spacing: 0;
+}
+
+.hair-consent-copy > p,
+.hair-studio-waiting p,
+.hair-camera-unavailable p {
+  max-width: 670px;
+  color: #aaa496;
+  line-height: 1.7;
+}
+
+.hair-step-number {
+  color: var(--studio-gold);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.hair-consent-copy ul {
+  display: grid;
+  gap: 12px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hair-consent-copy li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--studio-cream-soft);
+}
+
+.hair-consent-copy li svg {
+  color: var(--studio-gold);
+}
+
+.hair-consent-actions {
+  display: grid;
+  gap: 13px;
+  border-left: 1px solid var(--studio-line);
+  padding: 24px 0 24px 34px;
+}
+
+.hair-consent-actions label {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  align-items: start;
+  color: var(--studio-cream-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.hair-consent-actions input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--studio-gold);
+}
+
+.hair-consent-actions .button {
+  margin-top: 12px;
+}
+
+.hair-camera-stage {
+  display: grid;
+  gap: 18px;
+}
+
+.hair-camera-topbar,
+.hair-result-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+}
+
+.hair-scan-kicker {
+  color: var(--studio-gold);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.hair-camera-viewport {
+  position: relative;
+  width: 100%;
+  min-height: min(67vh, 700px);
+  overflow: hidden;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: #050504;
+}
+
+.hair-camera-viewport video {
+  width: 100%;
+  height: min(67vh, 700px);
+  display: block;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.hair-face-guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(42vw, 330px);
+  aspect-ratio: 0.76;
+  border: 2px solid rgba(243, 237, 220, 0.72);
+  border-radius: 48% 48% 44% 44%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.38);
+  transition: border-color 160ms ease;
+  pointer-events: none;
+}
+
+.hair-face-guide.is-ready {
+  border-color: #72c99e;
+}
+
+.hair-pose-status {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  min-width: 220px;
+  border: 1px solid rgba(243, 237, 220, 0.25);
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: var(--studio-cream);
+  background: rgba(11, 11, 9, 0.88);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  transform: translateX(-50%);
+}
+
+.hair-angle-progress,
+.hair-capture-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.hair-angle-progress button {
+  min-width: 118px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--studio-line);
+  border-radius: 6px;
+  padding: 9px 11px;
+  color: #9c9688;
+  background: transparent;
+  cursor: pointer;
+}
+
+.hair-angle-progress button:hover,
+.hair-angle-progress button.is-current {
+  border-color: #77705d;
+  color: var(--studio-cream);
+  background: #171713;
+}
+
+.hair-angle-progress button > span {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 10px;
+}
+
+.hair-capture-actions .button-primary {
+  margin-left: auto;
+}
+
+.hair-camera-notice {
+  margin: 0;
+  color: #aaa496;
+  font-size: 13px;
+}
+
+.hair-camera-unavailable,
+.hair-studio-waiting {
+  min-height: 360px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  border-block: 1px solid var(--studio-line);
+  text-align: center;
+}
+
+.hair-studio-waiting > svg,
+.hair-camera-unavailable > svg {
+  color: var(--studio-gold);
+}
+
+.hair-progress {
+  width: min(440px, 80vw);
+  height: 5px;
+  overflow: hidden;
+  margin-top: 14px;
+  background: #2b2923;
+}
+
+.hair-progress span {
+  height: 100%;
+  display: block;
+  background: var(--studio-gold);
+  transition: width 200ms ease;
+}
+
+.hair-preferences-step,
+.hair-style-step,
+.hair-result-step {
+  max-width: 1040px;
+  display: grid;
+  gap: 22px;
+  margin-inline: auto;
+  padding-block: 20px;
+}
+
+.hair-preference-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 22px;
+  border-block: 1px solid var(--studio-line);
+  padding-block: 24px;
+}
+
+.hair-preference-grid label,
+.hair-direction-field {
+  display: grid;
+  gap: 7px;
+  color: var(--studio-cream-soft);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.hair-preference-grid select,
+.hair-direction-field textarea {
+  width: 100%;
+  border: 1px solid var(--studio-line);
+  border-radius: 6px;
+  padding: 12px 13px;
+  color: var(--studio-cream);
+  background: var(--studio-panel);
+  text-transform: capitalize;
+}
+
+.hair-direction-field textarea {
+  min-height: 104px;
+  resize: vertical;
+  text-transform: none;
+}
+
+.hair-suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.hair-suggestion-grid > button {
+  position: relative;
+  min-height: 230px;
+  display: grid;
+  align-content: end;
+  gap: 9px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  padding: 22px;
+  color: var(--studio-cream);
+  background: var(--studio-panel);
+  text-align: left;
+  cursor: pointer;
+}
+
+.hair-suggestion-grid > button:hover,
+.hair-suggestion-grid > button.is-selected {
+  border-color: var(--studio-gold);
+  background: #191813;
+}
+
+.hair-suggestion-grid p,
+.hair-suggestion-grid small {
+  margin: 0;
+  color: #a9a394;
+  line-height: 1.5;
+}
+
+.hair-suggestion-check {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #635e50;
+  border-radius: 50%;
+  color: #0b0b09;
+  background: var(--studio-gold);
+}
+
+.hair-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: var(--studio-line);
+}
+
+.hair-comparison figure {
+  position: relative;
+  min-height: 560px;
+  margin: 0;
+  background: #11110f;
+}
+
+.hair-comparison img {
+  object-fit: cover;
+}
+
+.hair-comparison figcaption {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  border-radius: 4px;
+  padding: 7px 9px;
+  color: var(--studio-cream);
+  background: rgba(11, 11, 9, 0.88);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.hair-result-heading > span {
+  border: 1px solid var(--studio-line);
+  border-radius: 5px;
+  padding: 8px 10px;
+}
+
+.hair-studio-page .saved-looks-section {
+  margin-top: 70px;
+  border-color: var(--studio-line);
+}
+
+.hair-studio-page .saved-look-card {
+  overflow: hidden;
+  border: 1px solid var(--studio-line);
+  border-left: 1px solid var(--studio-line);
+  border-radius: 8px;
+  padding: 14px;
+  color: var(--studio-cream);
+  background: var(--studio-panel);
+}
+
+.saved-look-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 5px;
+}
+
+.saved-look-image img {
+  object-fit: cover;
+}
+
+@media (max-width: 760px) {
+  .hair-studio-header,
+  .hair-camera-topbar,
+  .hair-result-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hair-studio-header h1 {
+    font-size: 40px;
+  }
+
+  .hair-consent-panel,
+  .hair-preference-grid,
+  .hair-suggestion-grid,
+  .hair-comparison {
+    grid-template-columns: 1fr;
+  }
+
+  .hair-consent-panel {
+    gap: 24px;
+  }
+
+  .hair-consent-actions {
+    border-top: 1px solid var(--studio-line);
+    border-left: 0;
+    padding: 24px 0 0;
+  }
+
+  .hair-camera-viewport,
+  .hair-camera-viewport video {
+    min-height: 58vh;
+    height: 58vh;
+  }
+
+  .hair-face-guide {
+    width: min(68vw, 310px);
+  }
+
+  .hair-angle-progress button {
+    min-width: 0;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .hair-capture-actions .button,
+  .hair-capture-actions .button-primary {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+  }
+
+  .hair-comparison figure {
+    min-height: 420px;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1853,6 +2352,24 @@ a {
 .service-area-map {
   width: 100%;
   min-height: 340px;
+}
+
+.service-area-badges {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.origin-source-badge {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: var(--muted);
+  background: #11110f;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .barber-map-pin {
@@ -5284,6 +5801,285 @@ input:checked + .toggle-track::after,
   font-size: 19px;
 }
 
+.booking-context-strip,
+.booking-review-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.booking-context-strip > div,
+.review-detail-card,
+.payment-reserved-card {
+  border: 1px solid var(--client-line);
+  border-radius: 7px;
+  padding: 13px;
+  background: #11110f;
+}
+
+.booking-context-strip span,
+.review-detail-card span,
+.payment-reserved-card span {
+  display: block;
+  color: var(--client-muted);
+  font-size: 12px;
+}
+
+.booking-context-strip strong,
+.review-detail-card strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--client-cream);
+}
+
+.booking-context-strip strong,
+.review-detail-card p {
+  overflow-wrap: anywhere;
+}
+
+.booking-review-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.review-detail-card p {
+  margin: 6px 0 0;
+  color: var(--client-muted);
+  font-size: 13px;
+}
+
+.payment-reserved-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-bottom: 16px;
+  border-color: rgba(86, 135, 109, 0.65);
+  background: rgba(86, 135, 109, 0.12);
+}
+
+.payment-reserved-card svg {
+  color: #7fc39b;
+}
+
+.payment-reserved-card div {
+  display: grid;
+  gap: 4px;
+}
+
+.payment-reserved-card strong {
+  color: var(--client-cream);
+}
+
+.appointment-detail-page {
+  min-height: 100vh;
+  padding-bottom: 56px;
+}
+
+.appointment-command-center,
+.appointment-review-panel {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 34px 0;
+}
+
+.appointment-detail-header {
+  margin-bottom: 22px;
+}
+
+.appointment-detail-header h1 {
+  margin: 4px 0 8px;
+  font-size: clamp(32px, 4vw, 50px);
+  letter-spacing: 0;
+}
+
+.appointment-detail-header p {
+  margin: 0;
+}
+
+.appointment-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.appointment-quick-grid > div,
+.appointment-info-card,
+.appointment-map-card,
+.appointment-location-card,
+.appointment-review-panel {
+  border: 1px solid var(--client-line);
+  border-radius: 8px;
+  color: var(--client-cream);
+  background: var(--client-surface);
+  box-shadow: none;
+}
+
+.appointment-quick-grid > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 14px;
+}
+
+.appointment-quick-grid svg,
+.appointment-location-card svg {
+  color: var(--client-gold);
+  flex: 0 0 auto;
+}
+
+.appointment-quick-grid span,
+.appointment-travel-list span,
+.appointment-location-card div {
+  display: grid;
+  gap: 3px;
+}
+
+.appointment-quick-grid small,
+.appointment-travel-list span,
+.appointment-location-card span,
+.appointment-location-card small,
+.appointment-payment-note {
+  color: var(--client-muted);
+}
+
+.appointment-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 24px;
+  align-items: start;
+}
+
+.appointment-detail-main,
+.appointment-side-panel,
+.appointment-action-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.appointment-side-panel {
+  position: sticky;
+  top: 92px;
+}
+
+.appointment-info-card,
+.appointment-map-card,
+.appointment-review-panel {
+  padding: 20px;
+}
+
+.appointment-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.appointment-section-heading h2,
+.appointment-info-card h2,
+.appointment-review-panel h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+
+.appointment-map-card .tracking-map-shell {
+  margin: 0;
+  border-color: var(--client-line);
+  background: #11110f;
+}
+
+.appointment-map-card .static-map-frame {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.appointment-map-card .live-tracking-map {
+  min-height: 320px;
+  border: 0;
+  border-radius: 0;
+}
+
+.appointment-location-card {
+  display: flex;
+  gap: 11px;
+  margin-top: 12px;
+  padding: 14px;
+  background: #11110f;
+}
+
+.appointment-location-card strong,
+.appointment-travel-list strong {
+  color: var(--client-cream);
+}
+
+.market-page .appointment-timeline {
+  margin: 0;
+  border-color: var(--client-line);
+  padding-top: 0;
+}
+
+.market-page .appointment-timeline h2 {
+  color: var(--client-cream);
+}
+
+.market-page .timeline-row {
+  color: var(--client-muted);
+}
+
+.market-page .timeline-row.is-current {
+  color: var(--client-gold);
+}
+
+.market-page .timeline-row.is-complete {
+  color: #7fc39b;
+}
+
+.market-page .timeline-connector {
+  border-color: #4c493f;
+}
+
+.market-page .appointment-price-breakdown,
+.market-page .appointment-notes-grid,
+.appointment-travel-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.market-page .appointment-notes-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.market-page .appointment-price-breakdown span,
+.market-page .appointment-notes-grid div,
+.appointment-travel-list span,
+.market-page .style-reference-card {
+  border-color: var(--client-line);
+  color: var(--client-cream);
+  background: #11110f;
+}
+
+.market-page .appointment-price-breakdown strong {
+  color: var(--client-gold);
+}
+
+.appointment-payment-note {
+  margin: 0 0 16px;
+  font-size: 13px;
+}
+
+.appointment-action-stack .button {
+  width: 100%;
+}
+
+.appointment-review-panel {
+  display: grid;
+  gap: 14px;
+}
+
 .saved-location-shortcuts {
   display: grid;
   gap: 8px;
@@ -5474,7 +6270,8 @@ input:checked + .toggle-track::after,
 
 @media (max-width: 860px) {
   .market-page .profile-hero,
-  .client-booking-layout {
+  .client-booking-layout,
+  .appointment-detail-grid {
     grid-template-columns: 1fr;
   }
 
@@ -5487,10 +6284,20 @@ input:checked + .toggle-track::after,
     grid-row: 1;
   }
 
+  .appointment-side-panel {
+    position: static;
+  }
+
   .booking-summary-panel .booking-summary-lines {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0 18px;
+  }
+
+  .booking-context-strip,
+  .booking-review-grid,
+  .appointment-quick-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -5518,7 +6325,8 @@ input:checked + .toggle-track::after,
 
   .booking-type-grid,
   .payment-method-grid,
-  .booking-summary-panel .booking-summary-lines {
+  .booking-summary-panel .booking-summary-lines,
+  .market-page .appointment-notes-grid {
     grid-template-columns: 1fr;
   }
 
@@ -5541,5 +6349,30 @@ input:checked + .toggle-track::after,
 
   .booking-progress {
     gap: 16px;
+  }
+
+  .appointment-command-center,
+  .appointment-review-panel {
+    width: min(100% - 20px, 1180px);
+    padding-block: 22px;
+  }
+
+  .appointment-info-card,
+  .appointment-map-card,
+  .appointment-review-panel {
+    padding: 16px;
+  }
+
+  .appointment-section-heading {
+    display: grid;
+  }
+
+  .appointment-section-heading .button {
+    width: 100%;
+  }
+
+  .appointment-map-card .live-tracking-map,
+  .appointment-map-card .static-map-frame {
+    min-height: 280px;
   }
 }

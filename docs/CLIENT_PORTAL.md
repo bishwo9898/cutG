@@ -62,10 +62,11 @@ policy data for a public barber profile.
 8. Booking revalidates the address, radius, slot, and travel buffers transactionally.
 
 Client maps use MapLibre and expose no Google browser key. The authenticated API reverse-geocodes a
-settled pin with `GOOGLE_MAPS_API_KEY`; this key must allow server requests and have Geocoding API
-enabled. A browser-referrer-restricted key returns `503 MAPS_NOT_CONFIGURED`. The exact coordinates,
-not the formatted address, remain the navigation authority. Existing saved addresses remain useful
-as map recenter shortcuts, and saved-address forms retain optional apartment/suite/unit details.
+settled pin with `GOOGLE_MAPS_API_KEY` when that key is server-capable and Geocoding is enabled. If
+Google is missing, browser-restricted, quota-limited, or temporarily unavailable, the API returns a
+coordinate fallback instead of blocking booking. The exact coordinates, not the formatted address,
+remain the navigation authority. Existing saved addresses remain useful as map recenter shortcuts,
+and saved-address forms retain optional apartment/suite/unit details.
 
 Booking is progressive: service, appointment type, exact location when needed, time, review, and
 payment. Desktop keeps a sticky booking summary; mobile uses one focused column. Cash is always
@@ -91,7 +92,8 @@ make setup
 make dev
 ```
 
-Use `client1@example.com` or `client2@example.com` with `password123`. Both have Danville, Kentucky addresses. `barber1@example.com` and `barber2@example.com` provide nearby mobile-service test profiles.
+Use `client.test@example.com` with `password123`. The matching fully eligible Danville mobile barber
+is `barber.test@example.com` with the same password.
 
 Recommended flow:
 

@@ -219,6 +219,9 @@ export default function BookBarberPage(): React.ReactElement {
                 country: destination.country,
                 latitude: destination.latitude,
                 longitude: destination.longitude,
+                formattedAddress: destination.formattedAddress,
+                source: destination.source,
+                isApproximateAddress: destination.isApproximateAddress,
               },
             }
           : {}),
@@ -409,6 +412,11 @@ export default function BookBarberPage(): React.ReactElement {
                   </div>
                 )}
                 <PinLocationPicker
+                  barberId={barberId}
+                  fallbackAddressContext={{
+                    ...(profile.data?.city === undefined ? {} : { city: profile.data.city }),
+                    ...(profile.data?.state === undefined ? {} : { state: profile.data.state }),
+                  }}
                   fallbackCenter={fallbackCenter}
                   initialPoint={pinStart}
                   key={pinKey}
@@ -488,6 +496,31 @@ export default function BookBarberPage(): React.ReactElement {
                     </p>
                   </div>
                 </div>
+                <div className="booking-context-strip">
+                  <div>
+                    <span>Service</span>
+                    <strong>{service.name}</strong>
+                  </div>
+                  <div>
+                    <span>Type</span>
+                    <strong>{isMobile ? 'Mobile visit' : 'Shop appointment'}</strong>
+                  </div>
+                  {isMobile && destination !== null && (
+                    <div>
+                      <span>Arrival point</span>
+                      <strong>{destination.formattedAddress}</strong>
+                    </div>
+                  )}
+                  {isMobile && estimate.data !== undefined && (
+                    <div>
+                      <span>Travel</span>
+                      <strong>
+                        {estimate.data.distanceMiles.toFixed(1)} mi ·{' '}
+                        {estimate.data.estimatedTravelMinutes} min
+                      </strong>
+                    </div>
+                  )}
+                </div>
                 <SlotPicker
                   durationMinutes={service.durationMinutes}
                   onSelect={setSlot}
@@ -526,6 +559,35 @@ export default function BookBarberPage(): React.ReactElement {
                   <div>
                     <h2>Review and choose payment</h2>
                     <p>Your appointment is reserved after you confirm below.</p>
+                  </div>
+                </div>
+                <div className="booking-review-grid">
+                  <div className="review-detail-card">
+                    <span>Appointment</span>
+                    <strong>{service.name}</strong>
+                    <p>
+                      {appointmentStart === null || appointmentEnd === null
+                        ? 'Time not selected'
+                        : `${formatShortDate(appointmentStart)} · ${formatTimeRange(appointmentStart, appointmentEnd)}`}
+                    </p>
+                  </div>
+                  <div className="review-detail-card">
+                    <span>Location</span>
+                    <strong>{isMobile ? 'Mobile visit' : 'Shop visit'}</strong>
+                    <p>
+                      {isMobile && destination !== null
+                        ? destination.formattedAddress
+                        : [profile.data?.city, profile.data?.state].filter(Boolean).join(', ') ||
+                          'Barber location'}
+                    </p>
+                  </div>
+                  <div className="review-detail-card">
+                    <span>Total</span>
+                    <strong>${total.toFixed(2)}</strong>
+                    <p>
+                      ${service.price.toFixed(2)} service
+                      {isMobile ? ` + $${travelFee.toFixed(2)} travel` : ''}
+                    </p>
                   </div>
                 </div>
                 <div className="payment-method-grid">
@@ -611,6 +673,16 @@ export default function BookBarberPage(): React.ReactElement {
                   <div>
                     <h2>Complete secure payment</h2>
                     <p>Your time is reserved. Finish payment or return to the appointment later.</p>
+                  </div>
+                </div>
+                <div className="payment-reserved-card">
+                  <Check size={18} />
+                  <div>
+                    <strong>Appointment reserved</strong>
+                    <span>
+                      Your slot is held. If payment fails, you can retry here or from appointment
+                      details.
+                    </span>
                   </div>
                 </div>
                 {intent.isPending && <div className="loading">Preparing secure checkout...</div>}

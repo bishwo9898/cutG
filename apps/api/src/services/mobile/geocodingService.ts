@@ -8,6 +8,7 @@ import type {
 import { env } from '../../config/env';
 import { query, withTransaction, type DatabaseExecutor } from '../../db/queries/barber.queries';
 import { AppError } from '../../middleware/errorHandler';
+import { logger } from '../../utils/logger';
 
 type Row = Record<string, unknown>;
 type AddressInput = OneTimeAddressRequest | SaveAddressRequest;
@@ -36,6 +37,13 @@ export type ResolvedAddress = {
   latitude: number;
   longitude: number;
   formattedAddress: string;
+  source?: 'google' | 'coordinate_fallback';
+  isApproximateAddress?: boolean;
+};
+
+type ReverseGeocodeOptions = {
+  barberId?: string;
+  fetcher?: typeof fetch;
 };
 
 const fullAddress = (input: AddressInput): string =>
@@ -54,25 +62,67 @@ const component = (
   return short ? match?.short_name : match?.long_name;
 };
 
+const fallbackContextForBarber = async (
+  barberId: string | undefined,
+): Promise<Pick<ResolvedAddress, 'city' | 'state' | 'zipCode' | 'country'>> => {
+  if (barberId === undefined) {
+    return { city: 'Danville', state: 'KY', zipCode: '40422', country: 'US' };
+  }
+
+  const rows = await query<Row>(
+    `SELECT city,state,zip_code
+     FROM barber_profiles
+     WHERE id = $1`,
+    [barberId],
+  );
+  const profile = rows[0];
+
+  return {
+    city: typeof profile?.city === 'string' && profile.city.length > 0 ? profile.city : 'Danville',
+    state: typeof profile?.state === 'string' && profile.state.length > 0 ? profile.state : 'KY',
+    zipCode:
+      typeof profile?.zip_code === 'string' && profile.zip_code.length > 0
+        ? profile.zip_code
+        : '40422',
+    country: 'US',
+  };
+};
+
+const coordinateFallback = async (
+  latitude: number,
+  longitude: number,
+  barberId?: string,
+): Promise<ResolvedAddress> => {
+  const context = await fallbackContextForBarber(barberId);
+  return {
+    addressLine1: 'Pinned service location',
+    ...context,
+    latitude,
+    longitude,
+    formattedAddress: `Pinned service location near ${context.city}, ${context.state} ${context.zipCode}`,
+    source: 'coordinate_fallback',
+    isApproximateAddress: true,
+  };
+};
+
 export const reverseGeocodeCoordinates = async (
   latitude: number,
   longitude: number,
-  fetcher: typeof fetch = fetch,
+  optionsOrFetcher: ReverseGeocodeOptions | typeof fetch = {},
 ): Promise<ResolvedAddress> => {
+  const options =
+    typeof optionsOrFetcher === 'function' ? { fetcher: optionsOrFetcher } : optionsOrFetcher;
+  const fetcher = options.fetcher ?? fetch;
+
   if (env.NODE_ENV === 'test' && fetcher === fetch) {
-    return {
-      addressLine1: 'Pinned service location',
-      city: 'Danville',
-      state: 'KY',
-      zipCode: '40422',
-      country: 'US',
-      latitude,
-      longitude,
-      formattedAddress: 'Pinned service location, Danville, KY 40422',
-    };
+    return coordinateFallback(latitude, longitude, options.barberId);
   }
   if (env.GOOGLE_MAPS_API_KEY.length === 0) {
-    throw new AppError(503, 'Reverse geocoding is not configured.', 'MAPS_NOT_CONFIGURED');
+    logger.warn('Reverse geocoding skipped because GOOGLE_MAPS_API_KEY is empty', {
+      provider: 'google',
+      status: 'MISSING_KEY',
+    });
+    return coordinateFallback(latitude, longitude, options.barberId);
   }
 
   const parameters = new URLSearchParams({
@@ -85,19 +135,25 @@ export const reverseGeocodeCoordinates = async (
       `https://maps.googleapis.com/maps/api/geocode/json?${parameters.toString()}`,
     );
   } catch {
-    throw new AppError(503, 'Location lookup is temporarily unavailable.', 'MAPS_UNAVAILABLE');
+    logger.warn('Reverse geocoding request failed; using coordinate fallback', {
+      provider: 'google',
+      status: 'NETWORK_ERROR',
+    });
+    return coordinateFallback(latitude, longitude, options.barberId);
   }
 
   const body = (await response.json()) as GeocodeResponse;
-  if (body.status === 'REQUEST_DENIED') {
-    throw new AppError(
-      503,
-      'Server-side reverse geocoding is not configured for this API key.',
-      'MAPS_NOT_CONFIGURED',
-    );
-  }
-  if (!response.ok || body.status === 'OVER_DAILY_LIMIT' || body.status === 'OVER_QUERY_LIMIT') {
-    throw new AppError(503, 'Location lookup is temporarily unavailable.', 'MAPS_UNAVAILABLE');
+  if (
+    !response.ok ||
+    body.status === 'REQUEST_DENIED' ||
+    body.status === 'OVER_DAILY_LIMIT' ||
+    body.status === 'OVER_QUERY_LIMIT'
+  ) {
+    logger.warn('Reverse geocoding unavailable; using coordinate fallback', {
+      provider: 'google',
+      status: body.status ?? response.status,
+    });
+    return coordinateFallback(latitude, longitude, options.barberId);
   }
   const results = body.results ?? [];
   const result =
@@ -137,11 +193,11 @@ export const reverseGeocodeCoordinates = async (
     zipCode === undefined ||
     country === undefined
   ) {
-    throw new AppError(
-      422,
-      'Move the pin closer to a building or street entrance and try again.',
-      'ADDRESS_NOT_FOUND',
-    );
+    logger.warn('Reverse geocoding did not return a complete address; using coordinate fallback', {
+      provider: 'google',
+      status: body.status ?? 'INCOMPLETE_ADDRESS',
+    });
+    return coordinateFallback(latitude, longitude, options.barberId);
   }
 
   return {
@@ -153,6 +209,8 @@ export const reverseGeocodeCoordinates = async (
     latitude,
     longitude,
     formattedAddress: result.formatted_address ?? `${addressLine1}, ${city}, ${state} ${zipCode}`,
+    source: 'google',
+    isApproximateAddress: false,
   };
 };
 
@@ -171,7 +229,11 @@ export const geocodeAddress = async (
       country: input.country,
       latitude: input.latitude,
       longitude: input.longitude,
-      formattedAddress,
+      formattedAddress: input.formattedAddress ?? formattedAddress,
+      ...(input.source === undefined ? {} : { source: input.source }),
+      ...(input.isApproximateAddress === undefined
+        ? {}
+        : { isApproximateAddress: input.isApproximateAddress }),
     };
   }
   if (env.GOOGLE_MAPS_API_KEY.length === 0 || env.NODE_ENV === 'test') {

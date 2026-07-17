@@ -46,6 +46,7 @@ export type TravelEstimateRequest = z.infer<typeof TravelEstimateSchema>;
 export const ReverseGeocodeSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
+  barberId: z.string().uuid().optional(),
 });
 export type ReverseGeocodeRequest = z.infer<typeof ReverseGeocodeSchema>;
 
@@ -59,6 +60,9 @@ const AddressFieldsSchema = z.object({
   country: z.string().trim().length(2).default('US'),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  formattedAddress: z.string().trim().max(500).optional(),
+  source: z.enum(['google', 'coordinate_fallback']).optional(),
+  isApproximateAddress: z.boolean().optional(),
 });
 
 const coordinatesArePaired = (value: {

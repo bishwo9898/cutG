@@ -26,7 +26,7 @@ export default function LoginScreen(): React.ReactElement {
   const setAuth = useAuthStore((state) => state.setAuth);
   const { control, formState, handleSubmit, setError } = useForm<LoginForm>({
     defaultValues: {
-      email: params.role === 'BARBER' ? 'barber1@example.com' : 'client1@example.com',
+      email: params.role === 'BARBER' ? 'barber.test@example.com' : 'client.test@example.com',
       password: 'password123',
     },
     resolver: zodResolver(LoginFormSchema),

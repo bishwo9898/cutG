@@ -4,6 +4,8 @@ import type { CreateHairDesignRequest } from '@barber-saas/shared-types';
 import { query, withTransaction } from '../../db/queries/barber.queries';
 import { AppError } from '../../middleware/errorHandler';
 
+import { listGeneratedHairDesigns } from './hairStudioService';
+
 type Row = Record<string, unknown>;
 const iso = (value: unknown): string =>
   value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
@@ -35,19 +37,13 @@ export const createHairDesign = async (clientId: string, input: CreateHairDesign
   return mapDesign(rows[0] as Row);
 };
 
-export const listHairDesigns = async (clientId: string) => {
-  const rows = await query<Row>(
-    `SELECT * FROM client_hair_designs
-     WHERE client_id=$1 AND is_saved=true ORDER BY created_at DESC`,
-    [clientId],
-  );
-  return { designs: rows.map(mapDesign) };
-};
+export const listHairDesigns = listGeneratedHairDesigns;
 
 export const attachHairDesign = async (clientId: string, designId: string, appointmentId: string) =>
   withTransaction(async (client) => {
     const designs = await query<Row>(
-      'SELECT * FROM client_hair_designs WHERE id=$1 AND client_id=$2 FOR UPDATE',
+      `SELECT * FROM client_hair_designs
+       WHERE id=$1 AND client_id=$2 AND deleted_at IS NULL FOR UPDATE`,
       [designId, clientId],
       client,
     );

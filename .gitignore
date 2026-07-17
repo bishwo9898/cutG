@@ -5,6 +5,7 @@ coverage/
 .turbo/
 .next/
 build/
+apps/mobile/.expo/
 
 .env
 .env.*

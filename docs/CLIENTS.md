@@ -103,12 +103,14 @@ Mobile bookings add one pin-confirmation step before slot selection:
 - The client drags or taps the destination pin to select the exact driveway, entrance, or arrival point.
 - Saved addresses are optional recenter shortcuts and are never selected automatically.
 - If location permission is denied, the map starts near the barber's approximate service area and remains fully usable.
-- `POST /clients/me/locations/reverse-geocode` resolves the selected coordinates through the server key. The exact coordinates remain authoritative for navigation.
+- `POST /clients/me/locations/reverse-geocode` resolves the selected coordinates through the server key when available. If Google is missing, restricted, quota-limited, or unavailable, the API returns a coordinate-backed pinned-location fallback. The exact coordinates remain authoritative for navigation.
+- Appointment snapshots preserve the displayed address, reverse-geocode source (`google` or `coordinate_fallback`), and approximate-address flag. Google success displays the street-level formatted address; fallback displays pinned-location context near the barber's city/state/zip without pretending it is an exact street address.
 - The web flow estimates distance, travel minutes, fee, travel-ready slots, barber departure timing, and projected finish time before confirmation.
 - Saved addresses can also be managed separately from `/client/profile/addresses`.
 - Pin changes debounce travel estimation. `OUTSIDE_SERVICE_AREA` blocks progress.
 - Google travel failures fall back to the deterministic local distance model, matching no-key local
   development behavior.
+- Mobile appointments reserve outbound and return travel buffer slots. Those slots are hidden from shop and mobile availability until the mobile appointment is cancelled or completed through the normal workflow.
 
 `paymentMethod` is `CASH` or `CARD`. Cash is always available. Card is offered only when Stripe is configured and the barber has completed Connect onboarding. Card appointments are reserved first and then paid through Stripe Elements; a failed payment remains retryable from appointment detail.
 
@@ -172,8 +174,28 @@ Client-facing pages now exist in `apps/web`:
 - `/client/design`: preset-driven Hair Design Studio with saved briefs and appointment attachment.
 
 Appointment details include service/travel/total pricing, payment method, Stripe retry/refund actions,
-both parties' notes, quick rebooking, MapLibre destination maps, and 15-second live barber tracking
-while `ON_THE_WAY`.
+both parties' notes, quick rebooking, MapLibre destination maps, and 5-second status/location polling
+while a mobile appointment is `CONFIRMED`, `ON_THE_WAY`, `ARRIVED`, or `IN_PROGRESS`.
+
+Live tracking is foreground web tracking. When the barber starts the journey from the dashboard and
+allows browser geolocation, the client map shows the destination pin, live barber marker, and route
+while the barber is `ON_THE_WAY`. After arrival or service start, the status journey keeps updating
+without a page refresh and the map remains centered on the exact destination pin. If the barber denies
+location permission, the appointment still progresses through the status journey and the UI explains
+that live location is unavailable.
 
 Legacy unprefixed routes redirect to these canonical client routes. The barber dashboard remains under
 `/barber/dashboard`.
+
+## AI Hair Studio
+
+The authenticated web studio at `/client/design` now guides clients through age confirmation,
+explicit face-processing consent, front/left/right camera stills, routine preferences, three
+controlled recommendations, and one private AI visualization. There is no file-picker fallback;
+unsupported or denied cameras receive camera-enabled-device guidance.
+
+Framing, head pose, stability, brightness, sharpness, and one-face checks run locally. Only accepted
+stills upload directly to private S3-compatible storage. The API returns `202` for asynchronous work,
+and the web app polls every three seconds until completion or failure. Raw scans expire after 24 hours
+by default. The owning client can attach a completed visualization to an appointment or delete its
+image access. See `docs/HAIR_DESIGN.md` for provider, privacy, API, and operations details.

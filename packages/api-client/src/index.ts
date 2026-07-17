@@ -142,8 +142,17 @@ export const clientApi = {
   addresses: <T>(client: ApiClient): Promise<T> => client.get<T>('/clients/me/addresses'),
   createAddress: <T>(client: ApiClient, body: unknown): Promise<T> =>
     client.post<T>('/clients/me/addresses', body),
-  reverseGeocode: <T>(client: ApiClient, latitude: number, longitude: number): Promise<T> =>
-    client.post<T>('/clients/me/locations/reverse-geocode', { latitude, longitude }),
+  reverseGeocode: <T>(
+    client: ApiClient,
+    latitude: number,
+    longitude: number,
+    barberId?: string,
+  ): Promise<T> =>
+    client.post<T>('/clients/me/locations/reverse-geocode', {
+      latitude,
+      longitude,
+      ...(barberId === undefined ? {} : { barberId }),
+    }),
   updateAddress: <T>(client: ApiClient, addressId: string, body: unknown): Promise<T> =>
     client.patch<T>(`/clients/me/addresses/${addressId}`, body),
   deleteAddress: <T>(client: ApiClient, addressId: string): Promise<T> =>
@@ -151,8 +160,33 @@ export const clientApi = {
   setDefaultAddress: <T>(client: ApiClient, addressId: string): Promise<T> =>
     client.post<T>(`/clients/me/addresses/${addressId}/set-default`),
   designs: <T>(client: ApiClient): Promise<T> => client.get<T>('/clients/me/designs'),
+  hairStudioConfig: <T>(client: ApiClient): Promise<T> =>
+    client.get<T>('/clients/me/hair-studio/config'),
+  createHairScan: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/clients/me/hair-scans', body),
+  hairScan: <T>(client: ApiClient, scanId: string): Promise<T> =>
+    client.get<T>(`/clients/me/hair-scans/${scanId}`),
+  presignHairCapture: <T>(client: ApiClient, scanId: string, body: unknown): Promise<T> =>
+    client.post<T>(`/clients/me/hair-scans/${scanId}/captures/presign`, body),
+  completeHairCapture: <T>(
+    client: ApiClient,
+    scanId: string,
+    captureId: string,
+    body: unknown,
+  ): Promise<T> =>
+    client.post<T>(`/clients/me/hair-scans/${scanId}/captures/${captureId}/complete`, body),
+  completeHairScan: <T>(client: ApiClient, scanId: string, body: unknown): Promise<T> =>
+    client.post<T>(`/clients/me/hair-scans/${scanId}/complete`, body),
   createDesign: <T>(client: ApiClient, body: unknown): Promise<T> =>
     client.post<T>('/clients/me/designs', body),
+  generateDesign: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/clients/me/designs/generate', body),
+  design: <T>(client: ApiClient, designId: string): Promise<T> =>
+    client.get<T>(`/clients/me/designs/${designId}`),
+  retryDesign: <T>(client: ApiClient, designId: string, body: unknown): Promise<T> =>
+    client.post<T>(`/clients/me/designs/${designId}/retry`, body),
+  deleteDesign: <T>(client: ApiClient, designId: string): Promise<T> =>
+    client.delete<T>(`/clients/me/designs/${designId}`),
   attachDesign: <T>(client: ApiClient, designId: string, appointmentId: string): Promise<T> =>
     client.post<T>(`/clients/me/designs/${designId}/attach`, { appointmentId }),
 };

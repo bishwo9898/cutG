@@ -28,10 +28,10 @@ export const recordBarberLocation = async (
     if (appointment === undefined) {
       throw new AppError(404, 'Appointment not found.', 'APPOINTMENT_NOT_FOUND');
     }
-    if (!['ON_THE_WAY', 'ARRIVED'].includes(String(appointment.status))) {
+    if (!['ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(String(appointment.status))) {
       throw new AppError(
         400,
-        'Location tracking is only active while the barber is traveling.',
+        'Location tracking is only active during mobile travel or service.',
         'TRACKING_NOT_ACTIVE',
       );
     }
@@ -81,10 +81,10 @@ export const getLatestBarberLocation = async (clientId: string, appointmentId: s
   );
   const row = rows[0];
   if (row === undefined) throw new AppError(404, 'Appointment not found.', 'APPOINTMENT_NOT_FOUND');
-  if (row.status === 'ARRIVED') {
+  if (row.status === 'ARRIVED' || row.status === 'IN_PROGRESS') {
     return {
       isTracking: false,
-      reason: 'Barber has arrived',
+      reason: row.status === 'ARRIVED' ? 'Barber has arrived' : 'Service is in progress',
       arrivedAt: row.barber_arrived_at === null ? null : iso(row.barber_arrived_at),
     };
   }

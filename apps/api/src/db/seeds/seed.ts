@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto';
 
-import { faker } from '@faker-js/faker';
 import type { Knex } from 'knex';
 
 type BarberSeed = {
@@ -48,6 +47,9 @@ type SlotSeed = {
   endTime: string;
   durationMinutes: number;
   status: 'AVAILABLE' | 'BOOKED' | 'BLOCKED';
+  isTravelBuffer?: boolean;
+  travelBufferFor?: string | null;
+  travelBufferKind?: 'OUTBOUND' | 'RETURN' | null;
 };
 
 type AppointmentSeed = {
@@ -77,6 +79,9 @@ type AppointmentSeed = {
   serviceAddressCity: string | null;
   serviceAddressState: string | null;
   serviceAddressZip: string | null;
+  serviceAddressFormatted: string | null;
+  serviceAddressSource: 'google' | 'coordinate_fallback' | null;
+  serviceAddressIsApproximate: boolean | null;
   serviceLatitude: number | null;
   serviceLongitude: number | null;
   travelFeeCents: number;
@@ -85,11 +90,18 @@ type AppointmentSeed = {
 };
 
 const PASSWORD_HASH = '$2b$12$1CmZfZG/zvDqal.R7w/rOOhKrDV0BSfA7LOtUdMy29tn1RvQytqRW';
-const scheduleTemplates = [
-  { days: [1, 2, 3, 4, 5], start: 9 * 60, end: 17 * 60, duration: 30 },
-  { days: [2, 3, 4, 5, 6], start: 10 * 60, end: 18 * 60, duration: 30 },
-  { days: [3, 4, 5, 6, 7], start: 11 * 60, end: 19 * 60, duration: 45 },
+const TEST_BARBER_EMAIL = 'barber.test@example.com';
+const TEST_CLIENT_EMAIL = 'client.test@example.com';
+const LEGACY_SEED_EMAILS = [
+  'barber1@example.com',
+  'barber2@example.com',
+  'barber3@example.com',
+  'client1@example.com',
+  'client2@example.com',
 ];
+const SEED_EMAILS = [TEST_BARBER_EMAIL, TEST_CLIENT_EMAIL, ...LEGACY_SEED_EMAILS];
+
+const scheduleTemplates = [{ days: [1, 2, 3, 4, 5], start: 9 * 60, end: 17 * 60, duration: 30 }];
 
 const isoDate = (date: Date): string => date.toISOString().slice(0, 10);
 
@@ -120,10 +132,10 @@ const barberSeeds: BarberSeed[] = [
   {
     userId: randomUUID(),
     profileId: randomUUID(),
-    businessName: 'Main Street Cuts',
-    firstName: 'Marcus',
-    lastName: 'Reed',
-    email: 'barber1@example.com',
+    businessName: 'Barber Test Studio',
+    firstName: 'Barber',
+    lastName: 'Test',
+    email: TEST_BARBER_EMAIL,
     phone: '+15550001001',
     city: 'Danville',
     state: 'KY',
@@ -132,13 +144,13 @@ const barberSeeds: BarberSeed[] = [
     latitude: 37.6467,
     longitude: -84.7729,
     tier: 'PREMIUM',
-    averageRating: 5,
-    totalReviews: 47,
-    totalClients: 120,
+    averageRating: 0,
+    totalReviews: 0,
+    totalClients: 0,
     services: [
       {
         id: randomUUID(),
-        name: 'Classic Cut',
+        name: 'Test Classic Cut',
         description: 'Clean scissor and clipper cut with neckline finish.',
         price: 15,
         durationMinutes: 30,
@@ -146,7 +158,7 @@ const barberSeeds: BarberSeed[] = [
       },
       {
         id: randomUUID(),
-        name: 'Fade',
+        name: 'Test Fade',
         description: 'Precision fade with blend, lineup, and styling.',
         price: 18,
         durationMinutes: 40,
@@ -162,7 +174,7 @@ const barberSeeds: BarberSeed[] = [
       },
       {
         id: randomUUID(),
-        name: 'Full Service',
+        name: 'Test Full Service',
         description: 'Haircut, beard trim, shave, and finish.',
         price: 25,
         durationMinutes: 60,
@@ -171,118 +183,18 @@ const barberSeeds: BarberSeed[] = [
     ],
     slotCount: 20,
   },
-  {
-    userId: randomUUID(),
-    profileId: randomUUID(),
-    businessName: 'Walnut Street Grooming',
-    firstName: 'Dante',
-    lastName: 'Brooks',
-    email: 'barber2@example.com',
-    phone: '+15550001002',
-    city: 'Danville',
-    state: 'KY',
-    zipCode: '40422',
-    address: '302 W Walnut St, Danville, KY',
-    latitude: 37.6459,
-    longitude: -84.7771,
-    tier: 'BASIC',
-    averageRating: 4.8,
-    totalReviews: 32,
-    totalClients: 85,
-    services: [
-      {
-        id: randomUUID(),
-        name: 'Haircut',
-        description: 'Modern haircut with clean finish.',
-        price: 16,
-        durationMinutes: 35,
-        category: 'haircut',
-      },
-      {
-        id: randomUUID(),
-        name: 'Line-up',
-        description: 'Sharp hairline, temples, and neckline detail.',
-        price: 10,
-        durationMinutes: 15,
-        category: 'haircut',
-      },
-      {
-        id: randomUUID(),
-        name: 'Shave',
-        description: 'Straight razor shave with towel service.',
-        price: 20,
-        durationMinutes: 35,
-        category: 'shave',
-      },
-    ],
-    slotCount: 15,
-  },
-  {
-    userId: randomUUID(),
-    profileId: randomUUID(),
-    businessName: 'Classic Barber Studio',
-    firstName: 'Elijah',
-    lastName: 'Stone',
-    email: 'barber3@example.com',
-    phone: '+15550001003',
-    city: 'Lexington',
-    state: 'KY',
-    zipCode: '40507',
-    address: '251 W Short St, Lexington, KY',
-    latitude: 38.0477,
-    longitude: -84.4993,
-    tier: 'FREE',
-    averageRating: 4.5,
-    totalReviews: 18,
-    totalClients: 40,
-    services: [
-      {
-        id: randomUUID(),
-        name: 'Haircut',
-        description: 'Reliable everyday cut.',
-        price: 12,
-        durationMinutes: 30,
-        category: 'haircut',
-      },
-      {
-        id: randomUUID(),
-        name: 'Quick Trim',
-        description: 'Fast cleanup for edges and shape.',
-        price: 8,
-        durationMinutes: 15,
-        category: 'haircut',
-      },
-    ],
-    slotCount: 10,
-  },
-];
-
-const namedClients: Array<Pick<ClientSeed, 'firstName' | 'lastName'>> = [
-  { firstName: 'John', lastName: 'Client' },
-  { firstName: 'Sarah', lastName: 'Johnson' },
 ];
 
 const buildClients = (): ClientSeed[] => {
-  const generatedClients = Array.from(
-    { length: 10 },
-    (): Pick<ClientSeed, 'firstName' | 'lastName'> => ({
-      firstName: faker.person.firstName(),
-      lastName: faker.person.lastName(),
-    }),
-  );
-
-  return [...namedClients, ...generatedClients].map((client, index): ClientSeed => ({
-    id: randomUUID(),
-    firstName: client.firstName,
-    lastName: client.lastName,
-    email:
-      index === 0
-        ? 'client1@example.com'
-        : index === 1
-          ? 'client2@example.com'
-          : `${client.firstName}.${client.lastName}.${index}@clients.cutg.test`.toLowerCase(),
-    phone: `+15550002${String(index).padStart(3, '0')}`,
-  }));
+  return [
+    {
+      id: randomUUID(),
+      firstName: 'Client',
+      lastName: 'Test',
+      email: TEST_CLIENT_EMAIL,
+      phone: '+15550002001',
+    },
+  ];
 };
 
 const buildSlots = (): SlotSeed[] => {
@@ -318,123 +230,155 @@ const buildSlots = (): SlotSeed[] => {
 };
 
 const buildAppointments = (clients: ClientSeed[], slots: SlotSeed[]): AppointmentSeed[] => {
-  const statuses: AppointmentSeed['status'][] = [
-    'COMPLETED',
-    'COMPLETED',
-    'COMPLETED',
-    'COMPLETED',
-    'COMPLETED',
-    'COMPLETED',
-    'COMPLETED',
-    'COMPLETED',
-    'CONFIRMED',
-    'ON_THE_WAY',
-    'CONFIRMED',
-    'CONFIRMED',
-    'CONFIRMED',
-    'PENDING',
-    'PENDING',
-    'PENDING',
-    'PENDING',
-    'CANCELLED',
-    'CANCELLED',
-    'NO_SHOW',
-  ];
+  const barber = requireAt(barberSeeds, 0, 'test barber');
+  const client = requireAt(clients, 0, 'test client');
+  const service = requireAt(barber.services, 0, 'test service');
+  const appointmentId = randomUUID();
+  const barberSlots = slots.filter((candidate) => candidate.barberId === barber.profileId);
+  const slot = barberSlots.find((candidate) => {
+    if (candidate.slotDate <= isoDate(new Date())) return false;
+    if (candidate.startTime !== '11:00') return false;
 
-  return statuses.map((status, index): AppointmentSeed => {
-    const barber = requireAt(barberSeeds, index, 'appointment barber');
-    const client =
-      index < 5 || index === 9 || (status === 'PENDING' && barber.email === 'barber1@example.com')
-        ? requireAt(clients, 0, 'John Client')
-        : requireAt(clients, index - 4, 'appointment client');
-    const service = requireAt(barber.services, index, 'appointment service');
-    const barberSlots = slots.filter((candidate) => candidate.barberId === barber.profileId);
-    const futureSlot = barberSlots.find(
-      (candidate) => candidate.slotDate > isoDate(new Date()) && candidate.status === 'AVAILABLE',
+    const outboundBuffer = barberSlots.find(
+      (buffer) => buffer.slotDate === candidate.slotDate && buffer.endTime === candidate.startTime,
     );
-    const slot =
-      index === 9 && futureSlot !== undefined
-        ? futureSlot
-        : requireAt(barberSlots, index, 'appointment slot');
-    const scheduledAt = toDateAtTime(new Date(`${slot.slotDate}T12:00:00`), slot.startTime);
-    const isCompleted = status === 'COMPLETED';
-    const isCancelled = status === 'CANCELLED';
-    const isMobileService = barber.email === 'barber1@example.com' && (index === 0 || index === 9);
-    const paymentStatus: AppointmentSeed['paymentStatus'] =
-      status === 'PENDING'
-        ? 'PENDING'
-        : isCompleted
-          ? 'SUCCEEDED'
-          : status === 'CANCELLED'
-            ? 'REFUNDED'
-            : 'PENDING';
+    const returnBuffer = barberSlots.find(
+      (buffer) => buffer.slotDate === candidate.slotDate && buffer.startTime === candidate.endTime,
+    );
 
-    slot.status = status === 'CANCELLED' ? 'AVAILABLE' : 'BOOKED';
+    return outboundBuffer !== undefined && returnBuffer !== undefined;
+  });
 
-    return {
-      id: randomUUID(),
+  if (slot === undefined) {
+    throw new Error('Unable to find a seeded mobile appointment slot with travel buffers.');
+  }
+
+  const outboundBuffer = barberSlots.find(
+    (candidate) => candidate.slotDate === slot.slotDate && candidate.endTime === slot.startTime,
+  );
+  const returnBuffer = barberSlots.find(
+    (candidate) => candidate.slotDate === slot.slotDate && candidate.startTime === slot.endTime,
+  );
+
+  if (outboundBuffer === undefined || returnBuffer === undefined) {
+    throw new Error('Unable to seed outbound and return travel buffers.');
+  }
+
+  slot.status = 'BOOKED';
+  outboundBuffer.status = 'BLOCKED';
+  outboundBuffer.isTravelBuffer = true;
+  outboundBuffer.travelBufferFor = appointmentId;
+  outboundBuffer.travelBufferKind = 'OUTBOUND';
+  returnBuffer.status = 'BLOCKED';
+  returnBuffer.isTravelBuffer = true;
+  returnBuffer.travelBufferFor = appointmentId;
+  returnBuffer.travelBufferKind = 'RETURN';
+
+  const scheduledAt = toDateAtTime(new Date(`${slot.slotDate}T12:00:00`), slot.startTime);
+
+  return [
+    {
+      id: appointmentId,
       clientId: client.id,
       barberId: barber.profileId,
       serviceId: service.id,
       availabilitySlotId: slot.id,
       scheduledAt,
       durationMinutes: service.durationMinutes,
-      status,
-      paymentStatus,
-      locationAddress: barber.address,
-      locationLatitude: barber.latitude,
-      locationLongitude: barber.longitude,
+      status: 'CONFIRMED',
+      paymentStatus: 'PENDING',
+      locationAddress: '212 W Main St, Danville, KY 40422',
+      locationLatitude: 37.6454,
+      locationLongitude: -84.7739,
       priceQuoted: service.price,
-      pricePaid: isCompleted ? service.price : null,
-      clientNotes:
-        status === 'PENDING' ? 'Prefers a low-maintenance style if the schedule allows.' : null,
-      barberNotes: isCompleted
-        ? 'Client left satisfied; style notes recorded for next visit.'
-        : null,
-      cancellationReason: isCancelled ? 'Schedule conflict reported by client.' : null,
-      confirmedAt:
-        status === 'CONFIRMED' || status === 'ON_THE_WAY' || isCompleted
-          ? addDays(scheduledAt, -1)
-          : null,
-      completedAt: isCompleted ? addDays(scheduledAt, 0) : null,
-      cancelledAt: isCancelled ? addDays(scheduledAt, -1) : null,
-      barberDepartedAt: status === 'ON_THE_WAY' ? new Date(Date.now() - 5 * 60 * 1000) : null,
-      isMobileService,
-      serviceAddressLine1: isMobileService ? '212 W Main St' : null,
-      serviceAddressCity: isMobileService ? 'Danville' : null,
-      serviceAddressState: isMobileService ? 'KY' : null,
-      serviceAddressZip: isMobileService ? '40422' : null,
-      serviceLatitude: isMobileService ? 37.6454 : null,
-      serviceLongitude: isMobileService ? -84.7739 : null,
-      travelFeeCents: isMobileService ? 1500 : 0,
-      estimatedTravelMinutes: isMobileService ? 12 : null,
-      distanceMiles: isMobileService ? 2.8 : null,
-    };
-  });
+      pricePaid: null,
+      clientNotes: 'Seeded mobile appointment for testing Start journey.',
+      barberNotes: null,
+      cancellationReason: null,
+      confirmedAt: addDays(scheduledAt, -1),
+      completedAt: null,
+      cancelledAt: null,
+      barberDepartedAt: null,
+      isMobileService: true,
+      serviceAddressLine1: '212 W Main St',
+      serviceAddressCity: 'Danville',
+      serviceAddressState: 'KY',
+      serviceAddressZip: '40422',
+      serviceAddressFormatted: '212 W Main St, Danville, KY 40422',
+      serviceAddressSource: 'google',
+      serviceAddressIsApproximate: false,
+      serviceLatitude: 37.6454,
+      serviceLongitude: -84.7739,
+      travelFeeCents: 1500,
+      estimatedTravelMinutes: 12,
+      distanceMiles: 2.8,
+    },
+  ];
 };
 
 export async function seed(knex: Knex): Promise<void> {
-  faker.seed(20260707);
+  const seededUsers = await knex('users')
+    .select<{ id: string }[]>('id')
+    .whereIn('email', SEED_EMAILS)
+    .orWhereRaw("metadata->>'seeded' = 'true'");
+  const seededUserIds = seededUsers.map((user) => user.id);
+  const seededBarbers = await knex('barber_profiles')
+    .select<{ id: string }[]>('id')
+    .whereIn('user_id', seededUserIds)
+    .orWhereRaw("metadata->>'seeded' = 'true'");
+  const seededBarberIds = seededBarbers.map((barber) => barber.id);
+  const seededServices = await knex('services')
+    .select<{ id: string }[]>('id')
+    .whereIn('barber_id', seededBarberIds)
+    .orWhereRaw("metadata->>'seeded' = 'true'");
+  const seededServiceIds = seededServices.map((service) => service.id);
+  const seededAppointments = await knex('appointments')
+    .select<{ id: string }[]>('id')
+    .whereIn('barber_id', seededBarberIds)
+    .orWhereIn('client_id', seededUserIds)
+    .orWhereIn('service_id', seededServiceIds);
+  const seededAppointmentIds = seededAppointments.map((appointment) => appointment.id);
 
-  await knex('barber_location_pings').del();
-  await knex('client_hair_designs').del();
-  await knex('notifications').del();
-  await knex('client_addresses').del();
-  await knex('mobile_barber_config').del();
-  await knex('client_saved_barbers').del();
-  await knex('reviews').del();
-  await knex('payments').del();
-  await knex('payout_batches').del();
-  await knex('subscription_events').del();
-  await knex('subscriptions').del();
-  await knex('barber_blocked_dates').del();
-  await knex('barber_schedules').del();
-  await knex('availability_slots').update({ appointment_id: null });
-  await knex('appointments').del();
-  await knex('availability_slots').del();
-  await knex('services').del();
-  await knex('barber_profiles').del();
-  await knex('users').del();
+  await knex('appointments')
+    .whereIn('id', seededAppointmentIds)
+    .update({ style_reference_id: null });
+  await knex('barber_location_pings').whereIn('appointment_id', seededAppointmentIds).del();
+  await knex('ai_usage_events').whereIn('client_id', seededUserIds).del();
+  await knex('hair_scan_sessions').whereIn('client_id', seededUserIds).del();
+  await knex('client_hair_designs')
+    .whereIn('client_id', seededUserIds)
+    .orWhereIn('appointment_id', seededAppointmentIds)
+    .del();
+  await knex('notifications').whereIn('user_id', seededUserIds).del();
+  await knex('client_addresses').whereIn('client_id', seededUserIds).del();
+  await knex('mobile_barber_config').whereIn('barber_id', seededBarberIds).del();
+  await knex('client_saved_barbers')
+    .whereIn('client_id', seededUserIds)
+    .orWhereIn('barber_id', seededBarberIds)
+    .del();
+  await knex('reviews')
+    .whereIn('appointment_id', seededAppointmentIds)
+    .orWhereIn('client_id', seededUserIds)
+    .orWhereIn('barber_id', seededBarberIds)
+    .del();
+  await knex('payments')
+    .whereIn('appointment_id', seededAppointmentIds)
+    .orWhereIn('client_id', seededUserIds)
+    .orWhereIn('barber_id', seededBarberIds)
+    .del();
+  await knex('payout_batches').whereIn('barber_id', seededBarberIds).del();
+  await knex('subscription_events').whereIn('barber_id', seededBarberIds).del();
+  await knex('subscriptions').whereIn('barber_id', seededBarberIds).del();
+  await knex('barber_blocked_dates').whereIn('barber_id', seededBarberIds).del();
+  await knex('barber_schedules').whereIn('barber_id', seededBarberIds).del();
+  await knex('availability_slots')
+    .whereIn('barber_id', seededBarberIds)
+    .update({ appointment_id: null, travel_buffer_for: null });
+  await knex('appointments').whereIn('id', seededAppointmentIds).del();
+  await knex('availability_slots').whereIn('barber_id', seededBarberIds).del();
+  await knex('services').whereIn('id', seededServiceIds).del();
+  await knex('barber_profiles').whereIn('id', seededBarberIds).del();
+  await knex('users').whereIn('id', seededUserIds).del();
 
   const clients = buildClients();
   const slots = buildSlots();
@@ -477,8 +421,8 @@ export async function seed(knex: Knex): Promise<void> {
       id: barber.profileId,
       user_id: barber.userId,
       business_name: barber.businessName,
-      bio: faker.company.catchPhrase(),
-      years_of_experience: faker.number.int({ min: 3, max: 18 }),
+      bio: 'Seeded premium barber for testing the full cutG shop, mobile, tracking, and payment flow.',
+      years_of_experience: 8,
       average_rating: barber.averageRating,
       total_reviews: barber.totalReviews,
       total_clients: barber.totalClients,
@@ -492,10 +436,10 @@ export async function seed(knex: Knex): Promise<void> {
       profile_photo_key: `barbers/barber-${index + 1}.webp`,
       subscription_tier: barber.tier,
       subscription_valid_until: addDays(new Date(), 30),
-      stripe_account_id: null,
-      stripe_onboarding_complete: false,
-      stripe_charges_enabled: false,
-      stripe_payouts_enabled: false,
+      stripe_account_id: 'acct_seed_barber_test_local',
+      stripe_onboarding_complete: true,
+      stripe_charges_enabled: true,
+      stripe_payouts_enabled: true,
       is_verified: barber.tier !== 'FREE',
       verified_at: barber.tier !== 'FREE' ? new Date() : null,
       metadata: { seeded: true, specialties: ['fades', 'lineups', 'classic cuts'] },
@@ -505,7 +449,7 @@ export async function seed(knex: Knex): Promise<void> {
   await knex('mobile_barber_config').insert([
     {
       id: randomUUID(),
-      barber_id: requireAt(barberSeeds, 0, 'barber1').profileId,
+      barber_id: requireAt(barberSeeds, 0, 'test barber').profileId,
       is_enabled: true,
       service_radius_miles: 10,
       fee_structure: 'flat',
@@ -517,27 +461,13 @@ export async function seed(knex: Knex): Promise<void> {
       mobile_service_notes:
         'I bring all professional equipment. Please have a chair, outlet, and clear floor space.',
     },
-    {
-      id: randomUUID(),
-      barber_id: requireAt(barberSeeds, 1, 'barber2').profileId,
-      is_enabled: true,
-      service_radius_miles: 5,
-      fee_structure: 'per_mile',
-      base_fee_cents: 0,
-      per_mile_rate_cents: 200,
-      origin_latitude: requireAt(barberSeeds, 1, 'barber2').latitude,
-      origin_longitude: requireAt(barberSeeds, 1, 'barber2').longitude,
-      origin_address: requireAt(barberSeeds, 1, 'barber2').address,
-      mobile_service_notes: 'Mobile cuts available around Danville and nearby neighborhoods.',
-    },
   ]);
 
-  const client1 = requireAt(clients, 0, 'client1');
-  const client2 = requireAt(clients, 1, 'client2');
+  const testClient = requireAt(clients, 0, 'test client');
   await knex('client_addresses').insert([
     {
       id: randomUUID(),
-      client_id: client1.id,
+      client_id: testClient.id,
       label: 'Home',
       address_line1: '212 W Main St',
       city: 'Danville',
@@ -550,7 +480,7 @@ export async function seed(knex: Knex): Promise<void> {
     },
     {
       id: randomUUID(),
-      client_id: client1.id,
+      client_id: testClient.id,
       label: 'Office',
       address_line1: '304 S 4th St',
       city: 'Danville',
@@ -559,32 +489,6 @@ export async function seed(knex: Knex): Promise<void> {
       country: 'US',
       latitude: 37.6423,
       longitude: -84.7728,
-      is_default: false,
-    },
-    {
-      id: randomUUID(),
-      client_id: client2.id,
-      label: 'Home',
-      address_line1: '102 Meadow Ln',
-      city: 'Danville',
-      state: 'KY',
-      zip_code: '40422',
-      country: 'US',
-      latitude: 37.6621,
-      longitude: -84.7964,
-      is_default: true,
-    },
-    {
-      id: randomUUID(),
-      client_id: client2.id,
-      label: 'Work',
-      address_line1: '1000 E Lexington Ave',
-      city: 'Danville',
-      state: 'KY',
-      zip_code: '40422',
-      country: 'US',
-      latitude: 37.6441,
-      longitude: -84.7547,
       is_default: false,
     },
   ]);
@@ -638,6 +542,9 @@ export async function seed(knex: Knex): Promise<void> {
       end_time: slot.endTime,
       duration_minutes: slot.durationMinutes,
       status: slot.status,
+      is_travel_buffer: slot.isTravelBuffer ?? false,
+      travel_buffer_for: null,
+      travel_buffer_kind: slot.travelBufferKind ?? null,
     })),
   );
 
@@ -669,6 +576,9 @@ export async function seed(knex: Knex): Promise<void> {
       service_address_city: appointment.serviceAddressCity,
       service_address_state: appointment.serviceAddressState,
       service_address_zip: appointment.serviceAddressZip,
+      service_address_formatted: appointment.serviceAddressFormatted,
+      service_address_source: appointment.serviceAddressSource,
+      service_address_is_approximate: appointment.serviceAddressIsApproximate,
       service_latitude: appointment.serviceLatitude,
       service_longitude: appointment.serviceLongitude,
       travel_fee_cents: appointment.travelFeeCents,
@@ -689,6 +599,20 @@ export async function seed(knex: Knex): Promise<void> {
         await knex('availability_slots')
           .where({ id: slot.id })
           .update({ appointment_id: appointment.id, status: slot.status });
+      }),
+  );
+  await Promise.all(
+    slots
+      .filter((slot) => slot.isTravelBuffer === true && slot.travelBufferFor !== undefined)
+      .map(async (slot): Promise<void> => {
+        await knex('availability_slots')
+          .where({ id: slot.id })
+          .update({
+            status: slot.status,
+            is_travel_buffer: true,
+            travel_buffer_for: slot.travelBufferFor,
+            travel_buffer_kind: slot.travelBufferKind ?? null,
+          });
       }),
   );
 
@@ -724,138 +648,30 @@ export async function seed(knex: Knex): Promise<void> {
     })),
   );
 
-  const payableAppointments = [
-    ...appointments.filter((appointment) => appointment.status === 'COMPLETED'),
-    ...appointments.filter((appointment) => appointment.status === 'PENDING').slice(0, 2),
-  ];
-  await knex('appointments')
-    .whereIn(
-      'id',
-      payableAppointments.map((appointment) => appointment.id),
-    )
-    .update({ payment_method: 'CARD' });
-  const barber1CompletedPayments = payableAppointments.filter(
-    (appointment) =>
-      appointment.status === 'COMPLETED' &&
-      appointment.barberId === requireAt(barberSeeds, 0, 'barber1').profileId,
-  );
-  const barber1PayoutBatchId = randomUUID();
-
-  await knex('payout_batches').insert({
-    id: barber1PayoutBatchId,
-    barber_id: requireAt(barberSeeds, 0, 'barber1').profileId,
-    stripe_transfer_id: 'tr_seed_barber1_batch1',
-    amount_cents: barber1CompletedPayments.reduce(
-      (sum, appointment) =>
-        sum + Math.round((appointment.priceQuoted * 100 + appointment.travelFeeCents) * 0.9),
-      0,
-    ),
-    currency: 'usd',
-    status: 'paid',
-    appointment_count: 5,
-    period_start: isoDate(addDays(now, -14)),
-    period_end: isoDate(now),
-    paid_at: addDays(now, -1),
-  });
-
-  await knex('payments').insert(
-    payableAppointments.map((appointment, index) => ({
-      amount_cents: Math.round(appointment.priceQuoted * 100) + appointment.travelFeeCents,
-      platform_fee_cents: Math.round(
-        (appointment.priceQuoted * 100 + appointment.travelFeeCents) * 0.1,
-      ),
-      barber_payout_cents:
-        Math.round(appointment.priceQuoted * 100 + appointment.travelFeeCents) -
-        Math.round((appointment.priceQuoted * 100 + appointment.travelFeeCents) * 0.1),
-      id: randomUUID(),
-      appointment_id: appointment.id,
-      client_id: appointment.clientId,
-      barber_id: appointment.barberId,
-      currency: 'usd',
-      stripe_payment_intent_id: `pi_seed_${String(index).padStart(4, '0')}`,
-      stripe_charge_id:
-        appointment.paymentStatus === 'SUCCEEDED'
-          ? `ch_seed_${String(index).padStart(4, '0')}`
-          : null,
-      status: appointment.paymentStatus,
-      captured_at: appointment.paymentStatus === 'SUCCEEDED' ? appointment.completedAt : null,
-      payout_batch_id:
-        appointment.status === 'COMPLETED' &&
-        appointment.barberId === requireAt(barberSeeds, 0, 'barber1').profileId
-          ? barber1PayoutBatchId
-          : null,
-      metadata: { seeded: true },
-    })),
-  );
-
-  const completedAppointments = appointments.filter(
-    (appointment) => appointment.status === 'COMPLETED',
-  );
-  const ratings = [5, 4, 4, 4, 3, 3, 2, 5];
-
-  await knex('reviews').insert(
-    completedAppointments.map((appointment, index) => ({
-      id: randomUUID(),
-      appointment_id: appointment.id,
-      client_id: appointment.clientId,
-      barber_id: appointment.barberId,
-      rating: requireAt(ratings, index, 'review rating'),
-      title: faker.helpers.arrayElement([
-        'Great attention to detail',
-        'Exactly what I needed',
-        'Clean cut and professional',
-        'Easy booking experience',
-      ]),
-      comment: faker.lorem.sentences({ min: 1, max: 2 }),
-      is_verified_appointment: true,
-      helpful_count: faker.number.int({ min: 0, max: 12 }),
-    })),
-  );
-
-  await knex.raw(`
-    UPDATE barber_profiles bp SET
-      average_rating = COALESCE(review_summary.average_rating, 0),
-      total_reviews = COALESCE(review_summary.total_reviews, 0),
-      updated_at = CURRENT_TIMESTAMP
-    FROM (
-      SELECT
-        barber_id,
-        ROUND(AVG(rating)::numeric, 2) AS average_rating,
-        COUNT(*)::int AS total_reviews
-      FROM reviews
-      GROUP BY barber_id
-    ) review_summary
-    WHERE bp.id = review_summary.barber_id;
-  `);
+  await knex('barber_profiles')
+    .where({ id: requireAt(barberSeeds, 0, 'test barber').profileId })
+    .update({ average_rating: 0, total_reviews: 0, total_clients: 0 });
 
   await knex('client_saved_barbers').insert([
     {
       id: randomUUID(),
-      client_id: requireAt(clients, 0, 'saved barber client').id,
-      barber_id: requireAt(barberSeeds, 0, 'saved barber').profileId,
-    },
-    {
-      id: randomUUID(),
-      client_id: requireAt(clients, 1, 'saved barber client').id,
-      barber_id: requireAt(barberSeeds, 1, 'saved barber').profileId,
+      client_id: requireAt(clients, 0, 'test client saved barber').id,
+      barber_id: requireAt(barberSeeds, 0, 'test saved barber').profileId,
     },
   ]);
 
   await knex('notifications').insert(
-    appointments.slice(0, 12).map((appointment, index) => ({
+    appointments.map((appointment) => ({
       id: randomUUID(),
       user_id: appointment.clientId,
-      type: appointment.status === 'CONFIRMED' ? 'APPOINTMENT_CONFIRMED' : 'REVIEW_REQUEST',
-      title: appointment.status === 'CONFIRMED' ? 'Appointment confirmed' : 'How was your visit?',
-      message:
-        appointment.status === 'CONFIRMED'
-          ? 'Your barber confirmed the appointment.'
-          : 'Share a quick review to help other clients choose confidently.',
+      type: 'APPOINTMENT_CONFIRMED',
+      title: 'Appointment confirmed',
+      message: 'Your seeded test mobile appointment is ready for live tracking.',
       related_data: { appointmentId: appointment.id },
-      is_read: index % 3 === 0,
-      read_at: index % 3 === 0 ? new Date() : null,
+      is_read: false,
+      read_at: null,
       sent_via_email: true,
-      sent_via_sms: index % 2 === 0,
+      sent_via_sms: true,
       sent_via_push: false,
       scheduled_for: null,
       sent_at: new Date(),

@@ -13,6 +13,7 @@ import { errorMessage } from '@/lib/errors';
 type FeeStructure = 'flat' | 'per_mile' | 'free';
 type MobileConfig = {
   isEnabled: boolean;
+  originSource?: 'profile' | 'custom' | 'default';
   serviceRadiusMiles?: number;
   feeStructure?: FeeStructure;
   baseFeeCents?: number;
@@ -88,6 +89,12 @@ export default function MobileServicePage(): React.ReactElement {
   const suggestion = config.data?.suggestedFee;
   const selectedSuggestion = feeStructure === 'per_mile' ? suggestion?.perMile : suggestion?.flat;
   const feeIsValid = feeStructure === 'free' || (Number.isFinite(Number(fee)) && Number(fee) >= 0);
+  const originSourceLabel =
+    config.data?.originSource === 'custom'
+      ? 'Custom mobile origin'
+      : config.data?.originSource === 'profile'
+        ? 'Using shop profile location'
+        : 'Using default Danville area';
 
   return (
     <main className="page mobile-service-page">
@@ -122,7 +129,10 @@ export default function MobileServicePage(): React.ReactElement {
               <h2>Service area</h2>
               <p className="panel-description">Default area is 15 miles from your shop.</p>
             </div>
-            <span className="radius-badge">{radius} mi</span>
+            <div className="service-area-badges">
+              <span className="origin-source-badge">{originSourceLabel}</span>
+              <span className="radius-badge">{radius} mi</span>
+            </div>
           </div>
           <div className="panel-body service-area-body">
             <div className="origin-controls">

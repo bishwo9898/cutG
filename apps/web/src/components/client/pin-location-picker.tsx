@@ -8,7 +8,6 @@ import { useEffect, useRef, useState } from 'react';
 import { ClientMap, type MapPoint } from '@/components/client/client-map';
 import { Notice } from '@/components/notice';
 import { browserApi } from '@/lib/browser-api';
-import { errorMessage } from '@/lib/errors';
 
 export type ResolvedPinAddress = MapPoint & {
   addressLine1: string;
@@ -17,13 +16,23 @@ export type ResolvedPinAddress = MapPoint & {
   zipCode: string;
   country: string;
   formattedAddress: string;
+  source?: 'google' | 'coordinate_fallback';
+  isApproximateAddress?: boolean;
 };
 
 export function PinLocationPicker({
+  barberId,
+  fallbackAddressContext,
   fallbackCenter,
   initialPoint = null,
   onLocationChange,
 }: {
+  barberId?: string;
+  fallbackAddressContext?: {
+    city?: string | null;
+    state?: string | null;
+    zipCode?: string | null;
+  };
   fallbackCenter: MapPoint;
   initialPoint?: MapPoint | null;
   onLocationChange: (address: ResolvedPinAddress) => void;
@@ -31,18 +40,58 @@ export function PinLocationPicker({
   const requestedLocation = useRef(false);
   const [point, setPoint] = useState<MapPoint>(initialPoint ?? fallbackCenter);
   const [locationNotice, setLocationNotice] = useState<string | null>(null);
+  const [lookupNotice, setLookupNotice] = useState<string | null>(null);
+  const [selectedAddress, setSelectedAddress] = useState<ResolvedPinAddress | null>(null);
+  const fallbackAddress = (coordinates: MapPoint): ResolvedPinAddress => {
+    const city = fallbackAddressContext?.city ?? 'Danville';
+    const state = fallbackAddressContext?.state ?? 'KY';
+    const zipCode = fallbackAddressContext?.zipCode ?? '40422';
+    return {
+      addressLine1: 'Pinned service location',
+      city,
+      state,
+      zipCode,
+      country: 'US',
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+      formattedAddress: `Pinned service location near ${city}, ${state} ${zipCode}`,
+      source: 'coordinate_fallback',
+      isApproximateAddress: true,
+    };
+  };
   const reverse = useMutation({
     mutationFn: (coordinates: MapPoint) =>
       clientApi.reverseGeocode<ResolvedPinAddress>(
         browserApi,
         coordinates.latitude,
         coordinates.longitude,
+        barberId,
       ),
-    onSuccess: onLocationChange,
+    onSuccess: (address) => {
+      setLookupNotice(
+        address.isApproximateAddress === true
+          ? 'Exact pin saved. Address lookup is unavailable, but your barber will navigate to this pin.'
+          : null,
+      );
+      setSelectedAddress(address);
+      onLocationChange(address);
+    },
+    onError: (_error, coordinates) => {
+      const fallback = fallbackAddress(coordinates);
+      setLookupNotice(
+        'Exact pin saved. Address lookup is unavailable, but your barber will navigate to this pin.',
+      );
+      setSelectedAddress(fallback);
+      onLocationChange(fallback);
+    },
   });
 
   const choosePoint = (coordinates: MapPoint): void => {
+    const fallback = fallbackAddress(coordinates);
     setPoint(coordinates);
+    setLookupNotice(null);
+    setSelectedAddress(fallback);
+    onLocationChange(fallback);
     reverse.mutate(coordinates);
   };
 
@@ -50,15 +99,13 @@ export function PinLocationPicker({
     if (requestedLocation.current || initialPoint !== null) return;
     requestedLocation.current = true;
     if (!('geolocation' in navigator)) {
-      setLocationNotice('Location is unavailable. Move the map and place the pin manually.');
+      setLocationNotice('Move the pin to your exact arrival point.');
       return;
     }
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => choosePoint({ latitude: coords.latitude, longitude: coords.longitude }),
       () => {
-        setLocationNotice(
-          'Location access was not available. The map is centered near the barber so you can place the pin manually.',
-        );
+        setLocationNotice('The map is centered near the barber. Move the pin to your exact spot.');
       },
       { enableHighAccuracy: true, timeout: 15_000, maximumAge: 30_000 },
     );
@@ -92,13 +139,13 @@ export function PinLocationPicker({
             {reverse.isPending ? 'Finding the closest address...' : 'Exact destination'}
           </strong>
           <span>
-            {reverse.data?.formattedAddress ??
+            {selectedAddress?.formattedAddress ??
               'Move the pin to the driveway, entrance, or safest arrival point.'}
           </span>
         </div>
       </div>
       {locationNotice !== null && <Notice tone="warning">{locationNotice}</Notice>}
-      {reverse.isError && <Notice>{errorMessage(reverse.error)}</Notice>}
+      {lookupNotice !== null && <Notice tone="success">{lookupNotice}</Notice>}
     </div>
   );
 }

@@ -36,4 +36,18 @@ Zod schemas in `packages/shared-types` are the source of runtime validation and 
 - Add read replicas when marketplace discovery traffic grows.
 - Partition `appointments` by scheduled date if historical volume becomes large.
 - Move notification delivery workers into a separate app when async volume grows.
-- Add Redis-backed queues and rate limiting before real-time and payment-heavy phases.
+- Scale `apps/ai-worker` horizontally with provider-aware concurrency when AI demand grows.
+
+## AI Hair Studio
+
+Phase 10 adds a separate TypeScript worker without coupling provider latency to Express request
+latency. Express authenticates clients, owns scan/generation state, creates presigned storage URLs,
+and enqueues BullMQ jobs. Redis persists queue state. `apps/ai-worker` owns private capture download,
+provider invocation, private output persistence, usage accounting, cleanup, and terminal status.
+
+The public contract depends on a provider interface, not Gemini-specific response shapes. Local
+development uses a deterministic mock; production can use Gemini; a future Python GPU service can
+implement the same interface without changing client routes or database state transitions.
+
+Raw images never pass through Express JSON. Browser uploads go directly to private S3-compatible
+storage. Signed read URLs are generated only after client or assigned-barber ownership checks.

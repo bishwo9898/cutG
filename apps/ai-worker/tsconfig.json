@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@barber-saas/shared-types": ["packages/shared-types/dist"]
+    },
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}

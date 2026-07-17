@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronLeft, ChevronRight, Play, UserX, X } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Notice } from '@/components/notice';
 import { EmptyState, ErrorState, LoadingState } from '@/components/query-states';
@@ -13,6 +13,13 @@ import { errorMessage } from '@/lib/errors';
 type Response = {
   appointments: Appointment[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
+};
+type LocationPingBody = {
+  latitude: number;
+  longitude: number;
+  accuracyMeters?: number;
+  headingDegrees?: number;
+  speedMs?: number;
 };
 
 const transitions: Record<string, Array<{ status: string; label: string; icon: typeof Check }>> = {
@@ -37,11 +44,38 @@ const badgeTone = (status: string): string => {
   return '';
 };
 
+const trackingActiveStatuses = ['ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'];
+const trackingStopStatuses = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
+
+const distanceMeters = (
+  left: { latitude: number; longitude: number },
+  right: { latitude: number; longitude: number },
+): number => {
+  const radius = 6_371_000;
+  const leftLat = (left.latitude * Math.PI) / 180;
+  const rightLat = (right.latitude * Math.PI) / 180;
+  const deltaLat = ((right.latitude - left.latitude) * Math.PI) / 180;
+  const deltaLon = ((right.longitude - left.longitude) * Math.PI) / 180;
+  const value =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(leftLat) * Math.cos(rightLat) * Math.sin(deltaLon / 2) ** 2;
+  return radius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+};
+
 export default function AppointmentsPage(): React.ReactElement {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
   const [date, setDate] = useState('');
   const [page, setPage] = useState(1);
+  const [startingTrackingId, setStartingTrackingId] = useState<string | null>(null);
+  const [trackingState, setTrackingState] = useState<{
+    appointmentId: string;
+    lastPingAt: string | null;
+    warning: string | null;
+  } | null>(null);
+  const watchId = useRef<number | null>(null);
+  const activeTrackingId = useRef<string | null>(null);
+  const lastPing = useRef<{ at: number; latitude: number; longitude: number } | null>(null);
   const params = new URLSearchParams({ page: String(page), limit: '20' });
   if (status !== '') params.set('status', status);
   if (date !== '') params.set('date', date);
@@ -55,6 +89,153 @@ export default function AppointmentsPage(): React.ReactElement {
       browserApi.patch(`/barbers/me/appointments/${id}/status`, { status: nextStatus }),
     onSuccess: async () => queryClient.invalidateQueries({ queryKey: ['appointments'] }),
   });
+
+  const stopTracking = useCallback((appointmentId?: string): void => {
+    if (
+      appointmentId !== undefined &&
+      activeTrackingId.current !== null &&
+      activeTrackingId.current !== appointmentId
+    ) {
+      return;
+    }
+    if (watchId.current !== null) {
+      window.navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+    }
+    activeTrackingId.current = null;
+    lastPing.current = null;
+    setTrackingState(null);
+  }, []);
+
+  const sendLocationPing = useCallback(
+    async (appointmentId: string, coordinates: GeolocationCoordinates): Promise<void> => {
+      const body: LocationPingBody = {
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+        accuracyMeters: coordinates.accuracy,
+        ...(coordinates.heading === null ? {} : { headingDegrees: coordinates.heading }),
+        ...(coordinates.speed === null ? {} : { speedMs: coordinates.speed }),
+      };
+      await browserApi.post(`/barbers/me/appointments/${appointmentId}/location`, body);
+      const pingAt = new Date().toISOString();
+      lastPing.current = {
+        at: Date.now(),
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+      };
+      setTrackingState({ appointmentId, lastPingAt: pingAt, warning: null });
+    },
+    [],
+  );
+
+  const startTracking = useCallback(
+    (appointment: Appointment, coordinates: GeolocationCoordinates): void => {
+      if (!('geolocation' in window.navigator)) {
+        setTrackingState({
+          appointmentId: appointment.id,
+          lastPingAt: null,
+          warning: 'Live location unavailable. Your browser does not support location sharing.',
+        });
+        return;
+      }
+      stopTracking();
+      activeTrackingId.current = appointment.id;
+      void sendLocationPing(appointment.id, coordinates).catch(() => {
+        setTrackingState({
+          appointmentId: appointment.id,
+          lastPingAt: null,
+          warning: 'Live location could not be sent. Check browser location permission.',
+        });
+      });
+      watchId.current = window.navigator.geolocation.watchPosition(
+        (position) => {
+          const previous = lastPing.current;
+          const next = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          const shouldSend =
+            previous === null ||
+            Date.now() - previous.at >= 5_000 ||
+            distanceMeters(previous, next) >= 20;
+          if (!shouldSend) return;
+          void sendLocationPing(appointment.id, position.coords).catch(() => {
+            setTrackingState((current) =>
+              current?.appointmentId === appointment.id
+                ? {
+                    ...current,
+                    warning: 'Live location could not be sent. Retrying with the next update.',
+                  }
+                : current,
+            );
+          });
+        },
+        () => {
+          setTrackingState((current) =>
+            current?.appointmentId === appointment.id
+              ? {
+                  ...current,
+                  warning: 'Live location unavailable. Check browser location permission.',
+                }
+              : current,
+          );
+        },
+        { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 },
+      );
+    },
+    [sendLocationPing, stopTracking],
+  );
+
+  useEffect((): (() => void) => {
+    return () => stopTracking();
+  }, [stopTracking]);
+
+  const handleStatusAction = (appointment: Appointment, nextStatus: string): void => {
+    if (nextStatus === 'ON_THE_WAY' && appointment.isMobileService === true) {
+      if (!('geolocation' in window.navigator)) {
+        setTrackingState({
+          appointmentId: appointment.id,
+          lastPingAt: null,
+          warning: 'Live location unavailable. Your browser does not support location sharing.',
+        });
+        updateStatus.mutate({ id: appointment.id, nextStatus });
+        return;
+      }
+      setStartingTrackingId(appointment.id);
+      window.navigator.geolocation.getCurrentPosition(
+        (position) => {
+          updateStatus.mutate(
+            { id: appointment.id, nextStatus },
+            {
+              onSettled: () => setStartingTrackingId(null),
+              onSuccess: () => startTracking(appointment, position.coords),
+            },
+          );
+        },
+        () => {
+          setTrackingState({
+            appointmentId: appointment.id,
+            lastPingAt: null,
+            warning: 'Live location unavailable. Status was updated without GPS tracking.',
+          });
+          updateStatus.mutate(
+            { id: appointment.id, nextStatus },
+            { onSettled: () => setStartingTrackingId(null) },
+          );
+        },
+        { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 },
+      );
+      return;
+    }
+    updateStatus.mutate(
+      { id: appointment.id, nextStatus },
+      {
+        onSuccess: () => {
+          if (trackingStopStatuses.includes(nextStatus)) stopTracking(appointment.id);
+        },
+      },
+    );
+  };
 
   return (
     <main className="page">
@@ -102,6 +283,20 @@ export default function AppointmentsPage(): React.ReactElement {
         </div>
       </div>
       {updateStatus.isError && <Notice>{errorMessage(updateStatus.error)}</Notice>}
+      {trackingState?.warning !== null && trackingState?.warning !== undefined && (
+        <Notice tone="warning">{trackingState.warning}</Notice>
+      )}
+      {trackingState?.warning === null && trackingState.lastPingAt !== null && (
+        <Notice tone="success">
+          Live location sharing is active. Last update{' '}
+          {new Date(trackingState.lastPingAt).toLocaleTimeString([], {
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+          })}
+          .
+        </Notice>
+      )}
       <section className="panel">
         {appointments.isPending ? (
           <LoadingState />
@@ -200,21 +395,65 @@ export default function AppointmentsPage(): React.ReactElement {
                             return (
                               <button
                                 className="button button-secondary"
-                                disabled={updateStatus.isPending}
-                                key={action.status}
-                                onClick={() =>
-                                  updateStatus.mutate({
-                                    id: appointment.id,
-                                    nextStatus: action.status,
-                                  })
+                                disabled={
+                                  updateStatus.isPending || startingTrackingId === appointment.id
                                 }
+                                key={action.status}
+                                onClick={() => handleStatusAction(appointment, action.status)}
                                 type="button"
                               >
                                 <Icon size={14} />
-                                {action.label}
+                                {startingTrackingId === appointment.id &&
+                                action.status === 'ON_THE_WAY'
+                                  ? 'Starting GPS...'
+                                  : action.label}
                               </button>
                             );
                           })}
+                          {appointment.isMobileService === true &&
+                            trackingActiveStatuses.includes(appointment.status) &&
+                            activeTrackingId.current !== appointment.id && (
+                              <button
+                                className="button button-secondary"
+                                disabled={startingTrackingId === appointment.id}
+                                onClick={() => {
+                                  if (!('geolocation' in window.navigator)) {
+                                    setTrackingState({
+                                      appointmentId: appointment.id,
+                                      lastPingAt: null,
+                                      warning:
+                                        'Live location unavailable. Your browser does not support location sharing.',
+                                    });
+                                    return;
+                                  }
+                                  setStartingTrackingId(appointment.id);
+                                  window.navigator.geolocation.getCurrentPosition(
+                                    (position) => {
+                                      setStartingTrackingId(null);
+                                      startTracking(appointment, position.coords);
+                                    },
+                                    () => {
+                                      setStartingTrackingId(null);
+                                      setTrackingState({
+                                        appointmentId: appointment.id,
+                                        lastPingAt: null,
+                                        warning:
+                                          'Live location unavailable. Check browser location permission.',
+                                      });
+                                    },
+                                    {
+                                      enableHighAccuracy: true,
+                                      maximumAge: 5_000,
+                                      timeout: 15_000,
+                                    },
+                                  );
+                                }}
+                                type="button"
+                              >
+                                <Play size={14} />
+                                Share location
+                              </button>
+                            )}
                         </div>
                       </td>
                     </tr>

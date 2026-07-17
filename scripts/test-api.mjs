@@ -10,6 +10,8 @@ const env = {
   DATABASE_URL: databaseUrl,
   DATABASE_POOL_MIN: '0',
   LOG_LEVEL: 'error',
+  ENABLE_AI_FEATURES: 'true',
+  AI_PROVIDER: 'mock',
 };
 
 const run = (args) => {

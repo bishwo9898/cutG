@@ -31,6 +31,7 @@ type MobileConfigBody = {
 };
 type PublicSlotsBody = { slots: Array<{ startTime: string; availableForMobile: boolean }> };
 type TimelineBody = { timeline: unknown[]; currentStatus: string; arrivedAt: string | null };
+type BarberLocationBody = { isTracking: boolean };
 
 beforeAll(async () => {
   await resetTestDatabase();
@@ -112,11 +113,13 @@ describe('Phase 6 mobile barber API', () => {
     const reversed = await request(app)
       .post('/clients/me/locations/reverse-geocode')
       .set('Authorization', `Bearer ${clientToken}`)
-      .send({ latitude: 37.6454, longitude: -84.7739 });
+      .send({ barberId, latitude: 37.6454, longitude: -84.7739 });
     expect(reversed.status).toBe(200);
     expect(reversed.body).toMatchObject({
-      city: 'Danville',
-      state: 'KY',
+      city: 'Boston',
+      isApproximateAddress: true,
+      source: 'coordinate_fallback',
+      state: 'MA',
       latitude: 37.6454,
       longitude: -84.7739,
     });
@@ -182,6 +185,9 @@ describe('Phase 6 mobile barber API', () => {
     expect(publicSlotsBody.slots.find((slot) => slot.startTime === '10:00')).toMatchObject({
       availableForMobile: true,
     });
+    expect(publicSlotsBody.slots.find((slot) => slot.startTime === '16:30')).toMatchObject({
+      availableForMobile: false,
+    });
 
     const estimate = await request(app)
       .post('/barbers/me/mobile/estimate')
@@ -197,22 +203,45 @@ describe('Phase 6 mobile barber API', () => {
         serviceId,
         availabilitySlotId: slotId,
         isMobileService: true,
-        clientAddressId: addressId,
+        clientAddressOneTime: {
+          addressLine1: 'Pinned service location',
+          city: 'Brooklyn',
+          state: 'NY',
+          zipCode: '11201',
+          country: 'US',
+          latitude: 40.6892,
+          longitude: -73.9851,
+          formattedAddress: 'Pinned service location near Boston, MA 40422',
+          source: 'coordinate_fallback',
+          isApproximateAddress: true,
+        },
       });
     expect(booked.status).toBe(201);
     expect(booked.body).toMatchObject({
       isMobileService: true,
       paymentMethod: 'CASH',
       travelFee: 15,
-      bufferSlotsBlocked: 1,
+      bufferSlotsBlocked: 2,
+      serviceAddress: {
+        formattedAddress: 'Pinned service location near Boston, MA 40422',
+        source: 'coordinate_fallback',
+        isApproximateAddress: true,
+      },
     });
     const appointmentId = (booked.body as AppointmentBody).id;
 
-    const buffer = await pool.query<{ count: number }>(
-      'SELECT COUNT(*)::int AS count FROM availability_slots WHERE travel_buffer_for=$1 AND is_travel_buffer=true',
+    const buffer = await pool.query<{ count: number; travel_buffer_kind: string }>(
+      `SELECT COUNT(*)::int AS count, travel_buffer_kind
+       FROM availability_slots
+       WHERE travel_buffer_for=$1 AND is_travel_buffer=true
+       GROUP BY travel_buffer_kind
+       ORDER BY travel_buffer_kind`,
       [appointmentId],
     );
-    expect(buffer.rows[0]?.count).toBe(1);
+    expect(buffer.rows).toEqual([
+      { count: 1, travel_buffer_kind: 'OUTBOUND' },
+      { count: 1, travel_buffer_kind: 'RETURN' },
+    ]);
 
     await request(app)
       .patch(`/barbers/me/appointments/${appointmentId}/status`)
@@ -229,11 +258,26 @@ describe('Phase 6 mobile barber API', () => {
       .set('Authorization', `Bearer ${barberToken}`)
       .send({ status: 'ON_THE_WAY' });
     expect((departed.body as AppointmentBody).status).toBe('ON_THE_WAY');
+    await request(app)
+      .post(`/barbers/me/appointments/${appointmentId}/location`)
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({ latitude: 40.682, longitude: -73.99, accuracyMeters: 10 })
+      .expect(200);
+    const location = await request(app)
+      .get(`/clients/me/appointments/${appointmentId}/barber-location`)
+      .set('Authorization', `Bearer ${clientToken}`);
+    expect(location.status).toBe(200);
+    expect(location.body as BarberLocationBody).toMatchObject({ isTracking: true });
     const arrived = await request(app)
       .patch(`/barbers/me/appointments/${appointmentId}/status`)
       .set('Authorization', `Bearer ${barberToken}`)
       .send({ status: 'ARRIVED' });
     expect((arrived.body as AppointmentBody).status).toBe('ARRIVED');
+    await request(app)
+      .post(`/barbers/me/appointments/${appointmentId}/location`)
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({ latitude: 40.6892, longitude: -73.9851 })
+      .expect(200);
 
     const timeline = await request(app)
       .get(`/clients/me/appointments/${appointmentId}/status-updates`)
@@ -242,5 +286,26 @@ describe('Phase 6 mobile barber API', () => {
     expect(timeline.body as TimelineBody).toMatchObject({ currentStatus: 'ARRIVED' });
     expect((timeline.body as TimelineBody).timeline).toHaveLength(6);
     expect((timeline.body as TimelineBody).arrivedAt).not.toBeNull();
+
+    const inProgress = await request(app)
+      .patch(`/barbers/me/appointments/${appointmentId}/status`)
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({ status: 'IN_PROGRESS' });
+    expect((inProgress.body as AppointmentBody).status).toBe('IN_PROGRESS');
+    await request(app)
+      .post(`/barbers/me/appointments/${appointmentId}/location`)
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({ latitude: 40.68925, longitude: -73.98512 })
+      .expect(200);
+    await request(app)
+      .patch(`/barbers/me/appointments/${appointmentId}/status`)
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({ status: 'COMPLETED' })
+      .expect(200);
+    await request(app)
+      .post(`/barbers/me/appointments/${appointmentId}/location`)
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({ latitude: 40.68925, longitude: -73.98512 })
+      .expect(400);
   });
 });
