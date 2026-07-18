@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, HttpUrl, model_validator
 
 class FrameInput(BaseModel):
     capture_id: str
-    angle: Literal["FRONT", "LEFT", "RIGHT"]
+    angle: Literal["FRONT"]
     url: HttpUrl
 
 
@@ -20,14 +20,13 @@ class Preferences(BaseModel):
 
 
 class ValidateFramesRequest(BaseModel):
-    frames: list[FrameInput] = Field(min_length=3, max_length=3)
+    frames: list[FrameInput] = Field(min_length=1, max_length=1)
     preferences: Preferences | None = None
 
     @model_validator(mode="after")
-    def require_all_angles(self) -> ValidateFramesRequest:
-        angles = {frame.angle for frame in self.frames}
-        if angles != {"FRONT", "LEFT", "RIGHT"}:
-            raise ValueError("Exactly one FRONT, LEFT, and RIGHT frame is required")
+    def require_front_headshot(self) -> ValidateFramesRequest:
+        if self.frames[0].angle != "FRONT":
+            raise ValueError("Exactly one FRONT headshot is required")
         return self
 
 

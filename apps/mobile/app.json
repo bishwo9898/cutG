@@ -24,12 +24,6 @@
       "expo-image-picker",
       "expo-notifications",
       [
-        "react-native-vision-camera",
-        {
-          "cameraPermissionText": "cutG uses the camera to capture your private hairstyle scan."
-        }
-      ],
-      [
         "@stripe/stripe-react-native",
         {
           "merchantIdentifier": "merchant.com.cutg.mobile",

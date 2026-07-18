@@ -20,9 +20,7 @@ def jpeg(value: int = 128, size: tuple[int, int] = (640, 640)) -> bytes:
 
 def test_rejects_dark_capture(monkeypatch) -> None:
     monkeypatch.setattr(image_validation, "_download", lambda _url: jpeg(5))
-    monkeypatch.setattr(
-        image_validation, "_face_analysis", lambda _rgb, _angle: (1, 0.2, 1.0, 0.0, True)
-    )
+    monkeypatch.setattr(image_validation, "_face_analysis", lambda _rgb: (1, 0.2, 1.0, 0.0, True))
     result = image_validation.inspect_frame(
         FrameInput(capture_id="front", angle="FRONT", url="https://example.test/front.jpg")
     )
@@ -37,11 +35,9 @@ def test_accepts_quality_capture_and_scores_pose(monkeypatch) -> None:
         output, format="JPEG"
     )
     monkeypatch.setattr(image_validation, "_download", lambda _url: output.getvalue())
-    monkeypatch.setattr(
-        image_validation, "_face_analysis", lambda _rgb, _angle: (1, 0.22, 0.92, -0.3, True)
-    )
+    monkeypatch.setattr(image_validation, "_face_analysis", lambda _rgb: (1, 0.22, 0.92, 0.0, True))
     result = image_validation.inspect_frame(
-        FrameInput(capture_id="left", angle="LEFT", url="https://example.test/left.jpg")
+        FrameInput(capture_id="front", angle="FRONT", url="https://example.test/front.jpg")
     )
     assert result.accepted is True
     assert result.quality_score > 0.7
@@ -55,7 +51,7 @@ def test_rejects_cropped_hairline(monkeypatch) -> None:
     )
     monkeypatch.setattr(image_validation, "_download", lambda _url: output.getvalue())
     monkeypatch.setattr(
-        image_validation, "_face_analysis", lambda _rgb, _angle: (1, 0.22, 0.95, 0.0, False)
+        image_validation, "_face_analysis", lambda _rgb: (1, 0.22, 0.95, 0.0, False)
     )
     result = image_validation.inspect_frame(
         FrameInput(capture_id="front", angle="FRONT", url="https://example.test/front.jpg")
@@ -71,17 +67,15 @@ def test_rejects_wrong_head_direction(monkeypatch) -> None:
         output, format="JPEG"
     )
     monkeypatch.setattr(image_validation, "_download", lambda _url: output.getvalue())
-    monkeypatch.setattr(
-        image_validation, "_face_analysis", lambda _rgb, _angle: (1, 0.22, 0.0, 0.3, True)
-    )
+    monkeypatch.setattr(image_validation, "_face_analysis", lambda _rgb: (1, 0.22, 0.0, 0.3, True))
     result = image_validation.inspect_frame(
-        FrameInput(capture_id="left", angle="LEFT", url="https://example.test/left.jpg")
+        FrameInput(capture_id="front", angle="FRONT", url="https://example.test/front.jpg")
     )
     assert result.accepted is False
-    assert result.rejection_reason == "Turn your head farther left."
+    assert result.rejection_reason == "Look straight at the camera."
 
 
-def frame_metric(angle: str, *, accepted: bool = True) -> FrameMetrics:
+def frame_metric(angle: str = "FRONT", *, accepted: bool = True) -> FrameMetrics:
     return FrameMetrics(
         capture_id=angle.lower(),
         angle=angle,
@@ -96,30 +90,12 @@ def frame_metric(angle: str, *, accepted: bool = True) -> FrameMetrics:
         pose_score=1 if accepted else 0.1,
         quality_score=0.9 if accepted else 0.4,
         accepted=accepted,
-        rejection_reason=None if accepted else f"Turn your head farther {angle.lower()}.",
+        rejection_reason=None if accepted else "Look straight at the camera.",
     )
 
 
-def test_internal_auth_and_front_frame_selection(monkeypatch) -> None:
-    metrics = [
-        FrameMetrics(
-            capture_id="front",
-            angle="FRONT",
-            width=640,
-            height=640,
-            brightness=128,
-            sharpness=80,
-            face_count=1,
-            face_size=0.22,
-            yaw=0,
-            hairline_visible=True,
-            pose_score=1,
-            quality_score=0.9,
-            accepted=True,
-        ),
-        frame_metric("LEFT"),
-        frame_metric("RIGHT"),
-    ]
+def test_internal_auth_and_headshot_selection(monkeypatch) -> None:
+    metrics = [frame_metric()]
     monkeypatch.setattr(
         "app.main.inspect_frame",
         lambda frame: next(metric for metric in metrics if metric.angle == frame.angle),
@@ -128,11 +104,10 @@ def test_internal_auth_and_front_frame_selection(monkeypatch) -> None:
     payload = {
         "frames": [
             {
-                "capture_id": angle.lower(),
-                "angle": angle,
-                "url": f"https://example.test/{angle.lower()}.jpg",
+                "capture_id": "front",
+                "angle": "FRONT",
+                "url": "https://example.test/front.jpg",
             }
-            for angle in ("FRONT", "LEFT", "RIGHT")
         ]
     }
     assert client.post("/ai/validate-frames", json=payload).status_code == 401
@@ -145,10 +120,9 @@ def test_internal_auth_and_front_frame_selection(monkeypatch) -> None:
     assert response.json()["selected_capture_id"] == "front"
 
 
-def test_rejects_the_set_when_any_submitted_angle_fails(monkeypatch) -> None:
+def test_rejects_a_low_quality_headshot(monkeypatch) -> None:
     def inspect(frame: FrameInput) -> FrameMetrics:
-        accepted = frame.angle != "LEFT"
-        metric = frame_metric(frame.angle, accepted=accepted)
+        metric = frame_metric(frame.angle, accepted=False)
         return metric.model_copy(update={"capture_id": frame.capture_id})
 
     monkeypatch.setattr("app.main.inspect_frame", inspect)
@@ -162,47 +136,27 @@ def test_rejects_the_set_when_any_submitted_angle_fails(monkeypatch) -> None:
                     "capture_id": "front",
                     "angle": "FRONT",
                     "url": "https://example.test/front.jpg",
-                },
-                {
-                    "capture_id": "left",
-                    "angle": "LEFT",
-                    "url": "https://example.test/left.jpg",
-                },
-                {
-                    "capture_id": "right",
-                    "angle": "RIGHT",
-                    "url": "https://example.test/right.jpg",
-                },
+                }
             ]
         },
     )
     assert response.status_code == 422
     detail = response.json()["detail"]
-    assert detail["message"].startswith("Retake the left photo")
+    assert detail["message"].startswith("Retake the front photo")
     assert detail["rejected_frames"] == [
         {
-            "capture_id": "left",
-            "angle": "LEFT",
-            "reason": "Turn your head farther left.",
+            "capture_id": "front",
+            "angle": "FRONT",
+            "reason": "Look straight at the camera.",
         }
     ]
 
 
-def test_requires_exactly_one_of_each_angle() -> None:
+def test_requires_exactly_one_front_headshot() -> None:
     client = TestClient(app)
     response = client.post(
         "/ai/validate-frames",
         headers={"Authorization": f"Bearer {settings.internal_secret}"},
-        json={
-            "frames": [
-                {
-                    "capture_id": str(index),
-                    "angle": "FRONT",
-                    "url": f"https://example.test/{index}.jpg",
-                }
-                for index in range(3)
-            ]
-        },
+        json={"frames": []},
     )
     assert response.status_code == 422
-    assert "Exactly one FRONT, LEFT, and RIGHT" in response.text

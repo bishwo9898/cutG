@@ -1,10 +1,4 @@
-import type { HairGenerationStatus, HairScanAngle } from '@barber-saas/shared-types';
-
-export const isHairScanYawReady = (angle: HairScanAngle, yaw: number): boolean => {
-  if (angle === 'FRONT') return Math.abs(yaw) <= 12;
-  if (angle === 'LEFT') return yaw >= -48 && yaw <= -12;
-  return yaw >= 12 && yaw <= 48;
-};
+import type { HairGenerationStatus } from '@barber-saas/shared-types';
 
 export const isHairGenerationActive = (status: HairGenerationStatus | null | undefined): boolean =>
   status === 'QUEUED' || status === 'PROCESSING';

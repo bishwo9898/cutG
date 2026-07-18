@@ -55,7 +55,7 @@ def validate_frames(
                 ],
             },
         )
-    selected = next(metric for metric in metrics if metric.angle == "FRONT")
+    selected = metrics[0]
     return ValidateFramesResponse(
         selected_capture_id=selected.capture_id,
         metrics=metrics,

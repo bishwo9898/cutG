@@ -27,7 +27,7 @@ import { enqueueAiGeneration, validateAiFrames } from './aiHairServiceClient';
 import { buildHairEditPrompt, HAIR_PROMPT_VERSION } from './hairPrompt';
 
 type Row = Record<string, unknown>;
-const REQUIRED_ANGLES: HairScanAngle[] = ['FRONT', 'LEFT', 'RIGHT'];
+const REQUIRED_ANGLES: HairScanAngle[] = ['FRONT'];
 const iso = (value: unknown): string =>
   value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
 
@@ -142,9 +142,9 @@ const assertGenerationAllowance = async (
     throw new AppError(409, 'Finish the current preview before starting another.', 'AI_JOB_ACTIVE');
   }
   const daily = await query<Row>(
-    `SELECT COUNT(*)::int AS count FROM hair_design_generations g
-     JOIN client_hair_designs d ON d.id=g.design_id
-     WHERE d.client_id=$1 AND g.created_at >= CURRENT_TIMESTAMP - interval '24 hours'`,
+    `SELECT COUNT(*)::int AS count FROM ai_usage_events
+     WHERE client_id=$1 AND event_type='IMAGE_GENERATED'
+       AND created_at >= CURRENT_TIMESTAMP - interval '24 hours'`,
     [clientId],
     executor,
   );
@@ -302,13 +302,13 @@ export const validateHairScan = async (
   if (missingAngles.length > 0) {
     throw new AppError(
       422,
-      `Capture the missing ${missingAngles.map((angle) => angle.toLowerCase()).join(', ')} angle${missingAngles.length === 1 ? '' : 's'}.`,
+      'Upload a front-facing headshot before continuing.',
       'HAIR_SCAN_INCOMPLETE',
       {
         rejectedFrames: missingAngles.map((angle) => ({
           captureId: '',
           angle,
-          reason: 'This required angle has not been captured.',
+          reason: 'A front-facing headshot has not been uploaded.',
         })),
       },
     );

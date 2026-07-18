@@ -1,6 +1,6 @@
 'use client';
 
-import { ApiError, clientApi } from '@barber-saas/api-client';
+import { clientApi } from '@barber-saas/api-client';
 import { HAIR_STYLE_CATALOG } from '@barber-saas/shared-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -17,14 +17,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
-import { HairScanCapture, type CapturedHairImage } from '@/components/client/hair-scan-capture';
+import { HairPhotoUpload, type UploadedHairImage } from '@/components/client/hair-photo-upload';
 import { ClientHeader } from '@/components/client-header';
 import { Notice } from '@/components/notice';
 import { browserApi } from '@/lib/browser-api';
-import type { HairDesign, HairScan, HairScanAngle, HairStudioConfig } from '@/lib/contracts';
+import type { HairDesign, HairScan, HairStudioConfig } from '@/lib/contracts';
 import { errorMessage } from '@/lib/errors';
 
-type Phase = 'consent' | 'scan' | 'styles' | 'generating' | 'result';
+type Phase = 'consent' | 'photo' | 'styles' | 'generating' | 'result';
 type Category = (typeof HAIR_STYLE_CATALOG)[number]['category'];
 type DesignsResponse = { designs: HairDesign[] };
 
@@ -41,29 +41,12 @@ const sha256 = async (blob: Blob): Promise<string> => {
   return [...new Uint8Array(hash)].map((value) => value.toString(16).padStart(2, '0')).join('');
 };
 
-const firstRejectedAngle = (error: unknown): HairScanAngle | null => {
-  if (!(error instanceof ApiError)) return null;
-  const rejected = error.details?.rejectedFrames;
-  if (!Array.isArray(rejected)) return null;
-  for (const angle of ['FRONT', 'LEFT', 'RIGHT'] as HairScanAngle[]) {
-    if (
-      rejected.some((frame: unknown) => {
-        if (typeof frame !== 'object' || frame === null) return false;
-        return (frame as Record<string, unknown>).angle === angle;
-      })
-    )
-      return angle;
-  }
-  return null;
-};
-
 export default function HairDesignPage(): React.ReactElement {
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<Phase>('consent');
   const [adult, setAdult] = useState(false);
   const [consent, setConsent] = useState(false);
   const [scan, setScan] = useState<HairScan | null>(null);
-  const [failedAngle, setFailedAngle] = useState<HairScanAngle | null>(null);
   const [category, setCategory] = useState<Category>('haircut');
   const [selectedStyleId, setSelectedStyleId] = useState('textured-crop');
   const [direction, setDirection] = useState('');
@@ -119,7 +102,7 @@ export default function HairDesignPage(): React.ReactElement {
   const visibleStyles = HAIR_STYLE_CATALOG.filter((style) => style.category === category);
 
   const upload = useMutation({
-    mutationFn: async (captures: CapturedHairImage[]): Promise<HairScan> => {
+    mutationFn: async (capture: UploadedHairImage): Promise<HairScan> => {
       const activeScan =
         scan ??
         (await clientApi.createHairScan<HairScan>(browserApi, {
@@ -128,40 +111,32 @@ export default function HairDesignPage(): React.ReactElement {
           consentVersion: config.data?.consentVersion ?? '2026-07-17',
         }));
       setScan(activeScan);
-      await Promise.all(
-        captures.map(async (capture) => {
-          const presigned = await clientApi.presignHairCapture<{
-            captureId: string;
-            uploadUrl: string;
-            headers: Record<string, string>;
-          }>(browserApi, activeScan.id, {
-            angle: capture.angle,
-            mimeType: 'image/jpeg',
-            sizeBytes: capture.blob.size,
-            checksumSha256: await sha256(capture.blob),
-          });
-          const uploaded = await fetch(presigned.uploadUrl, {
-            method: 'PUT',
-            headers: presigned.headers,
-            body: capture.blob,
-          });
-          if (!uploaded.ok)
-            throw new Error(`The private ${capture.angle.toLowerCase()} upload failed.`);
-          await clientApi.completeHairCapture(browserApi, activeScan.id, presigned.captureId, {
-            width: capture.width,
-            height: capture.height,
-            ...capture.quality,
-          });
-        }),
-      );
+      const presigned = await clientApi.presignHairCapture<{
+        captureId: string;
+        uploadUrl: string;
+        headers: Record<string, string>;
+      }>(browserApi, activeScan.id, {
+        angle: 'FRONT',
+        mimeType: capture.mimeType,
+        sizeBytes: capture.blob.size,
+        checksumSha256: await sha256(capture.blob),
+      });
+      const uploaded = await fetch(presigned.uploadUrl, {
+        method: 'PUT',
+        headers: presigned.headers,
+        body: capture.blob,
+      });
+      if (!uploaded.ok) throw new Error('The private headshot upload failed.');
+      await clientApi.completeHairCapture(browserApi, activeScan.id, presigned.captureId, {
+        width: capture.width,
+        height: capture.height,
+      });
       return clientApi.validateHairScan<HairScan>(browserApi, activeScan.id, {});
     },
-    onMutate: () => setFailedAngle(null),
     onSuccess: (validated) => {
       setScan(validated);
       setPhase('styles');
     },
-    onError: (error) => setFailedAngle(firstRejectedAngle(error)),
   });
 
   const generate = useMutation({
@@ -215,7 +190,7 @@ export default function HairDesignPage(): React.ReactElement {
         <div>
           <p className="eyebrow">cutG AI Hair Studio</p>
           <h1>Preview your next look.</h1>
-          <p>Three quick guided angles, one style direction, and a private AI visualization.</p>
+          <p>One clear headshot, one style direction, and a private AI visualization.</p>
         </div>
         <div className="hair-studio-trust">
           <ShieldCheck size={18} />
@@ -227,7 +202,7 @@ export default function HairDesignPage(): React.ReactElement {
         <nav className="hair-phase-nav" aria-label="Hair studio progress">
           {['Photo', 'Style', 'Preview'].map((label, index) => {
             const activeIndex =
-              phase === 'consent' || phase === 'scan' ? 0 : phase === 'styles' ? 1 : 2;
+              phase === 'consent' || phase === 'photo' ? 0 : phase === 'styles' ? 1 : 2;
             return (
               <span className={index <= activeIndex ? 'is-active' : ''} key={label}>
                 {index + 1}. {label}
@@ -244,9 +219,9 @@ export default function HairDesignPage(): React.ReactElement {
           <section className="hair-upload-layout">
             <div className="hair-upload-copy">
               <span className="hair-step-number">01</span>
-              <h2>Capture three clear angles</h2>
+              <h2>Upload one clear headshot</h2>
               <p>
-                Face the camera, use even light, and keep your full hairline visible. Your image
+                Use a front-facing photo with even light and your full hairline visible. Your image
                 remains private and is used only to produce this preview.
               </p>
               <ul>
@@ -257,7 +232,7 @@ export default function HairDesignPage(): React.ReactElement {
                   <Check size={15} /> No hats, filters, or dark shadows
                 </li>
                 <li>
-                  <Check size={15} /> Front, left, and right captured automatically
+                  <Check size={15} /> Front-facing headshot with your hair visible
                 </li>
               </ul>
               <label className="hair-consent-check">
@@ -280,20 +255,20 @@ export default function HairDesignPage(): React.ReactElement {
             <button
               className="hair-dropzone"
               disabled={!adult || !consent}
-              onClick={() => setPhase('scan')}
+              onClick={() => setPhase('photo')}
               type="button"
             >
               <Sparkles size={34} />
-              <strong>Start guided scan</strong>
-              <span>One instruction at a time</span>
-              <small>Video and rejected frames stay on this device.</small>
+              <strong>Choose a headshot</strong>
+              <span>Upload from your device</span>
+              <small>JPEG, PNG, or WebP · up to 4 MB</small>
             </button>
           </section>
-        ) : phase === 'scan' ? (
-          <HairScanCapture
+        ) : phase === 'photo' ? (
+          <HairPhotoUpload
             busy={upload.isPending}
-            failedAngle={failedAngle}
-            onComplete={(captures) => upload.mutate(captures)}
+            maxBytes={config.data?.maxCaptureBytes ?? 4_000_000}
+            onComplete={(capture) => upload.mutate(capture)}
           />
         ) : phase === 'styles' ? (
           <section className="hair-style-picker-v2">
@@ -306,8 +281,7 @@ export default function HairDesignPage(): React.ReactElement {
                 className="button button-ghost"
                 onClick={() => {
                   setScan(null);
-                  setFailedAngle(null);
-                  setPhase('scan');
+                  setPhase('photo');
                 }}
                 type="button"
               >

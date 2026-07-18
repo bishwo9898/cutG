@@ -189,13 +189,13 @@ Legacy unprefixed routes redirect to these canonical client routes. The barber d
 
 ## AI Hair Studio
 
-The authenticated web studio at `/client/design` now guides clients through age confirmation,
-explicit face-processing consent, front/left/right camera stills, routine preferences, three
-controlled recommendations, and one private AI visualization. There is no file-picker fallback;
-unsupported or denied cameras receive camera-enabled-device guidance.
+The authenticated web studio at `/client/design` guides clients through age confirmation, explicit
+headshot-processing consent, one front-facing photo upload, style preferences, recommendations, and
+one private AI visualization.
 
-Framing, head pose, stability, brightness, sharpness, and one-face checks run locally. Only accepted
-stills upload directly to private S3-compatible storage. The API returns `202` for asynchronous work,
+The selected headshot uploads directly to private S3-compatible storage. Server-side validation
+checks framing, head pose, brightness, sharpness, hairline visibility, and face count before the API
+returns `202` for asynchronous work,
 and the web app polls every three seconds until completion or failure. Raw scans expire after 24 hours
 by default. The owning client can attach a completed visualization to an appointment or delete its
 image access. See `docs/HAIR_DESIGN.md` for provider, privacy, API, and operations details.

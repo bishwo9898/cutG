@@ -2,21 +2,21 @@
 
 Last updated: July 18, 2026
 
-The Hair Studio provides private hairstyle visualizations on web and native mobile. Both clients
-complete a guided front/left/right scan with local framing, hairline, and pose feedback before any
-upload. A rejected angle returns the user to that capture without replacing the other accepted
-views or creating another scan. Clients choose from the shared cutG style catalog or describe a
-custom style, and may attach the completed preview atomically while booking.
+The Hair Studio provides private hairstyle visualizations on web and native mobile. A client uploads
+one clear, front-facing headshot, chooses from the shared cutG style catalog or describes a custom
+style, and may attach the completed preview atomically while booking. No live camera or face-scanning
+experience is used.
 
 ## Privacy and storage
 
-- Clients consent to face-image processing and confirm they are at least 18 before a scan is created.
+- Clients consent to private headshot processing and confirm they are at least 18 before an upload
+  session is created.
 - Images are resized and uploaded directly to private S3-compatible storage through short-lived
   presigned URLs. Image bytes never travel through Express JSON or navigation parameters.
 - The FastAPI service downloads only API-issued signed capture URLs, verifies image type and size,
   and uses MediaPipe Tasks to reject unreadable, too-small, dark, overexposed, blurry, incorrectly
-  posed, distant, hairline-cropped, or non-single-face captures. Every scan must pass all three
-  angle-specific checks before generation.
+  posed, distant, hairline-cropped, or non-single-face headshots. The portrait must pass this
+  server-side quality check before generation.
 - Raw scan objects expire after `AI_SCAN_RETENTION_HOURS` (24 hours by default). Generated previews
   remain private until the client deletes them.
 - fal.ai output is copied immediately into cutG-owned private storage. Browser and mobile clients
@@ -27,10 +27,10 @@ custom style, and may attach the completed preview atomically while booking.
 ## Architecture
 
 ```text
-Web or native guided three-angle scan
+Web or native single-headshot upload
   -> presigned private S3 upload
   -> Express ownership, consent, limits, and idempotency
-  -> FastAPI MediaPipe validation and front-frame selection
+  -> FastAPI MediaPipe quality validation
   -> Redis RQ durable generation job
   -> Python worker: mock or FLUX.1 Kontext Pro via fal.ai
   -> authenticated processing/completion/failure callback
@@ -52,8 +52,9 @@ the hardened hair-only prompt, disables prompt enhancement, requires exactly one
 records provider request ID, duration, and estimated cost. An uncertain paid submission is not
 automatically retried. A real smoke test is opt-in and requires funded `FAL_KEY` credentials.
 
-One client may have one active generation and five attempts per rolling 24 hours by default. The
-optional monthly budget ceiling can pause new generation without removing saved designs.
+One client may have one active generation and five delivered previews per rolling 24 hours by
+default. Failed and cancelled jobs do not consume the quota. The optional monthly budget ceiling
+can pause new generation without removing saved designs.
 
 ## API
 
@@ -91,7 +92,7 @@ make dev
 
 `make ai-install` creates `services/ai/.venv`, installs pinned dependencies, and downloads the
 official MediaPipe BlazeFace model. `pnpm dev` starts Express, Next.js, FastAPI, and the RQ worker.
-VisionCamera requires an iOS/Android development build and does not run in Expo Go.
+Mobile uses the Expo photo library picker and does not require a camera development build.
 
 Tests use mock provider mode:
 

@@ -35,7 +35,7 @@ export default function HairDesignStudioScreen(): React.ReactElement {
         ageConfirmed: true,
         consentVersion: config.data?.consentVersion ?? '2026-07-17',
       }),
-    onSuccess: (scan) => router.push(`/(client)/design/scan?scanId=${scan.id}`),
+    onSuccess: (scan) => router.push(`/(client)/design/photo?scanId=${scan.id}`),
   });
 
   const enabled = config.data?.enabled !== false;
@@ -50,11 +50,11 @@ export default function HairDesignStudioScreen(): React.ReactElement {
         <Text style={styles.eyebrow}>PRIVATE AI PREVIEW</Text>
         <Text style={styles.hero}>Your next cut, visualized on you.</Text>
         <Text style={styles.meta}>
-          Capture three guided angles, choose a style, and receive a private visualization your
-          barber can use as a reference.
+          Upload one clear headshot, choose a style, and receive a private visualization your barber
+          can use as a reference.
         </Text>
         <View style={styles.steps}>
-          <Text style={styles.step}>01 · Scan</Text>
+          <Text style={styles.step}>01 · Photo</Text>
           <Text style={styles.step}>02 · Style</Text>
           <Text style={styles.step}>03 · Preview</Text>
         </View>
@@ -75,7 +75,7 @@ export default function HairDesignStudioScreen(): React.ReactElement {
         </View>
         <Button
           disabled={!adult || !consent || !enabled || begin.isPending}
-          title={begin.isPending ? 'Preparing scan…' : 'Start face scan'}
+          title={begin.isPending ? 'Preparing upload…' : 'Choose a headshot'}
           onPress={() => begin.mutate()}
         />
         {!enabled ? (

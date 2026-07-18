@@ -38,7 +38,7 @@ def _download(url: str) -> bytes:
     return content
 
 
-def _face_analysis(rgb: NDArray[np.uint8], angle: str) -> tuple[int, float, float, float, bool]:
+def _face_analysis(rgb: NDArray[np.uint8]) -> tuple[int, float, float, float, bool]:
     options = vision.FaceDetectorOptions(
         base_options=BaseOptions(
             model_asset_path=settings.face_model_path,
@@ -65,11 +65,7 @@ def _face_analysis(rgb: NDArray[np.uint8], angle: str) -> tuple[int, float, floa
     left_eye, right_eye, nose = keypoints[0], keypoints[1], keypoints[2]
     eye_distance = max(abs(float(left_eye.x - right_eye.x)), 0.01)
     yaw = float(nose.x - ((left_eye.x + right_eye.x) / 2)) / eye_distance
-    if angle == "FRONT":
-        pose_score = max(0.0, 1.0 - abs(yaw) / 0.65)
-    else:
-        expected_direction = -1.0 if angle == "LEFT" else 1.0
-        pose_score = max(0.0, min(1.0, yaw * expected_direction / 0.35))
+    pose_score = max(0.0, 1.0 - abs(yaw) / 0.65)
     hairline_visible = bbox.origin_y >= max(2, int(bbox.height * 0.08))
     return 1, face_size, pose_score, yaw, hairline_visible
 
@@ -88,7 +84,7 @@ def inspect_frame(frame: FrameInput) -> FrameMetrics:
     brightness = float(gray.mean())
     gradients = np.gradient(gray)
     sharpness = float(np.mean(np.square(gradients[0])) + np.mean(np.square(gradients[1])))
-    face_count, face_size, pose_score, yaw, hairline_visible = _face_analysis(rgb, frame.angle)
+    face_count, face_size, pose_score, yaw, hairline_visible = _face_analysis(rgb)
     reason: str | None = None
     if width < 200 or height < 200:
         reason = "Image resolution is too low."
@@ -107,11 +103,7 @@ def inspect_frame(frame: FrameInput) -> FrameMetrics:
     elif face_size > 0.65:
         reason = "Move slightly farther from the camera."
     elif pose_score < 0.35:
-        reason = (
-            "Look straight at the camera."
-            if frame.angle == "FRONT"
-            else f"Turn your head farther {frame.angle.lower()}."
-        )
+        reason = "Look straight at the camera."
     face_size_score = max(0.0, 1.0 - abs(face_size - 0.22) / 0.22)
     score = (
         min(1.0, sharpness / 120.0) * 0.30

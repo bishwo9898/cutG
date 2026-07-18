@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -7,8 +6,7 @@ const apiUrl = process.env.API_BASE_URL ?? 'http://localhost:4000';
 const email = process.env.HAIR_STUDIO_TEST_EMAIL ?? 'client.test@example.com';
 const password = process.env.HAIR_STUDIO_TEST_PASSWORD ?? 'password123';
 const realProvider = process.env.HAIR_STUDIO_REAL_PROVIDER === '1';
-const python = process.env.HAIR_STUDIO_PYTHON ?? resolve('services/ai/.venv/bin/python');
-const requiredAngles = ['FRONT', 'LEFT', 'RIGHT'];
+const requiredAngles = ['FRONT'];
 let stage = 'fixture-preparation';
 
 const hash = (value) => createHash('sha256').update(value).digest('hex');
@@ -24,32 +22,7 @@ const loadFrames = async () => {
   const front = await loadFrame(
     process.env.HAIR_STUDIO_TEST_FRONT ?? resolve('scripts/fixtures/hair-studio-front.jpg.b64'),
   );
-  const leftPath =
-    process.env.HAIR_STUDIO_TEST_LEFT ?? resolve('scripts/fixtures/hair-studio-left.jpg');
-  const left = await loadFrame(leftPath);
-  let right;
-  if (process.env.HAIR_STUDIO_TEST_RIGHT !== undefined) {
-    right = await loadFrame(process.env.HAIR_STUDIO_TEST_RIGHT);
-  } else {
-    const mirrored = spawnSync(
-      python,
-      [
-        '-c',
-        'from PIL import Image,ImageOps; import io,sys; image=Image.open(sys.argv[1]).convert("RGB"); output=io.BytesIO(); ImageOps.mirror(image).save(output,format="JPEG",quality=90); sys.stdout.buffer.write(output.getvalue())',
-        leftPath,
-      ],
-      { encoding: 'buffer', maxBuffer: 5_000_000 },
-    );
-    if (mirrored.status !== 0 || mirrored.stdout.length === 0) {
-      throw new Error('Could not create the deterministic right-view fixture with Pillow.');
-    }
-    right = mirrored.stdout;
-  }
-  return new Map([
-    ['FRONT', front],
-    ['LEFT', left],
-    ['RIGHT', right],
-  ]);
+  return new Map([['FRONT', front]]);
 };
 
 const request = async (path, init = {}, token) => {
@@ -150,8 +123,8 @@ const run = async () => {
       {
         method: 'POST',
         body: JSON.stringify({
-          width: angle === 'FRONT' ? 256 : 615,
-          height: angle === 'FRONT' ? 300 : 800,
+          width: 256,
+          height: 300,
           brightness: 110,
           sharpness: 80,
           faceCount: 1,

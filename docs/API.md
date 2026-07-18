@@ -133,7 +133,7 @@ All `/clients/me/*` routes require a bearer token for a `CLIENT` account. Barber
 | `GET`    | `/clients/me/hair-scans/:scanId`                              | Poll owned scan and recommendation state.     |
 | `POST`   | `/clients/me/hair-scans/:scanId/captures/presign`             | Sign one private direct capture upload.       |
 | `POST`   | `/clients/me/hair-scans/:scanId/captures/:captureId/complete` | Verify upload metadata and quality.           |
-| `POST`   | `/clients/me/hair-scans/:scanId/complete`                     | Queue three-angle recommendation analysis.    |
+| `POST`   | `/clients/me/hair-scans/:scanId/complete`                     | Validate the uploaded front headshot.         |
 | `POST`   | `/clients/me/designs/generate`                                | Queue one idempotent image generation.        |
 | `GET`    | `/clients/me/designs/:designId`                               | Poll generation state and signed output.      |
 | `POST`   | `/clients/me/designs/:designId/retry`                         | Explicitly retry a failed generation.         |

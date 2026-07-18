@@ -113,10 +113,9 @@ S3_SECRET_ACCESS_KEY=cutg-local-secret
 `make ai-install` creates `services/ai/.venv`, installs pinned dependencies, and downloads the
 official MediaPipe detector model. `pnpm dev` and `make dev` start API, web, FastAPI, and the Python
 RQ worker. Local development uses RQ's spawn worker so native image libraries run safely on macOS.
-`make setup` also creates the private MinIO bucket. Native camera scanning requires an iOS/Android
-development build; it is not supported in Expo Go. The web scan uses MediaPipe in a worker. Both
-clients collect front, left, and right views automatically and retain the same scan when one angle
-needs a retake.
+`make setup` also creates the private MinIO bucket. Web and mobile use a photo picker for one
+front-facing headshot, upload it through a private presigned URL, and rely on server-side MediaPipe
+quality validation before generation. No native camera development build is required.
 
 For production fal.ai processing:
 

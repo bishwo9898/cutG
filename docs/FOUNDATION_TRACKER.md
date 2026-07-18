@@ -358,7 +358,7 @@ Not built yet:
 
 - Production fal.ai acceptance testing with funded credentials and real client consent review
 - Self-hosted GPU hairstyle generation or Python model adapter
-- Native Expo three-angle camera flow
+- Native Expo single-headshot upload flow
 - Native push notification delivery
 - Real-time slot updates through WebSockets
 - Native background GPS, push notifications, and WebSocket delivery for mobile journeys
@@ -469,7 +469,7 @@ The AI Hair Studio migration adds:
 | Table                     | Purpose                                                       |
 | ------------------------- | ------------------------------------------------------------- |
 | `hair_scan_sessions`      | Consent, preferences, recommendation state, and expiry.       |
-| `hair_scan_captures`      | Private three-angle object metadata and local quality scores. |
+| `hair_scan_captures`      | Private headshot object metadata and quality scores.          |
 | `hair_design_generations` | Durable idempotent provider jobs, outputs, usage, and errors. |
 | `ai_usage_events`         | Provider usage and estimated cost ledger.                     |
 
@@ -547,7 +547,7 @@ Current state:
 - Next.js API proxy routes for login, logout, and backend requests
 - TanStack Query server state and React Hook Form validation
 - Shared transport-independent API client package
-- Full-screen three-angle AI Hair Studio camera flow with consent, 18+ confirmation, local pose and quality checks, preferences, recommendations, progress, comparison, retry, delete, and appointment attachment
+- AI Hair Studio headshot uploader with consent, 18+ confirmation, server-side quality checks, preferences, recommendations, progress, comparison, retry, delete, and appointment attachment
 
 Important distinction: web and native card capture are implemented. Live destination charges still
 require real Stripe test/production credentials, completed barber Connect onboarding, and webhook

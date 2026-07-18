@@ -30,6 +30,8 @@ beforeAll(async () => {
         const body = JSON.parse(String(init?.body)) as {
           frames: Array<{ capture_id: string; angle: string }>;
         };
+        expect(body.frames).toHaveLength(1);
+        expect(body.frames[0]?.angle).toBe('FRONT');
         return new Response(
           JSON.stringify({
             selected_capture_id: body.frames[0]?.capture_id,
@@ -42,7 +44,7 @@ beforeAll(async () => {
               sharpness: 80,
               face_count: 1,
               face_size: 0.22,
-              yaw: frame.angle === 'LEFT' ? -0.3 : frame.angle === 'RIGHT' ? 0.3 : 0,
+              yaw: 0,
               hairline_visible: true,
               pose_score: 0.95,
               quality_score: 0.9,
@@ -118,9 +120,7 @@ describe('AI Hair Studio API', () => {
     expect(incomplete.status).toBe(422);
     expect(incomplete.body).toMatchObject({
       error: 'HAIR_SCAN_INCOMPLETE',
-      details: {
-        rejectedFrames: [{ angle: 'FRONT' }, { angle: 'LEFT' }, { angle: 'RIGHT' }],
-      },
+      details: { rejectedFrames: [{ angle: 'FRONT' }] },
     });
 
     const hidden = await request(app)
@@ -129,17 +129,15 @@ describe('AI Hair Studio API', () => {
     expect(hidden.status).toBe(404);
   });
 
-  it('completes three verified angles and validates them exactly once', async () => {
-    for (const angle of ['FRONT', 'LEFT', 'RIGHT']) {
-      await pool.query(
-        `INSERT INTO hair_scan_captures
-          (scan_session_id,angle,object_key,mime_type,size_bytes,checksum_sha256,width,height,
-           brightness,sharpness,face_count,pose_score,upload_status,delete_after)
-         SELECT id,$1,$2,'image/jpeg',20000,$3,900,1200,110,12,1,0.95,'VERIFIED',expires_at
-         FROM hair_scan_sessions WHERE id=$4`,
-        [angle, `test/${scanId}/${angle}.jpg`, 'a'.repeat(64), scanId],
-      );
-    }
+  it('completes one verified headshot and validates it exactly once', async () => {
+    await pool.query(
+      `INSERT INTO hair_scan_captures
+        (scan_session_id,angle,object_key,mime_type,size_bytes,checksum_sha256,width,height,
+         brightness,sharpness,face_count,pose_score,upload_status,delete_after)
+       SELECT id,'FRONT',$1,'image/jpeg',20000,$2,900,1200,110,12,1,0.95,'VERIFIED',expires_at
+       FROM hair_scan_sessions WHERE id=$3`,
+      [`test/${scanId}/front.jpg`, 'a'.repeat(64), scanId],
+    );
     const completed = await request(app)
       .post(`/clients/me/hair-scans/${scanId}/complete`)
       .set('Authorization', `Bearer ${clientToken}`)
@@ -228,6 +226,59 @@ describe('AI Hair Studio API', () => {
       .get(`/clients/me/designs/${designId}`)
       .set('Authorization', `Bearer ${clientToken}`);
     expect(missing.status).toBe(404);
+  });
+
+  it('counts delivered previews, not failed or cancelled jobs, toward the daily limit', async () => {
+    const generationIds: string[] = [];
+    for (let index = 0; index < env.AI_GENERATION_DAILY_LIMIT; index += 1) {
+      const design = await pool.query<{ id: string }>(
+        `INSERT INTO client_hair_designs
+          (client_id,style_name,style_category,ai_status,deleted_at)
+         VALUES ($1,'Failed preview','haircut','failed',CURRENT_TIMESTAMP) RETURNING id`,
+        [clientId],
+      );
+      const generationId = randomUUID();
+      generationIds.push(generationId);
+      await pool.query(
+        `INSERT INTO hair_design_generations
+          (id,design_id,scan_session_id,provider,model,status,prompt_version,idempotency_key,
+           error_code,error_message,failed_at)
+         VALUES ($1,$2,$3,'mock','test-model','FAILED','test-v1',$4,
+           'AI_GENERATION_FAILED','Expected test failure',CURRENT_TIMESTAMP)`,
+        [generationId, design.rows[0]?.id, scanId, randomUUID()],
+      );
+    }
+
+    const body = {
+      scanId,
+      styleName: 'Textured Crop',
+      styleCategory: 'haircut',
+      idempotencyKey: randomUUID(),
+    };
+    const allowed = await request(app)
+      .post('/clients/me/designs/generate')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send(body);
+    expect(allowed.status).toBe(202);
+
+    await request(app)
+      .delete(`/clients/me/designs/${String((allowed.body as DesignBody).id)}`)
+      .set('Authorization', `Bearer ${clientToken}`);
+    for (const generationId of generationIds) {
+      await pool.query(
+        `INSERT INTO ai_usage_events
+          (client_id,generation_id,provider,model,event_type,output_units)
+         VALUES ($1,$2,'mock','test-model','IMAGE_GENERATED',1)`,
+        [clientId, generationId],
+      );
+    }
+
+    const blocked = await request(app)
+      .post('/clients/me/designs/generate')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ ...body, idempotencyKey: randomUUID() });
+    expect(blocked.status).toBe(429);
+    expect(blocked.body).toHaveProperty('error', 'DAILY_LIMIT_REACHED');
   });
 });
 

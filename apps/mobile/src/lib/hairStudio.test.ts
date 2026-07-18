@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  appendDesignId,
-  isHairGenerationActive,
-  isHairScanYawReady,
-  optionalDesignReference,
-} from './hairStudio';
+import { appendDesignId, isHairGenerationActive, optionalDesignReference } from './hairStudio';
 
 describe('mobile Hair Studio route and polling helpers', () => {
   it('polls only active generation states', () => {
@@ -13,15 +8,6 @@ describe('mobile Hair Studio route and polling helpers', () => {
     expect(isHairGenerationActive('PROCESSING')).toBe(true);
     expect(isHairGenerationActive('COMPLETED')).toBe(false);
     expect(isHairGenerationActive('FAILED')).toBe(false);
-  });
-
-  it('requires the correct head direction for each scan angle', () => {
-    expect(isHairScanYawReady('FRONT', 5)).toBe(true);
-    expect(isHairScanYawReady('FRONT', -18)).toBe(false);
-    expect(isHairScanYawReady('LEFT', -24)).toBe(true);
-    expect(isHairScanYawReady('LEFT', 24)).toBe(false);
-    expect(isHairScanYawReady('RIGHT', 24)).toBe(true);
-    expect(isHairScanYawReady('RIGHT', -24)).toBe(false);
   });
 
   it('preserves the design through booking routes and payloads', () => {
