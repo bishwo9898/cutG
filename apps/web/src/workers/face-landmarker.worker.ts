@@ -3,7 +3,8 @@
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
 type WorkerRequest =
-  { kind: 'init'; modelUrl: string } | { kind: 'frame'; bitmap: ImageBitmap; timestamp: number };
+  | { kind: 'init'; modelUrl: string }
+  | { kind: 'frame'; bitmap: ImageBitmap; timestamp: number };
 
 let landmarker: FaceLandmarker | null = null;
 
@@ -41,14 +42,17 @@ self.onmessage = (event: MessageEvent<WorkerRequest>): void => {
         faceCount: result.faceLandmarks.length,
         yaw: 0,
         centered: false,
+        hairlineVisible: false,
         poseScore: 0,
       });
       return;
     }
     const nose = face[1];
+    const forehead = face[10];
     const left = face[234];
     const right = face[454];
-    if (nose === undefined || left === undefined || right === undefined) return;
+    if (nose === undefined || forehead === undefined || left === undefined || right === undefined)
+      return;
     const leftDistance = Math.abs(nose.x - left.x);
     const rightDistance = Math.abs(right.x - nose.x);
     const yaw = (leftDistance - rightDistance) / Math.max(0.001, leftDistance + rightDistance);
@@ -58,6 +62,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>): void => {
       faceCount: result.faceLandmarks.length,
       yaw,
       centered,
+      hairlineVisible: forehead.y > 0.035,
       poseScore: Math.max(0, Math.min(1, 1 - Math.abs(nose.x - 0.5) * 2)),
     });
   } finally {

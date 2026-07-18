@@ -11,7 +11,7 @@ describe('HairScanCapture', () => {
     });
   });
 
-  it('provides camera-enabled-device guidance when permission is denied', async () => {
+  it('explains that rejected camera frames remain local when permission is denied', async () => {
     render(<HairScanCapture onComplete={vi.fn()} />);
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Camera access is needed' })).toBeTruthy(),

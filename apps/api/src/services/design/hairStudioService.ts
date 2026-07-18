@@ -27,6 +27,7 @@ import { enqueueAiGeneration, validateAiFrames } from './aiHairServiceClient';
 import { buildHairEditPrompt, HAIR_PROMPT_VERSION } from './hairPrompt';
 
 type Row = Record<string, unknown>;
+const REQUIRED_ANGLES: HairScanAngle[] = ['FRONT', 'LEFT', 'RIGHT'];
 const iso = (value: unknown): string =>
   value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
 
@@ -148,7 +149,7 @@ const assertGenerationAllowance = async (
     executor,
   );
   if (Number(daily[0]?.count ?? 0) >= env.AI_GENERATION_DAILY_LIMIT) {
-    throw new AppError(429, 'Daily AI preview limit reached.', 'AI_DAILY_LIMIT');
+    throw new AppError(429, 'Daily AI preview limit reached.', 'DAILY_LIMIT_REACHED');
   }
   if (env.AI_MONTHLY_BUDGET_CENTS > 0) {
     const budget = await query<Row>(
@@ -167,8 +168,8 @@ export const getHairStudioConfig = () => ({
   enabled: env.ENABLE_AI_FEATURES,
   provider: env.AI_PROVIDER === 'mock' ? 'demo' : 'fal',
   consentVersion: '2026-07-17',
-  requiredAngles: ['FRONT', 'LEFT', 'RIGHT'] as HairScanAngle[],
-  webRequiredAngles: ['FRONT'] as HairScanAngle[],
+  requiredAngles: REQUIRED_ANGLES,
+  webRequiredAngles: REQUIRED_ANGLES,
   maxCaptureBytes: 4_000_000,
   retentionHours: env.AI_SCAN_RETENTION_HOURS,
   dailyGenerationLimit: env.AI_GENERATION_DAILY_LIMIT,
@@ -204,7 +205,8 @@ export const presignHairCapture = async (
     [scanId, input.angle],
   );
   const captureId = String(existing[0]?.id ?? randomUUID());
-  const extension = input.mimeType === 'image/png' ? 'png' : input.mimeType === 'image/webp' ? 'webp' : 'jpg';
+  const extension =
+    input.mimeType === 'image/png' ? 'png' : input.mimeType === 'image/webp' ? 'webp' : 'jpg';
   const objectKey =
     typeof existing[0]?.object_key === 'string'
       ? existing[0].object_key
@@ -217,7 +219,16 @@ export const presignHairCapture = async (
        object_key=EXCLUDED.object_key,mime_type=EXCLUDED.mime_type,size_bytes=EXCLUDED.size_bytes,
        checksum_sha256=EXCLUDED.checksum_sha256,upload_status='PENDING',width=NULL,height=NULL,
        brightness=NULL,sharpness=NULL,face_count=NULL,pose_score=NULL`,
-    [captureId, scanId, input.angle, objectKey, input.mimeType, input.sizeBytes, input.checksumSha256.toLowerCase(), scan.expires_at],
+    [
+      captureId,
+      scanId,
+      input.angle,
+      objectKey,
+      input.mimeType,
+      input.sizeBytes,
+      input.checksumSha256.toLowerCase(),
+      scan.expires_at,
+    ],
   );
   return {
     captureId,
@@ -247,14 +258,26 @@ export const completeHairCapture = async (
     throw new AppError(404, 'Hair scan capture not found.', 'HAIR_CAPTURE_NOT_FOUND');
   }
   try {
-    await verifyUploadedObject(String(capture.object_key), String(capture.mime_type), Number(capture.size_bytes));
+    await verifyUploadedObject(
+      String(capture.object_key),
+      String(capture.mime_type),
+      Number(capture.size_bytes),
+    );
   } catch {
     throw new AppError(422, 'The uploaded capture could not be verified.', 'HAIR_CAPTURE_INVALID');
   }
   const rows = await query<Row>(
     `UPDATE hair_scan_captures SET upload_status='VERIFIED',width=$1,height=$2,
       brightness=$3,sharpness=$4,face_count=$5,pose_score=$6 WHERE id=$7 RETURNING *`,
-    [input.width, input.height, input.brightness ?? null, input.sharpness ?? null, input.faceCount ?? null, input.poseScore ?? null, captureId],
+    [
+      input.width,
+      input.height,
+      input.brightness ?? null,
+      input.sharpness ?? null,
+      input.faceCount ?? null,
+      input.poseScore ?? null,
+      captureId,
+    ],
   );
   return mapCapture(rows[0] as Row);
 };
@@ -274,8 +297,21 @@ export const validateHairScan = async (
     `SELECT * FROM hair_scan_captures WHERE scan_session_id=$1 AND upload_status='VERIFIED' ORDER BY angle`,
     [scanId],
   );
-  if (captures.length === 0) {
-    throw new AppError(422, 'Upload at least one clear portrait.', 'HAIR_SCAN_INCOMPLETE');
+  const capturedAngles = new Set(captures.map((capture) => String(capture.angle)));
+  const missingAngles = REQUIRED_ANGLES.filter((angle) => !capturedAngles.has(angle));
+  if (missingAngles.length > 0) {
+    throw new AppError(
+      422,
+      `Capture the missing ${missingAngles.map((angle) => angle.toLowerCase()).join(', ')} angle${missingAngles.length === 1 ? '' : 's'}.`,
+      'HAIR_SCAN_INCOMPLETE',
+      {
+        rejectedFrames: missingAngles.map((angle) => ({
+          captureId: '',
+          angle,
+          reason: 'This required angle has not been captured.',
+        })),
+      },
+    );
   }
   await query(
     `UPDATE hair_scan_sessions SET analysis_status='PROCESSING',analysis_error=NULL,preferences=$1 WHERE id=$2`,
@@ -297,14 +333,29 @@ export const validateHairScan = async (
         await query(
           `UPDATE hair_scan_captures SET width=$1,height=$2,brightness=$3,sharpness=$4,
             face_count=$5,pose_score=$6 WHERE id=$7 AND scan_session_id=$8`,
-          [metric.width, metric.height, metric.brightness, metric.sharpness, metric.faceCount, metric.poseScore, metric.captureId, scanId],
+          [
+            metric.width,
+            metric.height,
+            metric.brightness,
+            metric.sharpness,
+            metric.faceCount,
+            metric.poseScore,
+            metric.captureId,
+            scanId,
+          ],
           executor,
         );
       }
       await query(
         `UPDATE hair_scan_sessions SET status='READY',analysis_status='COMPLETED',
           selected_capture_id=$1,validation_metrics=$2,suggestions=$3 WHERE id=$4 AND client_id=$5`,
-        [validation.selectedCaptureId, JSON.stringify(validation.metrics), JSON.stringify(validation.suggestions), scanId, clientId],
+        [
+          validation.selectedCaptureId,
+          JSON.stringify(validation.metrics),
+          JSON.stringify(validation.suggestions),
+          scanId,
+          clientId,
+        ],
         executor,
       );
     });
@@ -339,7 +390,8 @@ export const generateHairDesign = async (clientId: string, input: GenerateHairDe
       [input.idempotencyKey, clientId],
       executor,
     );
-    if (duplicate[0] !== undefined) return { design: duplicate[0], generationId: null, sourceKey: null, prompt: null };
+    if (duplicate[0] !== undefined)
+      return { design: duplicate[0], generationId: null, sourceKey: null, prompt: null };
     await assertGenerationAllowance(clientId, executor);
     const captures = await query<Row>(
       'SELECT object_key FROM hair_scan_captures WHERE id=$1 AND scan_session_id=$2',
@@ -347,7 +399,8 @@ export const generateHairDesign = async (clientId: string, input: GenerateHairDe
       executor,
     );
     const sourceKey = String(captures[0]?.object_key ?? '');
-    if (sourceKey === '') throw new AppError(409, 'Selected portrait is unavailable.', 'HAIR_SCAN_NOT_READY');
+    if (sourceKey === '')
+      throw new AppError(409, 'Selected portrait is unavailable.', 'HAIR_SCAN_NOT_READY');
     const designs = await query<Row>(
       `INSERT INTO client_hair_designs
         (client_id,style_name,style_category,description,is_saved,ai_status,source_asset_key)
@@ -362,7 +415,16 @@ export const generateHairDesign = async (clientId: string, input: GenerateHairDe
       `INSERT INTO hair_design_generations
         (id,design_id,scan_session_id,provider,model,status,prompt_version,prompt_text,idempotency_key)
        VALUES ($1,$2,$3,$4,$5,'QUEUED',$6,$7,$8)`,
-      [generationId, design.id, input.scanId, env.AI_PROVIDER, env.AI_GENERATION_MODEL, HAIR_PROMPT_VERSION, prompt, input.idempotencyKey],
+      [
+        generationId,
+        design.id,
+        input.scanId,
+        env.AI_PROVIDER,
+        env.AI_GENERATION_MODEL,
+        HAIR_PROMPT_VERSION,
+        prompt,
+        input.idempotencyKey,
+      ],
       executor,
     );
     const updated = await query<Row>(
@@ -372,7 +434,13 @@ export const generateHairDesign = async (clientId: string, input: GenerateHairDe
     );
     const updatedDesign = updated[0] as Row;
     return {
-      design: { ...updatedDesign, generation_status: 'QUEUED', progress: 0, provider: env.AI_PROVIDER, model: env.AI_GENERATION_MODEL },
+      design: {
+        ...updatedDesign,
+        generation_status: 'QUEUED',
+        progress: 0,
+        provider: env.AI_PROVIDER,
+        model: env.AI_GENERATION_MODEL,
+      },
       generationId,
       sourceKey,
       prompt,
@@ -385,10 +453,10 @@ export const generateHairDesign = async (clientId: string, input: GenerateHairDe
         inputUrl: await createPresignedDownloadUrl(result.sourceKey),
         prompt: result.prompt,
       });
-      await query(
-        `UPDATE hair_design_generations SET python_job_id=$1,progress=5 WHERE id=$2`,
-        [queued.jobId, result.generationId],
-      );
+      await query(`UPDATE hair_design_generations SET python_job_id=$1,progress=5 WHERE id=$2`, [
+        queued.jobId,
+        result.generationId,
+      ]);
     } catch (error) {
       await failAiGeneration(result.generationId, {
         errorCode: 'AI_SERVICE_UNAVAILABLE',
@@ -396,7 +464,7 @@ export const generateHairDesign = async (clientId: string, input: GenerateHairDe
       });
     }
   }
-  return getHairDesign(clientId, String(result.design.id));
+  return getHairDesign(clientId, String((result.design as Row).id));
 };
 
 export const getHairDesign = async (clientId: string, designId: string) =>
@@ -438,7 +506,12 @@ export const retryHairDesign = async (
 
 export const completeAiGeneration = async (
   generationId: string,
-  input: { outputUrl: string; providerRequestId: string; durationMs: number; estimatedCostCents: number },
+  input: {
+    outputUrl: string;
+    providerRequestId: string;
+    durationMs: number;
+    estimatedCostCents: number;
+  },
 ) => {
   const rows = await query<Row>(
     `SELECT g.*,d.client_id,d.id AS hair_design_id FROM hair_design_generations g
@@ -446,7 +519,8 @@ export const completeAiGeneration = async (
     [generationId],
   );
   const generation = rows[0];
-  if (generation === undefined) throw new AppError(404, 'Generation not found.', 'AI_JOB_NOT_FOUND');
+  if (generation === undefined)
+    throw new AppError(404, 'Generation not found.', 'AI_JOB_NOT_FOUND');
   if (generation.status === 'COMPLETED') return { accepted: true, duplicate: true };
   if (!['QUEUED', 'PROCESSING'].includes(String(generation.status))) return { accepted: false };
   const outputKey = `hair-designs/${String(generation.client_id)}/${String(generation.hair_design_id)}/${generationId}.jpg`;
@@ -457,7 +531,14 @@ export const completeAiGeneration = async (
         output_object_key=$2,output_mime_type=$3,estimated_cost_cents=$4,generation_duration_ms=$5,
         completed_at=CURRENT_TIMESTAMP,callback_received_at=CURRENT_TIMESTAMP,error_code=NULL,error_message=NULL
        WHERE id=$6 AND status IN ('QUEUED','PROCESSING')`,
-      [input.providerRequestId, outputKey, stored.contentType, input.estimatedCostCents, input.durationMs, generationId],
+      [
+        input.providerRequestId,
+        outputKey,
+        stored.contentType,
+        input.estimatedCostCents,
+        input.durationMs,
+        generationId,
+      ],
       executor,
     );
     await query(
@@ -470,11 +551,42 @@ export const completeAiGeneration = async (
       `INSERT INTO ai_usage_events
         (client_id,generation_id,provider,model,event_type,output_units,estimated_cost_cents,metadata)
        VALUES ($1,$2,$3,$4,'IMAGE_GENERATED',1,$5,$6)`,
-      [generation.client_id, generationId, generation.provider, generation.model, input.estimatedCostCents, JSON.stringify({ durationMs: input.durationMs, sizeBytes: stored.sizeBytes })],
+      [
+        generation.client_id,
+        generationId,
+        generation.provider,
+        generation.model,
+        input.estimatedCostCents,
+        JSON.stringify({ durationMs: input.durationMs, sizeBytes: stored.sizeBytes }),
+      ],
       executor,
     );
   });
   return { accepted: true, duplicate: false };
+};
+
+export const startAiGeneration = async (generationId: string) => {
+  const rows = await query<Row>(
+    `UPDATE hair_design_generations
+     SET status='PROCESSING',progress=15,started_at=COALESCE(started_at,CURRENT_TIMESTAMP),
+       provider_submitted_at=COALESCE(provider_submitted_at,CURRENT_TIMESTAMP)
+     WHERE id=$1 AND status='QUEUED' RETURNING design_id`,
+    [generationId],
+  );
+  if (rows[0] !== undefined) {
+    await query(
+      `UPDATE client_hair_designs SET ai_status='processing'
+       WHERE id=$1 AND current_generation_id=$2`,
+      [rows[0].design_id, generationId],
+    );
+    return { accepted: true, duplicate: false };
+  }
+  const existing = await query<Row>('SELECT status FROM hair_design_generations WHERE id=$1', [
+    generationId,
+  ]);
+  if (existing[0] === undefined)
+    throw new AppError(404, 'Generation not found.', 'AI_JOB_NOT_FOUND');
+  return { accepted: existing[0].status === 'PROCESSING', duplicate: true };
 };
 
 export const failAiGeneration = async (
@@ -500,8 +612,16 @@ export const failAiGeneration = async (
 export const deleteHairDesign = async (clientId: string, designId: string) => {
   const design = await getOwnedDesignRow(clientId, designId);
   await withTransaction(async (executor) => {
-    await query('UPDATE appointments SET style_reference_id=NULL WHERE style_reference_id=$1 AND client_id=$2', [designId, clientId], executor);
-    await query(`UPDATE hair_design_generations SET status='CANCELLED' WHERE design_id=$1 AND status IN ('QUEUED','PROCESSING')`, [designId], executor);
+    await query(
+      'UPDATE appointments SET style_reference_id=NULL WHERE style_reference_id=$1 AND client_id=$2',
+      [designId, clientId],
+      executor,
+    );
+    await query(
+      `UPDATE hair_design_generations SET status='CANCELLED' WHERE design_id=$1 AND status IN ('QUEUED','PROCESSING')`,
+      [designId],
+      executor,
+    );
     await query(
       `UPDATE client_hair_designs SET is_saved=false,deleted_at=CURRENT_TIMESTAMP,
         ai_status='cancelled',generated_asset_key=NULL WHERE id=$1 AND client_id=$2`,
@@ -513,4 +633,40 @@ export const deleteHairDesign = async (clientId: string, designId: string) => {
     await deleteStoredObject(design.generated_asset_key).catch(() => undefined);
   }
   return { message: 'Hair design deleted.' };
+};
+
+export const maintainHairStudio = async (): Promise<{
+  expiredScans: number;
+  failedGenerations: number;
+}> => {
+  const expiredCaptures = await query<Row>(
+    `SELECT c.object_key FROM hair_scan_captures c
+     JOIN hair_scan_sessions s ON s.id=c.scan_session_id
+     WHERE s.expires_at <= CURRENT_TIMESTAMP AND s.status NOT IN ('EXPIRED','DELETED')`,
+  );
+  await Promise.all(
+    expiredCaptures.map((capture) =>
+      deleteStoredObject(String(capture.object_key)).catch(() => undefined),
+    ),
+  );
+  const expired = await query<Row>(
+    `UPDATE hair_scan_sessions SET status='EXPIRED'
+     WHERE expires_at <= CURRENT_TIMESTAMP AND status NOT IN ('EXPIRED','DELETED') RETURNING id`,
+  );
+  const stale = await query<Row>(
+    `UPDATE hair_design_generations
+     SET status='FAILED',progress=100,error_code='AI_JOB_STALE',
+       error_message='Generation timed out before receiving a worker callback.',failed_at=CURRENT_TIMESTAMP
+     WHERE status='PROCESSING' AND started_at < CURRENT_TIMESTAMP - interval '5 minutes'
+     RETURNING id,design_id`,
+  );
+  for (const generation of stale) {
+    await query(
+      `UPDATE client_hair_designs SET ai_status='failed',ai_error_code='AI_JOB_STALE',
+        ai_error_message='Generation timed out. Please retry.'
+       WHERE id=$1 AND current_generation_id=$2`,
+      [generation.design_id, generation.id],
+    );
+  }
+  return { expiredScans: expired.length, failedGenerations: stale.length };
 };

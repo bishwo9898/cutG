@@ -10,7 +10,7 @@ Barber operations and client booking platform.
 - PostgreSQL 14+ with Knex migrations
 - Zod for runtime validation and inferred TypeScript types
 - Docker Compose for local PostgreSQL, Redis, and private MinIO object storage
-- BullMQ TypeScript AI worker with mock and Gemini providers
+- Python FastAPI + Redis/RQ AI pipeline with mock and fal.ai FLUX Kontext providers
 
 ## Quick Start
 
@@ -20,8 +20,8 @@ make dev
 ```
 
 `make setup` installs dependencies, creates `.env` only when it is missing, starts PostgreSQL,
-Redis, and MinIO, then migrates and seeds the database. `make dev` starts the API, web app, and AI
-worker together.
+Redis, and MinIO, then migrates and seeds the database. It also creates the Python AI environment.
+`make dev` starts the API, web app, FastAPI service, and RQ worker together.
 
 Open the frontend at [http://localhost:3000](http://localhost:3000). The API runs at [http://localhost:4000](http://localhost:4000). Start mobile separately with `pnpm --filter @barber-saas/mobile dev`.
 
@@ -58,9 +58,9 @@ Expected response shape:
 ## Workspace Layout
 
 - `apps/api`: Express API, database migrations, seeds, and runtime config.
-- `apps/ai-worker`: BullMQ provider jobs, private image processing, usage ledger, and retention cleanup.
 - `apps/web`: Next.js frontend.
 - `apps/mobile`: Expo React Native app for iOS and Android client/barber flows.
+- `services/ai`: FastAPI validation, MediaPipe quality checks, RQ jobs, and fal.ai provider adapter.
 - `packages/shared-types`: Zod schemas and inferred TypeScript types.
 - `packages/shared-utils`: Shared validators and utility contracts.
 - `docs`: Architecture, API, database, setup, and deployment notes.

@@ -4,7 +4,7 @@ import { barberDiscoveryApi, clientApi } from '@barber-saas/api-client';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CalendarDays, Car, Heart, MapPin, Share2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { BarberCover } from '@/components/client/barber-cover';
@@ -45,6 +45,8 @@ type Reviews = {
 export default function BarberProfilePage(): React.ReactElement {
   const params = useParams<{ barberId: string }>();
   const barberId = params.barberId;
+  const designId = useSearchParams().get('designId');
+  const designQuery = designId === null ? '' : `?designId=${designId}`;
   const [tab, setTab] = useState<'services' | 'availability' | 'reviews'>('services');
   const profile = useQuery({
     queryKey: ['public-barber', barberId],
@@ -147,7 +149,10 @@ export default function BarberProfilePage(): React.ReactElement {
           </p>
           {profile.data.bio !== null && <p>{profile.data.bio}</p>}
           <div className="button-row">
-            <Link className="button button-primary" href={`/client/barbers/${barberId}/book`}>
+            <Link
+              className="button button-primary"
+              href={`/client/barbers/${barberId}/book${designQuery}`}
+            >
               Book now
             </Link>
             <button
@@ -192,7 +197,10 @@ export default function BarberProfilePage(): React.ReactElement {
               <small>{profile.data.mobileService.notes}</small>
             )}
           </div>
-          <Link className="button button-primary" href={`/client/barbers/${barberId}/book`}>
+          <Link
+            className="button button-primary"
+            href={`/client/barbers/${barberId}/book${designQuery}`}
+          >
             Book mobile service
           </Link>
         </section>
@@ -232,7 +240,7 @@ export default function BarberProfilePage(): React.ReactElement {
                     <strong>${service.price.toFixed(2)}</strong>
                     <Link
                       className="button button-secondary"
-                      href={`/client/barbers/${barberId}/book?serviceId=${service.id}`}
+                      href={`/client/barbers/${barberId}/book?serviceId=${service.id}${designId === null ? '' : `&designId=${designId}`}`}
                     >
                       Book
                     </Link>
@@ -269,7 +277,10 @@ export default function BarberProfilePage(): React.ReactElement {
         <button aria-label="Save barber" onClick={() => save.mutate()} type="button">
           <Heart fill={save.isSuccess ? 'currentColor' : 'none'} size={20} />
         </button>
-        <Link className="button button-primary" href={`/client/barbers/${barberId}/book`}>
+        <Link
+          className="button button-primary"
+          href={`/client/barbers/${barberId}/book${designQuery}`}
+        >
           Book appointment
         </Link>
       </div>

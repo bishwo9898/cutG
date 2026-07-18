@@ -14,12 +14,19 @@ let clientToken = '';
 let barberId = '';
 let serviceId = '';
 let slotId = '';
+let clientId = '';
+let designId = '';
 
 type LoginBody = { accessToken: string };
 type SearchBody = { barbers: Array<{ id: string; serviceCategories: string[] }> };
 type SavedBody = { savedBarbers: unknown[] };
 type SlotsBody = { slots: Array<{ id: string; isAvailable: boolean }> };
-type AppointmentBody = { id: string; status: string; paymentMethod: string };
+type AppointmentBody = {
+  id: string;
+  status: string;
+  paymentMethod: string;
+  styleReference: { id: string; styleName: string } | null;
+};
 type AppointmentListBody = { appointments: unknown[] };
 type CancelBody = { slotFreed: boolean };
 type ErrorBody = { error: string };
@@ -27,7 +34,8 @@ type ErrorBody = { error: string };
 beforeAll(async () => {
   await resetTestDatabase();
   const barber = await createVerifiedUser('BARBER', 'phase3.barber@example.com');
-  await createVerifiedUser('CLIENT', 'phase3.client@example.com');
+  const client = await createVerifiedUser('CLIENT', 'phase3.client@example.com');
+  clientId = client.id;
   barberId = await createBarberProfileFixture(barber.id);
 
   const service = await pool.query<{ id: string }>(
@@ -55,6 +63,14 @@ beforeAll(async () => {
     .send({ startDate: '2026-08-03', endDate: '2026-08-03' });
   const slots = await request(app).get(`/barbers/${barberId}/slots?date=2026-08-03&days=1`);
   slotId = (slots.body as SlotsBody).slots.find((slot) => slot.isAvailable)?.id ?? '';
+  const design = await pool.query<{ id: string }>(
+    `INSERT INTO client_hair_designs
+      (client_id,style_name,style_category,description,ai_status,generated_asset_key)
+     VALUES ($1,'Textured Crop','haircut','Keep the fringe textured.','completed',$2)
+     RETURNING id`,
+    [clientId, `hair-designs/${clientId}/preview.jpg`],
+  );
+  designId = design.rows[0]?.id ?? '';
 });
 
 afterAll(async () => closeDatabase());
@@ -100,10 +116,20 @@ describe('Phase 3 client discovery and booking API', () => {
     const booked = await request(app)
       .post('/clients/me/appointments')
       .set('Authorization', `Bearer ${clientToken}`)
-      .send({ barberId, serviceId, availabilitySlotId: slotId, clientNotes: 'Clean neckline' });
+      .send({
+        barberId,
+        serviceId,
+        availabilitySlotId: slotId,
+        clientNotes: 'Clean neckline',
+        designId,
+      });
     expect(booked.status).toBe(201);
     expect((booked.body as AppointmentBody).status).toBe('PENDING');
     expect((booked.body as AppointmentBody).paymentMethod).toBe('CASH');
+    expect((booked.body as AppointmentBody).styleReference).toMatchObject({
+      id: designId,
+      styleName: 'Textured Crop',
+    });
     const appointmentId = (booked.body as AppointmentBody).id;
 
     const duplicate = await request(app)

@@ -7,7 +7,7 @@ from .providers import generate
 
 
 def _callback(path: str, payload: dict[str, object]) -> None:
-    headers = {"Authorization": f"Bearer {settings.internal_secret}"}
+    headers = {"X-CutG-AI-Secret": settings.internal_secret}
     with httpx.Client(timeout=settings.request_timeout_seconds) as client:
         response = client.post(f"{settings.callback_url}{path}", headers=headers, json=payload)
         response.raise_for_status()
@@ -16,6 +16,7 @@ def _callback(path: str, payload: dict[str, object]) -> None:
 def generate_design(payload: dict[str, str]) -> None:
     generation_id = payload["generation_id"]
     try:
+        _callback(f"/generations/{generation_id}/processing", {})
         result = generate(payload["input_url"], payload["prompt"], generation_id)
         _callback(
             f"/generations/{generation_id}/complete",

@@ -2,10 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import type { HairPreferences } from '@barber-saas/shared-types';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { app } from '../app';
 import { closeDatabase, pool } from '../config/database';
+import { env } from '../config/env';
 import { createVerifiedUser, resetTestDatabase } from '../test/fixtures';
 
 let clientToken = '';
@@ -19,6 +20,57 @@ type ScanBody = { id: string; status: string; analysisStatus: string; captures: 
 type DesignBody = { id: string; generationStatus: string; generatedPreviewUrl: string | null };
 
 beforeAll(async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      await Promise.resolve();
+      const url = String(input);
+      if (url.endsWith('/ai/validate-frames')) {
+        expect(new Headers(init?.headers).get('X-CutG-AI-Secret')).toBe(env.AI_INTERNAL_SECRET);
+        const body = JSON.parse(String(init?.body)) as {
+          frames: Array<{ capture_id: string; angle: string }>;
+        };
+        return new Response(
+          JSON.stringify({
+            selected_capture_id: body.frames[0]?.capture_id,
+            metrics: body.frames.map((frame) => ({
+              capture_id: frame.capture_id,
+              angle: frame.angle,
+              width: 900,
+              height: 1200,
+              brightness: 110,
+              sharpness: 80,
+              face_count: 1,
+              face_size: 0.22,
+              yaw: frame.angle === 'LEFT' ? -0.3 : frame.angle === 'RIGHT' ? 0.3 : 0,
+              hairline_visible: true,
+              pose_score: 0.95,
+              quality_score: 0.9,
+              accepted: true,
+              rejection_reason: null,
+            })),
+            suggestions: [
+              {
+                id: 'textured-crop',
+                name: 'Textured Crop',
+                category: 'haircut',
+                description: 'Short texture with a clean taper.',
+                reason: 'Fits a low-maintenance routine.',
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      if (url.endsWith('/ai/generations')) {
+        return new Response(JSON.stringify({ job_id: 'generation-test', status: 'queued' }), {
+          status: 202,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      throw new Error(`Unexpected fetch in Hair Studio test: ${url}`);
+    }),
+  );
   await resetTestDatabase();
   const client = await createVerifiedUser('CLIENT', 'hair.studio@example.com');
   await createVerifiedUser('CLIENT', 'hair.studio.other@example.com');
@@ -33,7 +85,10 @@ beforeAll(async () => {
   otherClientToken = (otherLogin.body as LoginBody).accessToken;
 });
 
-afterAll(async () => closeDatabase());
+afterAll(async () => {
+  vi.unstubAllGlobals();
+  await closeDatabase();
+});
 
 describe('AI Hair Studio API', () => {
   it('exposes a safe mock configuration and requires client authentication', async () => {
@@ -61,6 +116,12 @@ describe('AI Hair Studio API', () => {
       .set('Authorization', `Bearer ${clientToken}`)
       .send({ preferences: preferences() });
     expect(incomplete.status).toBe(422);
+    expect(incomplete.body).toMatchObject({
+      error: 'HAIR_SCAN_INCOMPLETE',
+      details: {
+        rejectedFrames: [{ angle: 'FRONT' }, { angle: 'LEFT' }, { angle: 'RIGHT' }],
+      },
+    });
 
     const hidden = await request(app)
       .get(`/clients/me/hair-scans/${scanId}`)
@@ -68,7 +129,7 @@ describe('AI Hair Studio API', () => {
     expect(hidden.status).toBe(404);
   });
 
-  it('completes three verified angles and queues analysis exactly once', async () => {
+  it('completes three verified angles and validates them exactly once', async () => {
     for (const angle of ['FRONT', 'LEFT', 'RIGHT']) {
       await pool.query(
         `INSERT INTO hair_scan_captures
@@ -84,29 +145,14 @@ describe('AI Hair Studio API', () => {
       .set('Authorization', `Bearer ${clientToken}`)
       .send({ preferences: preferences() });
     expect(completed.status).toBe(202);
-    expect(completed.body).toMatchObject({ status: 'READY', analysisStatus: 'QUEUED' });
+    expect(completed.body).toMatchObject({ status: 'READY', analysisStatus: 'COMPLETED' });
 
     const duplicate = await request(app)
       .post(`/clients/me/hair-scans/${scanId}/complete`)
       .set('Authorization', `Bearer ${clientToken}`)
       .send({ preferences: preferences() });
-    expect(duplicate.status).toBe(409);
-
-    await pool.query(
-      `UPDATE hair_scan_sessions SET analysis_status='COMPLETED',suggestions=$1 WHERE id=$2`,
-      [
-        JSON.stringify([
-          {
-            id: 'textured-crop',
-            name: 'Textured Crop',
-            category: 'haircut',
-            description: 'Short texture with a clean taper.',
-            reason: 'Fits a low-maintenance routine.',
-          },
-        ]),
-        scanId,
-      ],
-    );
+    expect(duplicate.status).toBe(202);
+    expect(duplicate.body).toMatchObject({ status: 'READY', analysisStatus: 'COMPLETED' });
   });
 
   it('uses idempotency before active-job limits and preserves private ownership', async () => {
@@ -143,6 +189,26 @@ describe('AI Hair Studio API', () => {
       .send({ ...body, idempotencyKey: randomUUID() });
     expect(secondJob.status).toBe(409);
     expect(secondJob.body).toHaveProperty('error', 'AI_JOB_ACTIVE');
+  });
+
+  it('authenticates worker callbacks and marks a queued job as processing', async () => {
+    const generation = await pool.query<{ id: string }>(
+      'SELECT id FROM hair_design_generations WHERE design_id=$1',
+      [designId],
+    );
+    const generationId = generation.rows[0]?.id ?? '';
+    const denied = await request(app).post(`/internal/ai/generations/${generationId}/processing`);
+    expect(denied.status).toBe(401);
+    const started = await request(app)
+      .post(`/internal/ai/generations/${generationId}/processing`)
+      .set('X-CutG-AI-Secret', env.AI_INTERNAL_SECRET)
+      .send({});
+    expect(started.status).toBe(200);
+    const row = await pool.query<{ status: string; progress: number }>(
+      'SELECT status,progress FROM hair_design_generations WHERE id=$1',
+      [generationId],
+    );
+    expect(row.rows[0]).toMatchObject({ status: 'PROCESSING', progress: 15 });
   });
 
   it('soft-deletes a design and cancels its queued generation', async () => {

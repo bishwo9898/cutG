@@ -2,8 +2,10 @@ fastapi==0.116.1
 uvicorn[standard]==0.35.0
 fal-client==1.0.0
 httpx==0.28.1
-mediapipe==0.10.35
-numpy==2.2.6
+mediapipe==0.10.35; platform_machine != "aarch64"
+mediapipe==0.10.18; platform_machine == "aarch64"
+numpy==2.2.6; platform_machine != "aarch64"
+numpy==1.26.4; platform_machine == "aarch64"
 Pillow==11.3.0
 pydantic==2.11.7
 python-dotenv==1.1.1

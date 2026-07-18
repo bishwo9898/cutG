@@ -11,10 +11,15 @@ import { colors, spacing, typography } from '@/theme';
 type BarberCardProps = {
   barber: PublicBarber;
   compact?: boolean;
+  href?: string;
 };
 
-export const BarberCard = ({ barber, compact = false }: BarberCardProps): React.ReactElement => (
-  <Pressable onPress={() => router.push('/(client)/discover/' + barber.id)}>
+export const BarberCard = ({
+  barber,
+  compact = false,
+  href,
+}: BarberCardProps): React.ReactElement => (
+  <Pressable onPress={() => router.push(href ?? '/(client)/discover/' + barber.id)}>
     <Card style={compact ? styles.compact : undefined}>
       <View style={styles.row}>
         <Avatar

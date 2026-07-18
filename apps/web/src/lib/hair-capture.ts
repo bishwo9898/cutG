@@ -9,8 +9,8 @@ export type LocalCaptureQuality = {
 
 export const requiredPose = (angle: HairScanAngle, yaw: number): boolean => {
   if (angle === 'FRONT') return Math.abs(yaw) <= 0.09;
-  if (angle === 'LEFT') return yaw <= -0.12;
-  return yaw >= 0.12;
+  if (angle === 'LEFT') return yaw <= -0.12 && yaw >= -0.55;
+  return yaw >= 0.12 && yaw <= 0.55;
 };
 
 export const assessPixels = (pixels: Uint8ClampedArray): LocalCaptureQuality => {

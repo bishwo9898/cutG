@@ -36,18 +36,17 @@ Zod schemas in `packages/shared-types` are the source of runtime validation and 
 - Add read replicas when marketplace discovery traffic grows.
 - Partition `appointments` by scheduled date if historical volume becomes large.
 - Move notification delivery workers into a separate app when async volume grows.
-- Scale `apps/ai-worker` horizontally with provider-aware concurrency when AI demand grows.
+- Scale the Python RQ workers horizontally with provider-aware concurrency when AI demand grows.
 
 ## AI Hair Studio
 
-Phase 10 adds a separate TypeScript worker without coupling provider latency to Express request
-latency. Express authenticates clients, owns scan/generation state, creates presigned storage URLs,
-and enqueues BullMQ jobs. Redis persists queue state. `apps/ai-worker` owns private capture download,
-provider invocation, private output persistence, usage accounting, cleanup, and terminal status.
+Phase 11 uses a focused FastAPI service and durable Python RQ worker without coupling provider
+latency to Express requests. Express authenticates clients, owns scan/generation state, creates
+presigned storage URLs, and receives authenticated worker callbacks. Python owns MediaPipe image
+validation and the mock/fal.ai provider call, but has no database credentials.
 
-The public contract depends on a provider interface, not Gemini-specific response shapes. Local
-development uses a deterministic mock; production can use Gemini; a future Python GPU service can
-implement the same interface without changing client routes or database state transitions.
+The public contract depends on provider-neutral job and design states. Local development uses a
+deterministic mock; production uses FLUX.1 Kontext Pro through fal.ai.
 
 Raw images never pass through Express JSON. Browser uploads go directly to private S3-compatible
 storage. Signed read URLs are generated only after client or assigned-barber ownership checks.

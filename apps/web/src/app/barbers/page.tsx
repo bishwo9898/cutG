@@ -1,6 +1,6 @@
 'use client';
 
-import { barberDiscoveryApi } from '@barber-saas/api-client';
+import { barberDiscoveryApi, clientApi } from '@barber-saas/api-client';
 import { useQuery } from '@tanstack/react-query';
 import { MapPin, Search, ShieldCheck } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -8,8 +8,9 @@ import { Suspense, useState } from 'react';
 
 import { ClientHeader } from '@/components/client-header';
 import { BarberCard } from '@/components/client-ui';
+import { Notice } from '@/components/notice';
 import { browserApi } from '@/lib/browser-api';
-import type { Pagination, PublicBarber } from '@/lib/contracts';
+import type { HairDesign, Pagination, PublicBarber } from '@/lib/contracts';
 
 type Response = { barbers: PublicBarber[]; pagination: Pagination };
 
@@ -25,6 +26,12 @@ function BarberSearchPageContent(): React.ReactElement {
   const [sort, setSort] = useState(searchParams.get('sort') ?? 'relevant');
   const [mobileOnly, setMobileOnly] = useState(searchParams.get('mobileOnly') === 'true');
   const [verifiedOnly, setVerifiedOnly] = useState(searchParams.get('verified') === 'true');
+  const designId = searchParams.get('designId');
+  const design = useQuery({
+    queryKey: ['hair-design', designId],
+    queryFn: () => clientApi.design<HairDesign>(browserApi, designId as string),
+    enabled: designId !== null,
+  });
 
   const params = Object.fromEntries([...searchParams.entries()].filter(([key]) => key !== 'sort'));
   const { data, isLoading } = useQuery({
@@ -44,6 +51,7 @@ function BarberSearchPageContent(): React.ReactElement {
     if (sort !== 'relevant') next.set('sort', sort);
     if (mobileOnly) next.set('mobileOnly', 'true');
     if (verifiedOnly) next.set('verified', 'true');
+    if (designId !== null) next.set('designId', designId);
     router.push(`/client/barbers?${next.toString()}`);
   };
 
@@ -194,6 +202,11 @@ function BarberSearchPageContent(): React.ReactElement {
           </form>
         </aside>
         <section className="results-panel">
+          {design.data !== undefined && (
+            <Notice>
+              Booking for: {design.data.styleName} — your barber will receive the private preview.
+            </Notice>
+          )}
           <div className="section-title">
             <div>
               <p className="eyebrow">Marketplace</p>
@@ -233,7 +246,12 @@ function BarberSearchPageContent(): React.ReactElement {
           ) : (
             <div className="barber-grid">
               {sortedBarbers.map((barber) => (
-                <BarberCard barber={barber} key={barber.id} showSave />
+                <BarberCard
+                  barber={barber}
+                  key={barber.id}
+                  query={designId === null ? '' : `?designId=${designId}`}
+                  showSave
+                />
               ))}
             </div>
           )}

@@ -33,12 +33,29 @@ def health() -> dict[str, str]:
 def validate_frames(
     request: ValidateFramesRequest, _: None = Depends(require_internal_auth)
 ) -> ValidateFramesResponse:
-    metrics = [inspect_frame(frame) for frame in request.frames]
-    accepted = [metric for metric in metrics if metric.accepted]
-    if not accepted:
-        reasons = [metric.rejection_reason for metric in metrics if metric.rejection_reason]
-        raise HTTPException(status_code=422, detail=reasons[0] if reasons else "No usable frame")
-    selected = max(accepted, key=lambda metric: metric.quality_score)
+    try:
+        metrics = [inspect_frame(frame) for frame in request.frames]
+    except (ValueError, RuntimeError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    rejected = [metric for metric in metrics if not metric.accepted]
+    if rejected:
+        first = rejected[0]
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": f"Retake the {first.angle.lower()} photo: "
+                f"{first.rejection_reason or 'the image did not pass the quality check'}",
+                "rejected_frames": [
+                    {
+                        "capture_id": metric.capture_id,
+                        "angle": metric.angle,
+                        "reason": metric.rejection_reason or "Image quality is too low.",
+                    }
+                    for metric in rejected
+                ],
+            },
+        )
+    selected = next(metric for metric in metrics if metric.angle == "FRONT")
     return ValidateFramesResponse(
         selected_capture_id=selected.capture_id,
         metrics=metrics,

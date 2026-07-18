@@ -1,4 +1,4 @@
-export const HAIR_PROMPT_VERSION = 'flux-kontext-hair-v1';
+export const HAIR_PROMPT_VERSION = 'flux-kontext-hair-v3';
 
 export const buildHairEditPrompt = (input: {
   styleName: string;
@@ -6,13 +6,14 @@ export const buildHairEditPrompt = (input: {
   description?: string | undefined;
 }): string =>
   [
-    'Create a photorealistic professional hairstyle visualization from the supplied portrait.',
+    'Edit the supplied portrait into one photorealistic professional hairstyle visualization.',
     `Requested ${input.styleCategory}: ${input.styleName}.`,
     input.description?.trim() ?? '',
-    'Change only the hair and facial hair explicitly requested.',
-    'Preserve the exact person, facial identity, skin tone, facial structure, expression, eyes, body, clothing, camera angle, lighting, and background.',
-    'Keep natural hairline detail, realistic individual strands, believable density, and salon-quality grooming.',
-    'Do not beautify, age, reshape, recolor skin, add accessories, or alter any unrelated feature.',
+    'Change only the requested scalp hair or explicitly requested facial hair. Preserve facial hair exactly when it is not requested.',
+    'Preserve the exact same person, facial identity, face, skin tone and texture, facial structure, expression, eyes, eyebrows, ears, body, clothes, pose, crop, camera angle, lens perspective, lighting, shadows, color grade, and background.',
+    'Keep hairlines, individual strands, density, edges, texture, and blending natural and photorealistic.',
+    'Do not beautify, age, reshape, relight, recolor skin, add accessories, or alter any unrelated feature.',
+    'Return exactly one edited image. Do not create a collage, comparison, labels, text, borders, or alternate versions.',
   ]
     .filter(Boolean)
     .join(' ');

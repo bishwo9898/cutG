@@ -8,9 +8,14 @@ import { useBarberProfile } from '@/hooks/useBarbers';
 import { colors, spacing, typography } from '@/theme';
 
 export default function SelectAppointmentTypeScreen(): React.ReactElement {
-  const { barberId = '', serviceId = '' } = useLocalSearchParams<{
+  const {
+    barberId = '',
+    serviceId = '',
+    designId,
+  } = useLocalSearchParams<{
     barberId?: string;
     serviceId?: string;
+    designId?: string;
   }>();
   const profile = useBarberProfile(barberId);
   const mobile = profile.data?.mobileService;
@@ -18,7 +23,7 @@ export default function SelectAppointmentTypeScreen(): React.ReactElement {
   const continueTo = (type: 'shop' | 'mobile'): void => {
     const route = type === 'mobile' ? 'address' : 'slot';
     router.push(
-      `/(client)/discover/${barberId}/book/${route}?serviceId=${serviceId}&appointmentType=${type}`,
+      `/(client)/discover/${barberId}/book/${route}?serviceId=${serviceId}&appointmentType=${type}${designId ? `&designId=${designId}` : ''}`,
     );
   };
 

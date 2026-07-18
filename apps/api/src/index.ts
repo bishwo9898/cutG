@@ -4,6 +4,7 @@ import { app } from './app';
 import { APP_NAME, SHUTDOWN_GRACE_PERIOD_MS } from './config/constants';
 import { closeDatabase } from './config/database';
 import { env } from './config/env';
+import { maintainHairStudio } from './services/design/hairStudioService';
 import { logger } from './utils/logger';
 
 const server: Server = app.listen(env.PORT, env.HOST, (): void => {
@@ -12,6 +13,19 @@ const server: Server = app.listen(env.PORT, env.HOST, (): void => {
     port: env.PORT,
     nodeEnv: env.NODE_ENV,
   });
+});
+
+const maintenanceTimer = setInterval(
+  (): void => {
+    void maintainHairStudio().catch((error: unknown) => {
+      logger.error('Hair Studio maintenance failed', error);
+    });
+  },
+  5 * 60 * 1000,
+);
+maintenanceTimer.unref();
+void maintainHairStudio().catch((error: unknown) => {
+  logger.error('Initial Hair Studio maintenance failed', error);
 });
 
 server.on('error', (error: NodeJS.ErrnoException): void => {
@@ -56,6 +70,7 @@ const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
     });
 
     await closeDatabase();
+    clearInterval(maintenanceTimer);
     clearTimeout(forceExitTimer);
     logger.info('Graceful shutdown complete');
     process.exit(0);

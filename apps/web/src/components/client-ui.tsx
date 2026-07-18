@@ -70,9 +70,11 @@ export function StarRating({
 export function BarberCard({
   barber,
   showSave = false,
+  query = '',
 }: {
   barber: PublicBarber;
   showSave?: boolean;
+  query?: string;
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
@@ -96,7 +98,7 @@ export function BarberCard({
 
   return (
     <article className="market-card">
-      <Link href={`/client/barbers/${barber.id}`}>
+      <Link href={`/client/barbers/${barber.id}${query}`}>
         <BarberCover alt={`${barber.businessName} barbershop`} src={barber.profilePhotoUrl} />
         <div className="card-body">
           <div className="card-title-row">
@@ -145,7 +147,7 @@ export function BarberCard({
             <Heart fill={saved ? 'currentColor' : 'none'} size={17} /> {saved ? 'Saved' : 'Save'}
           </button>
         )}
-        <Link className="button button-primary" href={`/client/barbers/${barber.id}/book`}>
+        <Link className="button button-primary" href={`/client/barbers/${barber.id}/book${query}`}>
           Book now
         </Link>
       </div>

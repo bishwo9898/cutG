@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { Image, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -10,6 +11,8 @@ import { Input } from '@/components/ui/Input';
 import { useBookAppointment } from '@/hooks/useAppointments';
 import { useBarberProfile, useBarberServices, useBarberSlots } from '@/hooks/useBarbers';
 import { errorMessage } from '@/lib/errors';
+import { mobileApi } from '@/lib/apiClient';
+import { optionalDesignReference } from '@/lib/hairStudio';
 import { listFromResponse } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
 
@@ -36,6 +39,7 @@ export default function ConfirmBookingScreen(): React.ReactElement {
     travelMinutes?: string;
     travelFee?: string;
     estimateUnavailable?: string;
+    designId?: string;
   }>();
   const barberId = params.barberId ?? '';
   const serviceId = params.serviceId ?? '';
@@ -57,6 +61,11 @@ export default function ConfirmBookingScreen(): React.ReactElement {
   const travelFee = isMobile ? Number(params.travelFee ?? 0) : 0;
   const estimateUnavailable = params.estimateUnavailable === 'true';
   const total = (service?.price ?? 0) + travelFee;
+  const design = useQuery({
+    queryKey: ['hair-design', params.designId],
+    queryFn: () => mobileApi.client.design(params.designId ?? ''),
+    enabled: params.designId !== undefined,
+  });
 
   const confirm = async (): Promise<void> => {
     setError(null);
@@ -65,6 +74,7 @@ export default function ConfirmBookingScreen(): React.ReactElement {
         barberId,
         serviceId,
         availabilitySlotId: slotId,
+        ...optionalDesignReference(params.designId),
         paymentMethod: canPayOnline && !payAtShop ? 'CARD' : 'CASH',
         clientNotes: notes || undefined,
         isMobileService: isMobile,
@@ -142,6 +152,22 @@ export default function ConfirmBookingScreen(): React.ReactElement {
           <Text style={styles.total}>${total.toFixed(2)}</Text>
         </View>
       </Card>
+      {design.data !== undefined ? (
+        <Card>
+          <Text style={styles.mobileLabel}>STYLE REFERENCE</Text>
+          <View style={styles.designRow}>
+            {design.data.generatedPreviewUrl !== null ? (
+              <Image source={{ uri: design.data.generatedPreviewUrl }} style={styles.designImage} />
+            ) : null}
+            <View style={styles.flex}>
+              <Text style={styles.title}>{design.data.styleName}</Text>
+              <Text style={styles.meta}>
+                This private preview will be attached for your barber.
+              </Text>
+            </View>
+          </View>
+        </Card>
+      ) : null}
       <Input
         label="Notes for your barber"
         onChangeText={setNotes}
@@ -187,8 +213,11 @@ export default function ConfirmBookingScreen(): React.ReactElement {
 
 const styles = StyleSheet.create({
   address: { ...typography.bodySmall, color: colors.info, marginTop: spacing.md },
+  designImage: { borderRadius: 10, height: 96, width: 78 },
+  designRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.md },
   divider: { backgroundColor: colors.border, height: 1, marginVertical: spacing.md },
   error: { ...typography.bodySmall, color: colors.error },
+  flex: { flex: 1 },
   meta: { ...typography.body, color: colors.textSecondary },
   mobileLabel: { ...typography.label, color: colors.info, marginBottom: spacing.sm },
   payRow: {

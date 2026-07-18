@@ -10,7 +10,7 @@ Phase 0 foundation through Phase 10 AI Hair Studio are implemented, followed by 
 experience, pin-location, Stripe web checkout, and live mobile-barber tracking upgrade.
 The repository is a pnpm monorepo for a barber operations and client booking platform with an
 Express API, Next.js web application, Expo application, PostgreSQL schema, JWT authentication,
-shared contracts, a BullMQ/Redis AI worker, private MinIO/S3-compatible image storage, isolated test
+shared contracts, a Python Redis/RQ AI worker, private MinIO/S3-compatible image storage, isolated test
 infrastructure, and onboarding documentation.
 
 Verified commands:
@@ -65,9 +65,10 @@ Current API root response:
 .
 ├── apps/
 │   ├── api/
-│   ├── ai-worker/
+│   ├── mobile/
 │   ├── web/
-│   └── mobile/
+├── services/
+│   └── ai/
 ├── packages/
 │   ├── api-client/
 │   ├── shared-types/
@@ -333,9 +334,9 @@ The July 16 live mobile tracking upgrade adds:
 Phase 10 AI Hair Studio adds:
 
 - Migration `010_ai_hair_studio.ts` for consented scans, private captures, generation state, and usage accounting
-- `apps/ai-worker`, a horizontally scalable TypeScript BullMQ worker using the existing Redis service
+- `services/ai`, a horizontally scalable FastAPI and Python RQ service using the existing Redis service
 - Private local MinIO storage with presigned browser uploads and short-lived authorized preview URLs
-- Deterministic zero-cost mock provider and production Gemini provider behind one interface
+- Deterministic zero-cost mock provider and production fal.ai FLUX Kontext provider behind one interface
 - Three-angle camera-only web capture with local MediaPipe pose guidance and quality rejection
 - Controlled hairstyle recommendations, one-image generation, progress polling, explicit retry, deletion, and appointment attachment
 - One-active-job, three-attempt daily defaults, idempotency keys, a kill switch, and optional monthly cost ceiling
@@ -355,7 +356,7 @@ Local seeded geography for mobile-service testing:
 
 Not built yet:
 
-- Production Gemini acceptance testing with a paid project and real client consent review
+- Production fal.ai acceptance testing with funded credentials and real client consent review
 - Self-hosted GPU hairstyle generation or Python model adapter
 - Native Expo three-angle camera flow
 - Native push notification delivery
@@ -872,7 +873,7 @@ the web AI Hair Studio, is ready for continued implementation. The remaining nat
 
 - Complete simulator/device QA and live Stripe/Google Maps acceptance testing with restricted keys
 - Native background GPS, WebSockets, and push notifications
-- Paid Gemini quality/privacy acceptance testing, native scan UI, travel analytics, and AI-assisted near-term availability
+- Paid fal.ai quality/privacy acceptance testing, travel analytics, and AI-assisted near-term availability
 
 ## Known Local Notes
 

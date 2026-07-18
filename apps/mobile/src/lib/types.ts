@@ -221,13 +221,53 @@ export type StyleReference = {
 export type HairDesign = {
   id: string;
   styleName: string;
-  styleCategory: 'haircut' | 'beard' | 'color';
+  styleCategory: 'haircut' | 'beard' | 'color' | 'combo';
   description: string | null;
   sourcePhotoUrl: string | null;
   generatedPreviewUrl: string | null;
   aiStatus: string;
+  generationStatus: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | null;
+  progress: number;
+  errorCode: string | null;
+  errorMessage: string | null;
   appointmentId: string | null;
   createdAt: string;
+};
+
+export type HairScanAngle = 'FRONT' | 'LEFT' | 'RIGHT';
+
+export type HairScan = {
+  id: string;
+  status: 'CAPTURING' | 'READY' | 'EXPIRED' | 'DELETED';
+  analysisStatus: 'NOT_STARTED' | 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  analysisError: string | null;
+  selectedCaptureId: string | null;
+  suggestions: Array<{
+    id: string;
+    name: string;
+    category: string;
+    description: string;
+    reason: string;
+  }>;
+  captures: Array<{
+    id: string;
+    angle: HairScanAngle;
+    uploadStatus: 'PENDING' | 'VERIFIED';
+    width: number | null;
+    height: number | null;
+  }>;
+  expiresAt: string;
+};
+
+export type HairStudioConfig = {
+  enabled: boolean;
+  provider: 'demo' | 'fal';
+  consentVersion: string;
+  requiredAngles: HairScanAngle[];
+  maxCaptureBytes: number;
+  retentionHours: number;
+  dailyGenerationLimit: number;
+  isMock: boolean;
 };
 
 export type BarberLocation =

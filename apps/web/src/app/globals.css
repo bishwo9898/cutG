@@ -157,7 +157,9 @@
   color: #f3eddc;
   background: #151512;
   cursor: pointer;
-  transition: border-color 150ms ease, background-color 150ms ease;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
 }
 
 .hair-dropzone:hover:not(:disabled) {
@@ -253,7 +255,9 @@
   text-align: left;
   background: #141412;
   cursor: pointer;
-  transition: border-color 150ms ease, background-color 150ms ease;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
 }
 
 .hair-style-options button:hover,
@@ -378,8 +382,12 @@
   font-weight: 800;
 }
 
-.hair-compare-original { left: 14px; }
-.hair-compare-result { right: 14px; }
+.hair-compare-original {
+  left: 14px;
+}
+.hair-compare-result {
+  right: 14px;
+}
 
 .saved-looks-v2 {
   margin-top: 70px;
@@ -1238,6 +1246,14 @@
   display: block;
   background: var(--studio-gold);
   transition: width 200ms ease;
+}
+
+.hair-booking-reference img {
+  border-radius: 12px;
+  height: 120px;
+  margin-top: 8px;
+  object-fit: cover;
+  width: 96px;
 }
 
 .hair-preferences-step,

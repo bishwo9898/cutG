@@ -110,22 +110,37 @@ S3_ACCESS_KEY_ID=cutg-local
 S3_SECRET_ACCESS_KEY=cutg-local-secret
 ```
 
-`pnpm dev` and `make dev` start API, web, and `apps/ai-worker`. `make setup` creates the private
-MinIO bucket. Camera access requires `localhost` or HTTPS. MediaPipe downloads its browser model and
-WASM runtime from the official configured URLs, then processes frames locally.
+`make ai-install` creates `services/ai/.venv`, installs pinned dependencies, and downloads the
+official MediaPipe detector model. `pnpm dev` and `make dev` start API, web, FastAPI, and the Python
+RQ worker. Local development uses RQ's spawn worker so native image libraries run safely on macOS.
+`make setup` also creates the private MinIO bucket. Native camera scanning requires an iOS/Android
+development build; it is not supported in Expo Go. The web scan uses MediaPipe in a worker. Both
+clients collect front, left, and right views automatically and retain the same scan when one angle
+needs a retake.
 
-For production Gemini processing:
+For production fal.ai processing:
 
 ```env
-AI_PROVIDER=gemini
-GEMINI_API_KEY=replace_with_paid_server_key
-GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
-GEMINI_SUGGESTION_MODEL=gemini-3.1-flash-lite
+AI_PROVIDER=fal
+FAL_KEY=replace_with_server_key
+AI_GENERATION_MODEL=fal-ai/flux-pro/kontext
+AI_INTERNAL_SECRET=replace_with_at_least_32_random_characters
 ```
 
-Use a paid Gemini project for client face images. Configure private production S3 credentials,
-restrict worker network access, and set `AI_MONTHLY_BUDGET_CENTS` to a non-zero safety ceiling.
-`AI_GENERATION_DAILY_LIMIT` defaults to `3`; `AI_SCAN_RETENTION_HOURS` defaults to `24`.
+Keep `FAL_KEY` server-only. Configure private production S3 credentials, restrict worker network
+access, and set `AI_MONTHLY_BUDGET_CENTS` to a non-zero safety ceiling.
+`AI_GENERATION_DAILY_LIMIT` defaults to `5`; `AI_SCAN_RETENTION_HOURS` defaults to `24`.
+
+The mock end-to-end verifier is safe by default and rejects a non-mock service configuration:
+
+```bash
+pnpm verify:hair-studio
+```
+
+With API and worker services explicitly configured for `AI_PROVIDER=fal` and a funded server-only
+`FAL_KEY`, opt in to one real image request with
+`HAIR_STUDIO_REAL_PROVIDER=1 pnpm verify:hair-studio`. Provider errors are reported with the exact
+failed stage and are never retried automatically.
 
 ### Stripe Card Checkout
 

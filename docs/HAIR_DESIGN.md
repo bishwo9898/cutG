@@ -1,70 +1,63 @@
 # AI Hair Studio
 
-Last updated: July 16, 2026
+Last updated: July 18, 2026
 
-Phase 10 turns `/client/design` into a web-first AI hairstyle studio. A client consents to face
-processing, confirms they are at least 18, captures three guided still images, chooses practical
-preferences, receives three cutG-controlled recommendations, and generates one private preview.
+The Hair Studio provides private hairstyle visualizations on web and native mobile. Both clients
+complete a guided front/left/right scan with local framing, hairline, and pose feedback before any
+upload. A rejected angle returns the user to that capture without replacing the other accepted
+views or creating another scan. Clients choose from the shared cutG style catalog or describe a
+custom style, and may attach the completed preview atomically while booking.
 
-## Privacy Model
+## Privacy and storage
 
-- The camera captures front, approximately 30-degree left, and approximately 30-degree right stills.
-- Camera video, rejected frames, face landmarks, and landmark templates never leave the browser.
-- MediaPipe Face Landmarker runs in a Web Worker for one-face, framing, orientation, and stability
-  guidance.
-- Captures are resized to at most 1600 pixels on the longest edge and encoded as JPEG at about 86%.
-- Bright, sharp, single-face captures are uploaded directly to private S3-compatible storage.
-- Raw captures expire after 24 hours by default.
-- Generated previews remain private until client deletion. The API returns short-lived signed URLs.
-- The UI always labels the output as an AI visualization, not a guaranteed haircut result.
-
-## Local And Production Providers
-
-`AI_PROVIDER=mock` is the default local provider. It returns controlled style recommendations and
-copies the accepted front capture as a deterministic output, exercising the complete queue, storage,
-authorization, polling, deletion, and appointment-attachment path without provider cost.
-
-`AI_PROVIDER=gemini` uses the server-only `GEMINI_API_KEY`, a low-cost suggestion model, and
-`gemini-3.1-flash-image` for the final image. Production face processing must use a paid Gemini
-project. Do not use unpaid/free-tier processing for client face images.
-
-The versioned image prompt changes scalp hair only and explicitly preserves identity, skin tone,
-expression, facial hair, body, clothing, lighting, and background. Recommendations are restricted to
-the cutG preset catalog and must not infer sensitive traits.
-
-References:
-
-- [Gemini image generation](https://ai.google.dev/gemini-api/docs/image-generation)
-- [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing)
-- [Gemini API terms](https://ai.google.dev/gemini-api/terms)
-- [MediaPipe Face Landmarker for Web](https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker/web_js)
+- Clients consent to face-image processing and confirm they are at least 18 before a scan is created.
+- Images are resized and uploaded directly to private S3-compatible storage through short-lived
+  presigned URLs. Image bytes never travel through Express JSON or navigation parameters.
+- The FastAPI service downloads only API-issued signed capture URLs, verifies image type and size,
+  and uses MediaPipe Tasks to reject unreadable, too-small, dark, overexposed, blurry, incorrectly
+  posed, distant, hairline-cropped, or non-single-face captures. Every scan must pass all three
+  angle-specific checks before generation.
+- Raw scan objects expire after `AI_SCAN_RETENTION_HOURS` (24 hours by default). Generated previews
+  remain private until the client deletes them.
+- fal.ai output is copied immediately into cutG-owned private storage. Browser and mobile clients
+  receive short-lived signed URLs only.
+- `FAL_KEY` belongs only in the server environment. Never expose it through Express responses,
+  Next.js public variables, or Expo variables.
 
 ## Architecture
 
 ```text
-Browser camera
-  -> client-side MediaPipe and image quality checks
-  -> presigned PUT to private MinIO/S3
-  -> Express creates an idempotent generation record
-  -> BullMQ stores the durable Redis job
-  -> apps/ai-worker downloads private captures
-  -> mock or Gemini provider
-  -> private generated object
-  -> PostgreSQL status and usage ledger
-  -> browser polls every 3 seconds and receives a signed preview URL
+Web or native guided three-angle scan
+  -> presigned private S3 upload
+  -> Express ownership, consent, limits, and idempotency
+  -> FastAPI MediaPipe validation and front-frame selection
+  -> Redis RQ durable generation job
+  -> Python worker: mock or FLUX.1 Kontext Pro via fal.ai
+  -> authenticated processing/completion/failure callback
+  -> Express copies output to private S3 and records usage
+  -> web/mobile poll the owned design and can book with designId
 ```
 
-The API never accepts image bytes in JSON. One client can have one active generation and three
-attempts per rolling 24 hours by default. A global feature flag, daily limit, worker concurrency,
-and optional monthly budget ceiling can pause new work without deleting saved briefs.
+The Python service has no database credentials. Express remains the source of truth for users,
+limits, job state, storage ownership, usage, and appointment attachment. Internal requests use the
+same minimum-32-character `AI_INTERNAL_SECRET` and callback comparison is timing safe.
 
-BullMQ jobs use stable job IDs and database idempotency keys. Provider calls are not automatically
-retried after uncertain submission. A worker restart marks stale in-flight generations as failed and
-requires an explicit client retry, preventing accidental duplicate image charges.
+## Providers and limits
+
+`AI_PROVIDER=mock` is the local and CI default. It returns the accepted portrait as a deterministic
+zero-cost result while exercising RQ, callbacks, storage, polling, deletion, and booking.
+
+`AI_PROVIDER=fal` uses `fal-ai/flux-pro/kontext`. The worker submits the private front portrait with
+the hardened hair-only prompt, disables prompt enhancement, requires exactly one JPEG result, and
+records provider request ID, duration, and estimated cost. An uncertain paid submission is not
+automatically retried. A real smoke test is opt-in and requires funded `FAL_KEY` credentials.
+
+One client may have one active generation and five attempts per rolling 24 hours by default. The
+optional monthly budget ceiling can pause new generation without removing saved designs.
 
 ## API
 
-All routes require a `CLIENT` bearer token:
+All public routes require an authenticated `CLIENT`:
 
 ```http
 GET    /clients/me/hair-studio/config
@@ -72,50 +65,49 @@ POST   /clients/me/hair-scans
 GET    /clients/me/hair-scans/:scanId
 POST   /clients/me/hair-scans/:scanId/captures/presign
 POST   /clients/me/hair-scans/:scanId/captures/:captureId/complete
+POST   /clients/me/hair-scans/:scanId/validate
 POST   /clients/me/hair-scans/:scanId/complete
+GET    /clients/me/designs
 POST   /clients/me/designs/generate
 GET    /clients/me/designs/:designId
 POST   /clients/me/designs/:designId/retry
 DELETE /clients/me/designs/:designId
+POST   /clients/me/designs/:designId/attach
 ```
 
-Generation and retry return `202`. Poll `GET /clients/me/designs/:designId` every three seconds while
-`generationStatus` is `QUEUED` or `PROCESSING`. Stop on `COMPLETED`, `FAILED`, or `CANCELLED`.
+Generation and retry return `202`. Poll while `generationStatus` is `QUEUED` or `PROCESSING`; stop
+on `COMPLETED`, `FAILED`, or `CANCELLED`. Booking accepts optional `designId` and validates/attaches
+the completed owned preview in the appointment transaction. The standalone attach route remains for
+legacy written briefs.
 
-The original textual brief endpoints remain supported:
-
-```http
-POST /clients/me/designs
-GET  /clients/me/designs
-POST /clients/me/designs/:designId/attach
-```
-
-Deleting a generated preview removes image access and detaches the image relation from appointments.
-Existing appointment style notes remain useful as barber-facing context.
-
-## Database
-
-Migration `010_ai_hair_studio.ts` adds:
-
-- `hair_scan_sessions`: consent, ownership, preferences, analysis state, suggestions, and expiry.
-- `hair_scan_captures`: private object metadata, checksum, angle, dimensions, and quality metrics.
-- `hair_design_generations`: provider state, prompt/model version, idempotency, output, usage, and errors.
-- `ai_usage_events`: immutable provider usage and estimated-cost ledger.
-- Private generated-asset, current-generation, failure, and soft-delete fields on
-  `client_hair_designs`.
-
-## Operations
-
-Local services:
+## Local setup
 
 ```bash
-make setup
+make up
+make ai-install
+make migrate
 make dev
 ```
 
-`make dev` starts API, web, and AI worker. MinIO is available at `http://localhost:9000`; its local
-console is `http://localhost:9001`. Objects are private and the bucket is created by `minio-init`.
+`make ai-install` creates `services/ai/.venv`, installs pinned dependencies, and downloads the
+official MediaPipe BlazeFace model. `pnpm dev` starts Express, Next.js, FastAPI, and the RQ worker.
+VisionCamera requires an iOS/Android development build and does not run in Expo Go.
 
-Set `AI_MOCK_FAILURE=true` only when intentionally testing the retry/error experience. Python is
-deferred until a benchmarked self-hosted model matches hosted quality and sustained spend justifies
-dedicated NVIDIA GPU operations.
+Tests use mock provider mode:
+
+```bash
+pnpm typecheck
+pnpm test:api
+make ai-test
+pnpm verify:hair-studio
+```
+
+The default verifier refuses to contact a paid provider. To run the opt-in real smoke test, start
+the API and workers with server-only `AI_PROVIDER=fal` and `FAL_KEY`, then run:
+
+```bash
+HAIR_STUDIO_REAL_PROVIDER=1 pnpm verify:hair-studio
+```
+
+If the provider or credentials are unavailable, the verifier exits at the named
+`real-provider-preflight` stage before creating a scan or submitting a paid request.

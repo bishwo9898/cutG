@@ -12,6 +12,7 @@ export const BookAppointmentSchema = z
     barberId: z.string().uuid(),
     serviceId: z.string().uuid(),
     availabilitySlotId: z.string().uuid(),
+    designId: z.string().uuid().optional(),
     clientNotes: z.string().trim().max(1000).optional(),
     paymentMethod: AppointmentPaymentMethodEnum.default('CASH'),
   })

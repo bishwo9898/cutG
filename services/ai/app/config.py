@@ -6,7 +6,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+SERVICE_ROOT = Path(__file__).resolve().parents[1]
+MONOREPO_ROOT = SERVICE_ROOT.parent.parent
+REPOSITORY_ROOT = (
+    MONOREPO_ROOT if (MONOREPO_ROOT / "pnpm-workspace.yaml").exists() else SERVICE_ROOT
+)
 load_dotenv(REPOSITORY_ROOT / ".env.local")
 load_dotenv(REPOSITORY_ROOT / ".env")
 
@@ -22,6 +26,10 @@ class Settings:
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6380")
     fal_key: str = os.getenv("FAL_KEY", "")
     request_timeout_seconds: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "90"))
+    face_model_path: str = os.getenv(
+        "AI_FACE_MODEL_PATH",
+        str(SERVICE_ROOT / "models" / "blaze_face_short_range.tflite"),
+    )
 
     def validate(self) -> None:
         if self.provider not in {"mock", "fal"}:

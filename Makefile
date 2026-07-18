@@ -2,13 +2,14 @@ SHELL := /bin/sh
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup up down restart status logs migrate seed dev test reset wait-for-postgres
+.PHONY: help setup up down restart status logs migrate seed dev test reset wait-for-postgres ai-install ai-dev ai-worker ai-test
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 setup: ## Install dependencies, prepare the environment, and initialize local data
 	pnpm install --config.confirmModulesPurge=false
+	$(MAKE) ai-install
 	@test -f .env || cp .env.example .env
 	$(MAKE) up
 	$(MAKE) wait-for-postgres
@@ -38,6 +39,21 @@ seed: ## Recreate development seed data
 
 dev: ## Start the API, web, and AI worker development servers
 	pnpm dev
+
+ai-install: ## Create the Python environment and install AI service dependencies
+	python3 -m venv services/ai/.venv
+	services/ai/.venv/bin/python -m pip install --upgrade pip
+	services/ai/.venv/bin/python -m pip install -r services/ai/requirements.txt
+	services/ai/.venv/bin/python services/ai/scripts/download_models.py
+
+ai-dev: ## Start the FastAPI AI service
+	services/ai/.venv/bin/uvicorn app.main:app --app-dir services/ai --reload --port 8000
+
+ai-worker: ## Start the durable Python RQ worker
+	cd services/ai && .venv/bin/rq worker cutg-ai-hair --url $${REDIS_URL:-redis://localhost:6380} --worker-class rq.worker.SpawnWorker
+
+ai-test: ## Run Python AI service tests
+	services/ai/.venv/bin/python -m pytest services/ai/tests
 
 test: ## Start the test database and run the test suite
 	docker compose up -d --wait postgres-test

@@ -13,8 +13,9 @@ import {
   MapPin,
   Navigation,
 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import {
@@ -38,6 +39,7 @@ import { browserApi } from '@/lib/browser-api';
 import type {
   ClientAddress,
   ClientAppointment,
+  HairDesign,
   PublicMobileConfig,
   PublicService,
   PublicSlot,
@@ -65,6 +67,7 @@ const danvilleCenter = { latitude: 37.6456, longitude: -84.7722 };
 
 export default function BookBarberPage(): React.ReactElement {
   const { barberId } = useParams<{ barberId: string }>();
+  const designId = useSearchParams().get('designId');
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: user } = useUser();
@@ -101,6 +104,11 @@ export default function BookBarberPage(): React.ReactElement {
     enabled: user?.userType === 'CLIENT',
     queryKey: ['client-payment-config'],
     queryFn: () => paymentApi.config<PaymentConfig>(browserApi),
+  });
+  const design = useQuery({
+    enabled: user?.userType === 'CLIENT' && designId !== null,
+    queryKey: ['hair-design', designId],
+    queryFn: () => clientApi.design<HairDesign>(browserApi, designId as string),
   });
   const estimate = useMutation({
     mutationFn: (coordinates: { latitude: number; longitude: number }) =>
@@ -206,6 +214,7 @@ export default function BookBarberPage(): React.ReactElement {
         barberId,
         serviceId: service.id,
         availabilitySlotId: slot.id,
+        ...(designId === null ? {} : { designId }),
         clientNotes: clientNotes.trim() || undefined,
         paymentMethod,
         isMobileService: isMobile,
@@ -562,6 +571,22 @@ export default function BookBarberPage(): React.ReactElement {
                   </div>
                 </div>
                 <div className="booking-review-grid">
+                  {design.data !== undefined && (
+                    <div className="review-detail-card hair-booking-reference">
+                      <span>Style reference</span>
+                      <strong>{design.data.styleName}</strong>
+                      {design.data.generatedPreviewUrl !== null && (
+                        <Image
+                          alt={`${design.data.styleName} AI preview`}
+                          height={120}
+                          src={design.data.generatedPreviewUrl}
+                          unoptimized
+                          width={96}
+                        />
+                      )}
+                      <p>Your barber will receive this private preview.</p>
+                    </div>
+                  )}
                   <div className="review-detail-card">
                     <span>Appointment</span>
                     <strong>{service.name}</strong>

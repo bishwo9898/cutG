@@ -8,7 +8,10 @@ import { useBarberServices } from '@/hooks/useBarbers';
 import { listFromResponse } from '@/lib/types';
 
 export default function SelectServiceScreen(): React.ReactElement {
-  const { barberId = '' } = useLocalSearchParams<{ barberId?: string }>();
+  const { barberId = '', designId } = useLocalSearchParams<{
+    barberId?: string;
+    designId?: string;
+  }>();
   const services = useBarberServices(barberId);
   const list = listFromResponse(services.data ?? {}).filter((service) => service.isActive);
 
@@ -31,7 +34,13 @@ export default function SelectServiceScreen(): React.ReactElement {
           key={service.id}
           service={service}
           onPress={() =>
-            router.push('/(client)/discover/' + barberId + '/book/type?serviceId=' + service.id)
+            router.push(
+              '/(client)/discover/' +
+                barberId +
+                '/book/type?serviceId=' +
+                service.id +
+                (designId ? '&designId=' + designId : ''),
+            )
           }
         />
       ))}

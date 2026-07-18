@@ -122,7 +122,10 @@ const mapAppointment = async (row: Row) => ({
             typeof row.generated_asset_key === 'string'
               ? await createPresignedDownloadUrl(row.generated_asset_key)
               : row.generated_preview_url,
-          sourcePhotoUrl: row.source_photo_url,
+          sourcePhotoUrl:
+            typeof row.source_asset_key === 'string'
+              ? await createPresignedDownloadUrl(row.source_asset_key)
+              : row.source_photo_url,
         },
   slot:
     row.availability_slot_id === null
@@ -171,6 +174,7 @@ const appointmentSelect = `
     ,hd.generated_preview_url
     ,hd.generated_asset_key
     ,hd.source_photo_url
+    ,hd.source_asset_key
   FROM appointments a
   JOIN services s ON s.id = a.service_id
   JOIN barber_profiles bp ON bp.id = a.barber_id
@@ -380,6 +384,25 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
       );
     }
 
+    let styleReference: Row | undefined;
+    if (input.designId !== undefined) {
+      const designs = await query<Row>(
+        `SELECT id,description FROM client_hair_designs
+         WHERE id=$1 AND client_id=$2 AND deleted_at IS NULL AND ai_status='completed'
+         FOR UPDATE`,
+        [input.designId, clientId],
+        trx,
+      );
+      styleReference = designs[0];
+      if (styleReference === undefined) {
+        throw new AppError(
+          404,
+          'The selected generated look is unavailable.',
+          'DESIGN_NOT_AVAILABLE',
+        );
+      }
+    }
+
     const appointmentRows = await query<Row>(
       `INSERT INTO appointments
         (client_id,barber_id,service_id,availability_slot_id,scheduled_at,duration_minutes,status,
@@ -387,8 +410,8 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
          is_mobile_service,client_address_id,service_latitude,service_longitude,service_address_line1,
          service_address_city,service_address_state,service_address_zip,travel_fee_cents,
          estimated_travel_minutes,distance_miles,service_address_formatted,service_address_source,
-         service_address_is_approximate)
-       VALUES ($1,$2,$3,$4,$5,$6,'PENDING','PENDING',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
+         service_address_is_approximate,style_reference_id,style_notes)
+       VALUES ($1,$2,$3,$4,$5,$6,'PENDING','PENDING',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
        RETURNING *`,
       [
         clientId,
@@ -435,10 +458,20 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
               ].join(', ')),
         mobile?.address.source ?? null,
         mobile?.address.isApproximateAddress ?? null,
+        styleReference?.id ?? null,
+        styleReference?.description ?? null,
       ],
       trx,
     );
     const appointment = appointmentRows[0] as Row;
+
+    if (styleReference !== undefined) {
+      await query(
+        'UPDATE client_hair_designs SET appointment_id=$1 WHERE id=$2 AND client_id=$3',
+        [appointment.id, styleReference.id, clientId],
+        trx,
+      );
+    }
 
     await trx.query(
       `UPDATE availability_slots

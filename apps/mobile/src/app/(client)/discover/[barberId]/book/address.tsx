@@ -23,6 +23,7 @@ export default function SelectAddressScreen(): React.ReactElement {
     barberId?: string;
     serviceId?: string;
     appointmentType?: string;
+    designId?: string;
   }>();
   const barberId = params.barberId ?? '';
   const addresses = useClientAddresses();
@@ -83,6 +84,7 @@ export default function SelectAddressScreen(): React.ReactElement {
         travelMinutes: String(travel?.estimatedTravelMinutes ?? 0),
         travelFee: String(travel?.travelFee ?? 0),
       });
+      if (params.designId !== undefined) destinationParams.set('designId', params.designId);
       if (estimateSoftError) destinationParams.set('estimateUnavailable', 'true');
       if (addressId !== undefined) destinationParams.set('addressId', addressId);
       else if (oneTime !== null) destinationParams.set('address', JSON.stringify(oneTime));

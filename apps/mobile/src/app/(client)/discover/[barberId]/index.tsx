@@ -25,7 +25,11 @@ const tabs = ['Services', 'Availability', 'Reviews'] as const;
 type ProfileTab = (typeof tabs)[number];
 
 export default function BarberProfileScreen(): React.ReactElement {
-  const { barberId = '' } = useLocalSearchParams<{ barberId?: string }>();
+  const { barberId = '', designId } = useLocalSearchParams<{
+    barberId?: string;
+    designId?: string;
+  }>();
+  const bookingPath = `/(client)/discover/${barberId}/book/service${designId ? `?designId=${designId}` : ''}`;
   const [tab, setTab] = useState<ProfileTab>('Services');
   const profile = useBarberProfile(barberId);
   const services = useBarberServices(barberId);
@@ -98,23 +102,17 @@ export default function BarberProfileScreen(): React.ReactElement {
             <ServiceCard
               key={service.id}
               service={service}
-              onPress={() => router.push('/(client)/discover/' + barberId + '/book/service')}
+              onPress={() => router.push(bookingPath)}
             />
           ))
         : null}
       {tab === 'Availability' ? (
-        <SlotGrid
-          slots={slotList}
-          onSelect={() => router.push('/(client)/discover/' + barberId + '/book/service')}
-        />
+        <SlotGrid slots={slotList} onSelect={() => router.push(bookingPath)} />
       ) : null}
       {tab === 'Reviews'
         ? reviewList.map((review) => <ReviewCard key={review.id} review={review} />)
         : null}
-      <Button
-        title="Book Now"
-        onPress={() => router.push('/(client)/discover/' + barberId + '/book/service')}
-      />
+      <Button title="Book Now" onPress={() => router.push(bookingPath)} />
     </Screen>
   );
 }

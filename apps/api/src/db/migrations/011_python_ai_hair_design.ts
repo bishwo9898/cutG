@@ -1,8 +1,18 @@
 import type { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
+  await knex.schema.raw(
+    'ALTER TABLE hair_scan_captures DROP CONSTRAINT IF EXISTS hair_capture_size_valid;',
+  );
+  await knex.schema.raw(
+    'ALTER TABLE hair_scan_captures ADD CONSTRAINT hair_capture_size_valid CHECK (size_bytes BETWEEN 10000 AND 4000000);',
+  );
   await knex.schema.alterTable('hair_scan_sessions', (table): void => {
-    table.uuid('selected_capture_id').references('id').inTable('hair_scan_captures').onDelete('SET NULL');
+    table
+      .uuid('selected_capture_id')
+      .references('id')
+      .inTable('hair_scan_captures')
+      .onDelete('SET NULL');
     table.jsonb('validation_metrics').notNullable().defaultTo(knex.raw("'{}'::jsonb"));
   });
   await knex.schema.alterTable('hair_design_generations', (table): void => {
@@ -25,6 +35,12 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
+  await knex.schema.raw(
+    'ALTER TABLE hair_scan_captures DROP CONSTRAINT IF EXISTS hair_capture_size_valid;',
+  );
+  await knex.schema.raw(
+    'ALTER TABLE hair_scan_captures ADD CONSTRAINT hair_capture_size_valid CHECK (size_bytes BETWEEN 10000 AND 3000000);',
+  );
   await knex.schema.raw('DROP INDEX IF EXISTS idx_hair_scans_selected_capture;');
   await knex.schema.raw('DROP INDEX IF EXISTS idx_hair_generations_python_job;');
   await knex.schema.alterTable('client_hair_designs', (table): void => {

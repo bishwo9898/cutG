@@ -1,11 +1,21 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { Router, type NextFunction, type Request, type Response, type Router as ExpressRouter } from 'express';
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+  type Router as ExpressRouter,
+} from 'express';
 import { z } from 'zod';
 
 import { env } from '../config/env';
 import { AppError } from '../middleware/errorHandler';
-import { completeAiGeneration, failAiGeneration } from '../services/design/hairStudioService';
+import {
+  completeAiGeneration,
+  failAiGeneration,
+  startAiGeneration,
+} from '../services/design/hairStudioService';
 
 export const internalAiRouter: ExpressRouter = Router();
 
@@ -16,8 +26,11 @@ const asyncHandler =
   };
 
 internalAiRouter.use((request, _response, next): void => {
-  const supplied = Buffer.from(request.header('authorization') ?? '');
-  const expected = Buffer.from(`Bearer ${env.AI_INTERNAL_SECRET}`);
+  const serviceSecret = request.header('x-cutg-ai-secret');
+  const supplied = Buffer.from(serviceSecret ?? request.header('authorization') ?? '');
+  const expected = Buffer.from(
+    serviceSecret === undefined ? `Bearer ${env.AI_INTERNAL_SECRET}` : env.AI_INTERNAL_SECRET,
+  );
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
     next(new AppError(401, 'Invalid internal AI credential.', 'AI_INTERNAL_UNAUTHORIZED'));
     return;
@@ -36,6 +49,14 @@ const FailSchema = z.object({
   errorCode: z.string().min(1).max(80),
   errorMessage: z.string().min(1).max(1000),
 });
+
+internalAiRouter.post(
+  '/generations/:generationId/processing',
+  asyncHandler(async (request, response) => {
+    const { generationId } = ParamsSchema.parse(request.params);
+    response.json(await startAiGeneration(generationId));
+  }),
+);
 
 internalAiRouter.post(
   '/generations/:generationId/complete',

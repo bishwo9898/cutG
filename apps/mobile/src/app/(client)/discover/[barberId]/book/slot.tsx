@@ -23,6 +23,7 @@ export default function SelectSlotScreen(): React.ReactElement {
     travelMinutes?: string;
     travelFee?: string;
     estimateUnavailable?: string;
+    designId?: string;
   }>();
   const barberId = params.barberId ?? '';
   const serviceId = params.serviceId ?? '';
@@ -111,6 +112,7 @@ export default function SelectSlotScreen(): React.ReactElement {
             if (params.travelFee !== undefined) next.set('travelFee', params.travelFee);
             if (params.estimateUnavailable !== undefined)
               next.set('estimateUnavailable', params.estimateUnavailable);
+            if (params.designId !== undefined) next.set('designId', params.designId);
             router.push(`/(client)/discover/${barberId}/book/confirm?${next.toString()}`);
           }
         }}

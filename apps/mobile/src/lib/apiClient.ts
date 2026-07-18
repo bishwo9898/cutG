@@ -47,6 +47,8 @@ import type {
   MobileBarberConfig,
   TravelEstimate,
   HairDesign,
+  HairScan,
+  HairStudioConfig,
 } from './types';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
@@ -173,9 +175,32 @@ export const mobileApi = {
       withAuth((client) => clientApi.setDefaultAddress(client, addressId)),
     designs: (): Promise<{ designs: HairDesign[] }> =>
       withAuth((client) => clientApi.designs(client)),
+    hairStudioConfig: (): Promise<HairStudioConfig> =>
+      withAuth((client) => clientApi.hairStudioConfig(client)),
+    createHairScan: (body: unknown): Promise<HairScan> =>
+      withAuth((client) => clientApi.createHairScan(client, body)),
+    hairScan: (scanId: string): Promise<HairScan> =>
+      withAuth((client) => clientApi.hairScan(client, scanId)),
+    presignHairCapture: (
+      scanId: string,
+      body: unknown,
+    ): Promise<{ captureId: string; uploadUrl: string; headers: Record<string, string> }> =>
+      withAuth((client) => clientApi.presignHairCapture(client, scanId, body)),
+    completeHairCapture: (scanId: string, captureId: string, body: unknown): Promise<unknown> =>
+      withAuth((client) => clientApi.completeHairCapture(client, scanId, captureId, body)),
+    validateHairScan: (scanId: string, body: unknown): Promise<HairScan> =>
+      withAuth((client) => clientApi.validateHairScan(client, scanId, body)),
+    generateDesign: (body: unknown): Promise<HairDesign> =>
+      withAuth((client) => clientApi.generateDesign(client, body)),
+    design: (designId: string): Promise<HairDesign> =>
+      withAuth((client) => clientApi.design(client, designId)),
+    retryDesign: (designId: string, body: unknown): Promise<HairDesign> =>
+      withAuth((client) => clientApi.retryDesign(client, designId, body)),
+    deleteDesign: (designId: string): Promise<{ message: string }> =>
+      withAuth((client) => clientApi.deleteDesign(client, designId)),
     createDesign: (body: {
       styleName: string;
-      styleCategory: 'haircut' | 'beard' | 'color';
+      styleCategory: 'haircut' | 'beard' | 'color' | 'combo';
       description?: string;
     }): Promise<HairDesign> => withAuth((client) => clientApi.createDesign(client, body)),
     attachDesign: (designId: string, appointmentId: string): Promise<{ message: string }> =>

@@ -26,10 +26,13 @@ type PoseResult = {
   faceCount: number;
   yaw: number;
   centered: boolean;
+  hairlineVisible: boolean;
   poseScore: number;
 };
 
 type Props = {
+  busy?: boolean;
+  failedAngle?: HairScanAngle | null;
   onComplete: (captures: CapturedHairImage[]) => void;
 };
 
@@ -42,13 +45,17 @@ const canvasBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
     );
   });
 
-export function HairScanCapture({ onComplete }: Props): React.ReactElement {
+export function HairScanCapture({
+  busy = false,
+  failedAngle = null,
+  onComplete,
+}: Props): React.ReactElement {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const workerRef = useRef<Worker | null>(null);
   const captureLock = useRef(false);
   const stableSince = useRef<number | null>(null);
   const currentAngleRef = useRef<HairScanAngle>('FRONT');
+  const capturesRef = useRef<Partial<Record<HairScanAngle, CapturedHairImage>>>({});
   const [cameraState, setCameraState] = useState<'starting' | 'ready' | 'denied'>('starting');
   const [poseEngine, setPoseEngine] = useState<'loading' | 'ready' | 'manual'>('loading');
   const [currentAngle, setCurrentAngle] = useState<HairScanAngle>('FRONT');
@@ -56,6 +63,7 @@ export function HairScanCapture({ onComplete }: Props): React.ReactElement {
     faceCount: 0,
     yaw: 0,
     centered: false,
+    hairlineVisible: false,
     poseScore: 0,
   });
   const [captures, setCaptures] = useState<Partial<Record<HairScanAngle, CapturedHairImage>>>({});
@@ -66,9 +74,33 @@ export function HairScanCapture({ onComplete }: Props): React.ReactElement {
     stableSince.current = null;
   }, [currentAngle]);
 
+  useEffect(() => {
+    capturesRef.current = captures;
+  }, [captures]);
+
+  useEffect(
+    () => (): void => {
+      Object.values(capturesRef.current).forEach((capture) => {
+        if (capture !== undefined) URL.revokeObjectURL(capture.previewUrl);
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (failedAngle === null) return;
+    setCaptures((previous) => {
+      const failed = previous[failedAngle];
+      if (failed !== undefined) URL.revokeObjectURL(failed.previewUrl);
+      return { ...previous, [failedAngle]: undefined };
+    });
+    setCurrentAngle(failedAngle);
+    setNotice(`Retake the ${ANGLE_COPY[failedAngle].title.toLowerCase()} photo.`);
+  }, [failedAngle]);
+
   const takeCapture = useCallback(async (): Promise<void> => {
     const video = videoRef.current;
-    if (video === null || video.videoWidth === 0 || captureLock.current) return;
+    if (video === null || video.videoWidth === 0 || captureLock.current || busy) return;
     captureLock.current = true;
     try {
       const scale = Math.min(1, 1600 / Math.max(video.videoWidth, video.videoHeight));
@@ -106,14 +138,16 @@ export function HairScanCapture({ onComplete }: Props): React.ReactElement {
         return { ...previous, [angle]: captured };
       });
       setNotice(`${ANGLE_COPY[angle].title} captured.`);
-      const next = ANGLES[ANGLES.indexOf(angle) + 1];
+      const next = ANGLES.find(
+        (candidate) => captures[candidate] === undefined && candidate !== angle,
+      );
       if (next !== undefined) setCurrentAngle(next);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Camera capture failed.');
     } finally {
       captureLock.current = false;
     }
-  }, [pose.poseScore]);
+  }, [busy, captures, pose.poseScore]);
 
   useEffect(() => {
     let stopped = false;
@@ -149,7 +183,6 @@ export function HairScanCapture({ onComplete }: Props): React.ReactElement {
     const worker = new Worker(new URL('../../workers/face-landmarker.worker.ts', import.meta.url), {
       type: 'module',
     });
-    workerRef.current = worker;
     worker.postMessage({
       kind: 'init',
       modelUrl:
@@ -164,13 +197,14 @@ export function HairScanCapture({ onComplete }: Props): React.ReactElement {
           faceCount: Number(event.data.faceCount),
           yaw: Number(event.data.yaw),
           centered: Boolean(event.data.centered),
+          hairlineVisible: Boolean(event.data.hairlineVisible),
           poseScore: Number(event.data.poseScore),
         });
       }
     };
     const interval = window.setInterval(() => {
       const video = videoRef.current;
-      if (poseEngine === 'manual' || video === null || video.readyState < 2) return;
+      if (video === null || video.readyState < 2) return;
       void createImageBitmap(video).then((bitmap) =>
         worker.postMessage({ kind: 'frame', bitmap, timestamp: performance.now() }, [bitmap]),
       );
@@ -178,29 +212,37 @@ export function HairScanCapture({ onComplete }: Props): React.ReactElement {
     return (): void => {
       window.clearInterval(interval);
       worker.terminate();
-      workerRef.current = null;
     };
   }, [cameraState]);
 
+  const poseReady =
+    pose.faceCount === 1 &&
+    pose.centered &&
+    pose.hairlineVisible &&
+    requiredPose(currentAngle, pose.yaw);
   useEffect(() => {
-    if (poseEngine !== 'ready' || cameraState !== 'ready') return;
-    const valid = pose.faceCount === 1 && pose.centered && requiredPose(currentAngle, pose.yaw);
-    if (!valid) {
+    if (
+      poseEngine !== 'ready' ||
+      cameraState !== 'ready' ||
+      busy ||
+      captures[currentAngle] !== undefined
+    )
+      return;
+    if (!poseReady) {
       stableSince.current = null;
       return;
     }
     stableSince.current ??= Date.now();
-    if (Date.now() - stableSince.current >= 800) {
+    if (Date.now() - stableSince.current >= 900) {
       stableSince.current = null;
       void takeCapture();
     }
-  }, [cameraState, currentAngle, pose, poseEngine, takeCapture]);
+  }, [busy, cameraState, captures, currentAngle, pose, poseEngine, poseReady, takeCapture]);
 
   const capturedValues = ANGLES.flatMap((angle) => {
     const capture = captures[angle];
     return capture === undefined ? [] : [capture];
   });
-  const poseReady = pose.faceCount === 1 && pose.centered && requiredPose(currentAngle, pose.yaw);
 
   if (cameraState === 'denied') {
     return (
@@ -208,8 +250,8 @@ export function HairScanCapture({ onComplete }: Props): React.ReactElement {
         <VideoOff size={34} />
         <h2>Camera access is needed</h2>
         <p>
-          Allow camera access in your browser settings, then reload this page. You can also continue
-          on another camera-enabled device. Video and rejected frames are never uploaded.
+          Allow camera access in your browser settings, then reload this page. Video and rejected
+          frames are never uploaded.
         </p>
       </section>
     );
@@ -226,7 +268,6 @@ export function HairScanCapture({ onComplete }: Props): React.ReactElement {
           <ShieldCheck size={15} /> Stills only
         </span>
       </div>
-
       <div className="hair-camera-viewport">
         <video aria-label="Live camera preview" muted playsInline ref={videoRef} />
         <div className={`hair-face-guide ${poseReady ? 'is-ready' : ''}`} aria-hidden="true" />
@@ -234,23 +275,25 @@ export function HairScanCapture({ onComplete }: Props): React.ReactElement {
           {cameraState === 'starting'
             ? 'Starting camera...'
             : poseEngine === 'loading'
-              ? 'Preparing pose guidance...'
+              ? 'Preparing face guidance...'
               : poseEngine === 'manual'
-                ? 'Center your face, then capture'
+                ? 'Center your face, keep your hairline visible, then capture'
                 : pose.faceCount !== 1
                   ? 'Keep one face in frame'
-                  : !pose.centered
-                    ? 'Move your face into the guide'
-                    : poseReady
-                      ? 'Hold still'
-                      : ANGLE_COPY[currentAngle].instruction}
+                  : !pose.hairlineVisible
+                    ? 'Move down so your hairline is visible'
+                    : !pose.centered
+                      ? 'Move your face into the guide'
+                      : poseReady
+                        ? 'Hold still'
+                        : ANGLE_COPY[currentAngle].instruction}
         </div>
       </div>
-
       <div className="hair-angle-progress">
         {ANGLES.map((angle) => (
           <button
             className={currentAngle === angle ? 'is-current' : ''}
+            disabled={busy}
             key={angle}
             onClick={() => setCurrentAngle(angle)}
             type="button"
@@ -262,10 +305,10 @@ export function HairScanCapture({ onComplete }: Props): React.ReactElement {
           </button>
         ))}
       </div>
-
       <div className="hair-capture-actions">
         <button
           className="button button-secondary"
+          disabled={busy}
           onClick={() => void takeCapture()}
           type="button"
         >
@@ -274,6 +317,7 @@ export function HairScanCapture({ onComplete }: Props): React.ReactElement {
         {captures[currentAngle] !== undefined && (
           <button
             className="button button-ghost"
+            disabled={busy}
             onClick={() => {
               const capture = captures[currentAngle];
               if (capture !== undefined) URL.revokeObjectURL(capture.previewUrl);
@@ -286,11 +330,11 @@ export function HairScanCapture({ onComplete }: Props): React.ReactElement {
         )}
         <button
           className="button button-primary"
-          disabled={capturedValues.length !== 3}
+          disabled={capturedValues.length !== 3 || busy}
           onClick={() => onComplete(capturedValues)}
           type="button"
         >
-          Continue with these photos
+          {busy ? 'Validating photos...' : 'Continue with these photos'}
         </button>
       </div>
       {notice !== null && <p className="hair-camera-notice">{notice}</p>}
