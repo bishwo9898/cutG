@@ -22,6 +22,7 @@ import {
   UuidParamsSchema,
   UpdateAddressSchema,
   TrackingAppointmentParamsSchema,
+  ValidateHairScanSchema,
 } from '@barber-saas/shared-types';
 import {
   Router,
@@ -61,6 +62,7 @@ import {
   getHairStudioConfig,
   presignHairCapture,
   retryHairDesign,
+  validateHairScan,
 } from '../services/design/hairStudioService';
 import { getLatestBarberLocation } from '../services/location/locationTrackingService';
 import {
@@ -229,6 +231,17 @@ clientRouter.post(
         CompleteHairCaptureSchema.parse(request.body),
       ),
     );
+  }),
+);
+clientRouter.post(
+  '/me/hair-scans/:scanId/validate',
+  asyncHandler(async (request, response) => {
+    const { scanId } = HairScanParamsSchema.parse(request.params);
+    response
+      .status(200)
+      .json(
+        await validateHairScan(userId(request), scanId, ValidateHairScanSchema.parse(request.body)),
+      );
   }),
 );
 clientRouter.post(

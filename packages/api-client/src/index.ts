@@ -177,6 +177,8 @@ export const clientApi = {
     client.post<T>(`/clients/me/hair-scans/${scanId}/captures/${captureId}/complete`, body),
   completeHairScan: <T>(client: ApiClient, scanId: string, body: unknown): Promise<T> =>
     client.post<T>(`/clients/me/hair-scans/${scanId}/complete`, body),
+  validateHairScan: <T>(client: ApiClient, scanId: string, body: unknown): Promise<T> =>
+    client.post<T>(`/clients/me/hair-scans/${scanId}/validate`, body),
   createDesign: <T>(client: ApiClient, body: unknown): Promise<T> =>
     client.post<T>('/clients/me/designs', body),
   generateDesign: <T>(client: ApiClient, body: unknown): Promise<T> =>

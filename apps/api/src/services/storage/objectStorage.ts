@@ -41,9 +41,35 @@ export const verifyUploadedObject = async (
   const size = result.ContentLength ?? 0;
   const contentType = result.ContentType ?? '';
 
-  if (size !== expectedSize || size > 3_000_000 || contentType !== expectedContentType) {
+  if (size !== expectedSize || size > 4_000_000 || contentType !== expectedContentType) {
     throw new Error('Uploaded object metadata did not match the signed capture request.');
   }
+};
+
+export const copyRemoteImageToStorage = async (
+  sourceUrl: string,
+  destinationKey: string,
+): Promise<{ contentType: string; sizeBytes: number }> => {
+  const response = await fetch(sourceUrl, { signal: AbortSignal.timeout(60_000) });
+  if (!response.ok) throw new Error('Generated image could not be downloaded.');
+  const contentType = response.headers.get('content-type')?.split(';')[0] ?? '';
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) {
+    throw new Error('Generated asset was not a supported image.');
+  }
+  const body = Buffer.from(await response.arrayBuffer());
+  if (body.length === 0 || body.length > 12_000_000) {
+    throw new Error('Generated image size was invalid.');
+  }
+  await client.send(
+    new PutObjectCommand({
+      Bucket: env.S3_BUCKET,
+      Key: destinationKey,
+      Body: body,
+      ContentType: contentType,
+      Metadata: { private: 'true' },
+    }),
+  );
+  return { contentType, sizeBytes: body.length };
 };
 
 export const deleteStoredObject = async (key: string): Promise<void> => {

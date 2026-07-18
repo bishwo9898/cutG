@@ -1,219 +1,170 @@
 'use client';
 
 import { clientApi } from '@barber-saas/api-client';
+import { HAIR_STYLE_CATALOG } from '@barber-saas/shared-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft,
+  ArrowRight,
   Check,
-  Clock3,
-  Paperclip,
+  ImagePlus,
   RotateCcw,
+  Share2,
   ShieldCheck,
   Sparkles,
   Trash2,
+  Upload,
   WandSparkles,
 } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { HairScanCapture, type CapturedHairImage } from '@/components/client/hair-scan-capture';
 import { ClientHeader } from '@/components/client-header';
 import { Notice } from '@/components/notice';
 import { browserApi } from '@/lib/browser-api';
-import type {
-  ClientAppointment,
-  HairDesign,
-  HairScan,
-  HairStudioConfig,
-  HairStyleSuggestion,
-} from '@/lib/contracts';
+import type { HairDesign, HairScan, HairStudioConfig } from '@/lib/contracts';
 import { errorMessage } from '@/lib/errors';
 
+type Phase = 'consent' | 'upload' | 'styles' | 'generating' | 'result';
+type Category = (typeof HAIR_STYLE_CATALOG)[number]['category'];
 type DesignsResponse = { designs: HairDesign[] };
-type AppointmentsResponse = { appointments: ClientAppointment[] };
-type StudioPhase = 'consent' | 'camera' | 'uploading' | 'preferences' | 'styles' | 'result';
 
-const sha256 = async (blob: Blob): Promise<string> => {
-  const hash = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+const acceptedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+const sha256 = async (file: File): Promise<string> => {
+  const hash = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
   return [...new Uint8Array(hash)].map((value) => value.toString(16).padStart(2, '0')).join('');
 };
 
-const defaultPreferences = {
-  desiredLength: 'short',
-  maintenance: 'low',
-  texture: 'natural',
-  fadePreference: 'low',
-  overallStyle: 'clean',
-};
+const imageDimensions = async (file: File): Promise<{ width: number; height: number }> =>
+  new Promise((resolve, reject) => {
+    const image = document.createElement('img');
+    const url = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('This image could not be opened.'));
+    };
+    image.src = url;
+  });
 
 export default function HairDesignPage(): React.ReactElement {
   const queryClient = useQueryClient();
-  const [phase, setPhase] = useState<StudioPhase>('consent');
-  const [consent, setConsent] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [phase, setPhase] = useState<Phase>('consent');
   const [adult, setAdult] = useState(false);
-  const [scanId, setScanId] = useState<string | null>(null);
-  const [captures, setCaptures] = useState<CapturedHairImage[]>([]);
-  const [preferences, setPreferences] = useState(defaultPreferences);
-  const [selectedStyle, setSelectedStyle] = useState<HairStyleSuggestion | null>(null);
-  const [customDirection, setCustomDirection] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [scan, setScan] = useState<HairScan | null>(null);
+  const [category, setCategory] = useState<Category>('haircut');
+  const [selectedStyleId, setSelectedStyleId] = useState('textured-crop');
+  const [direction, setDirection] = useState('');
   const [designId, setDesignId] = useState<string | null>(null);
+  const [comparison, setComparison] = useState(50);
   const [message, setMessage] = useState<string | null>(null);
-  const capturesRef = useRef<CapturedHairImage[]>([]);
 
   const config = useQuery({
     queryKey: ['hair-studio-config'],
     queryFn: () => clientApi.hairStudioConfig<HairStudioConfig>(browserApi),
     retry: false,
   });
-  const scan = useQuery({
-    queryKey: ['hair-scan', scanId],
-    queryFn: () => clientApi.hairScan<HairScan>(browserApi, scanId as string),
-    enabled: scanId !== null && phase === 'styles',
-    refetchInterval: (query) =>
-      ['QUEUED', 'PROCESSING'].includes(query.state.data?.analysisStatus ?? '') ? 3000 : false,
+  const designs = useQuery({
+    queryKey: ['hair-designs'],
+    queryFn: () => clientApi.designs<DesignsResponse>(browserApi),
+    retry: false,
   });
   const design = useQuery({
     queryKey: ['hair-design', designId],
     queryFn: () => clientApi.design<HairDesign>(browserApi, designId as string),
     enabled: designId !== null,
     refetchInterval: (query) =>
-      ['QUEUED', 'PROCESSING'].includes(query.state.data?.generationStatus ?? '') ? 3000 : false,
+      ['QUEUED', 'PROCESSING'].includes(query.state.data?.generationStatus ?? '') ? 2000 : false,
   });
-  const designs = useQuery({
-    queryKey: ['hair-designs'],
-    queryFn: () => clientApi.designs<DesignsResponse>(browserApi),
-    retry: false,
-  });
-  const appointments = useQuery({
-    queryKey: ['client-appointments', 'design-attach'],
-    queryFn: () => clientApi.appointments<AppointmentsResponse>(browserApi, { upcoming: true }),
-    retry: false,
-  });
-  const nextAppointment = useMemo(
-    () =>
-      (appointments.data?.appointments ?? [])
-        .filter(
-          (appointment) => !['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(appointment.status),
-        )
-        .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt))[0],
-    [appointments.data],
-  );
 
-  useEffect(() => {
-    if (scan.data?.analysisStatus === 'COMPLETED' && selectedStyle === null) {
-      setSelectedStyle(scan.data.suggestions[0] ?? null);
-    }
-  }, [scan.data, selectedStyle]);
   useEffect(() => {
     if (design.data?.generationStatus === 'COMPLETED') setPhase('result');
-  }, [design.data]);
-  useEffect(() => {
-    capturesRef.current = captures;
-  }, [captures]);
-  useEffect((): (() => void) => {
-    return (): void => {
-      capturesRef.current.forEach((capture) => URL.revokeObjectURL(capture.previewUrl));
-    };
-  }, []);
+    if (design.data?.generationStatus === 'FAILED') setPhase('generating');
+  }, [design.data?.generationStatus]);
+  useEffect(() => () => {
+    if (previewUrl !== null) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
-  const createScan = useMutation({
-    mutationFn: () =>
-      clientApi.createHairScan<HairScan>(browserApi, {
+  const selectedStyle = useMemo(
+    () => HAIR_STYLE_CATALOG.find((style) => style.id === selectedStyleId),
+    [selectedStyleId],
+  );
+  const visibleStyles = HAIR_STYLE_CATALOG.filter((style) => style.category === category);
+
+  const upload = useMutation({
+    mutationFn: async (portrait: File): Promise<HairScan> => {
+      const dimensions = await imageDimensions(portrait);
+      if (dimensions.width < 200 || dimensions.height < 200) {
+        throw new Error('Choose an image at least 200 by 200 pixels.');
+      }
+      const created = await clientApi.createHairScan<HairScan>(browserApi, {
         consentAccepted: true,
         ageConfirmed: true,
-        consentVersion: config.data?.consentVersion ?? '2026-07-16',
-      }),
-    onSuccess: (created) => {
-      setScanId(created.id);
-      setPhase('camera');
+        consentVersion: config.data?.consentVersion ?? '2026-07-17',
+      });
+      const presigned = await clientApi.presignHairCapture<{
+        captureId: string;
+        uploadUrl: string;
+        headers: Record<string, string>;
+      }>(browserApi, created.id, {
+        angle: 'FRONT',
+        mimeType: portrait.type,
+        sizeBytes: portrait.size,
+        checksumSha256: await sha256(portrait),
+      });
+      const uploaded = await fetch(presigned.uploadUrl, {
+        method: 'PUT',
+        headers: presigned.headers,
+        body: portrait,
+      });
+      if (!uploaded.ok) throw new Error('The private portrait upload failed.');
+      await clientApi.completeHairCapture(browserApi, created.id, presigned.captureId, dimensions);
+      return clientApi.validateHairScan<HairScan>(browserApi, created.id, {});
     },
-  });
-
-  const uploadCaptures = useMutation({
-    mutationFn: async (accepted: CapturedHairImage[]) => {
-      if (scanId === null) throw new Error('The scan session was not created.');
-      for (const capture of accepted) {
-        const presigned = await clientApi.presignHairCapture<{
-          captureId: string;
-          uploadUrl: string;
-          headers: Record<string, string>;
-        }>(browserApi, scanId, {
-          angle: capture.angle,
-          mimeType: capture.blob.type,
-          sizeBytes: capture.blob.size,
-          checksumSha256: await sha256(capture.blob),
-        });
-        const response = await fetch(presigned.uploadUrl, {
-          method: 'PUT',
-          headers: presigned.headers,
-          body: capture.blob,
-        });
-        if (!response.ok)
-          throw new Error(`The ${capture.angle.toLowerCase()} capture could not be uploaded.`);
-        await clientApi.completeHairCapture(browserApi, scanId, presigned.captureId, {
-          width: capture.width,
-          height: capture.height,
-          brightness: capture.quality.brightness,
-          sharpness: capture.quality.sharpness,
-          faceCount: 1,
-          poseScore: capture.quality.poseScore,
-        });
-      }
-    },
-    onMutate: (accepted) => {
-      setCaptures(accepted);
-      setPhase('uploading');
-    },
-    onSuccess: () => setPhase('preferences'),
-  });
-
-  const completeScan = useMutation({
-    mutationFn: async () => {
-      if (scanId === null) throw new Error('The scan session was not created.');
-      return clientApi.completeHairScan<HairScan>(browserApi, scanId, { preferences });
-    },
-    onSuccess: (completed) => {
-      queryClient.setQueryData(['hair-scan', scanId], completed);
+    onSuccess: (validated) => {
+      setScan(validated);
       setPhase('styles');
     },
   });
 
   const generate = useMutation({
-    mutationFn: async () => {
-      if (scanId === null || selectedStyle === null) throw new Error('Choose a recommended style.');
+    mutationFn: async (): Promise<HairDesign> => {
+      if (scan === null || selectedStyle === undefined) throw new Error('Select a style first.');
       return clientApi.generateDesign<HairDesign>(browserApi, {
-        scanId,
+        scanId: scan.id,
         styleName: selectedStyle.name,
         styleCategory: selectedStyle.category,
-        description: [selectedStyle.description, customDirection.trim()].filter(Boolean).join(' '),
+        description: [selectedStyle.description, direction.trim()].filter(Boolean).join(' '),
         idempotencyKey: crypto.randomUUID(),
       });
     },
     onSuccess: (created) => {
       setDesignId(created.id);
       queryClient.setQueryData(['hair-design', created.id], created);
+      setPhase('generating');
+      void queryClient.invalidateQueries({ queryKey: ['hair-designs'] });
     },
   });
-
   const retry = useMutation({
     mutationFn: () =>
       clientApi.retryDesign<HairDesign>(browserApi, designId as string, {
         idempotencyKey: crypto.randomUUID(),
       }),
-    onSuccess: (updated) => queryClient.setQueryData(['hair-design', updated.id], updated),
-  });
-  const attach = useMutation({
-    mutationFn: async () => {
-      if (designId === null) throw new Error('Generate a look first.');
-      if (nextAppointment === undefined)
-        throw new Error('Book an appointment before attaching a look.');
-      return clientApi.attachDesign(browserApi, designId, nextAppointment.id);
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['hair-design', updated.id], updated);
+      setPhase('generating');
     },
-    onSuccess: () =>
-      setMessage(`Attached to ${nextAppointment?.service.name ?? 'your next appointment'}.`),
   });
   const remove = useMutation({
-    mutationFn: () => clientApi.deleteDesign(browserApi, designId as string),
+    mutationFn: (id: string) => clientApi.deleteDesign(browserApi, id),
     onSuccess: async () => {
       setDesignId(null);
       setPhase('styles');
@@ -221,436 +172,141 @@ export default function HairDesignPage(): React.ReactElement {
     },
   });
 
-  const activeError =
-    createScan.error ??
-    uploadCaptures.error ??
-    completeScan.error ??
-    generate.error ??
-    retry.error ??
-    attach.error;
-  const frontCapture = captures.find((capture) => capture.angle === 'FRONT');
+  const acceptFile = (nextFile: File | undefined): void => {
+    setMessage(null);
+    if (nextFile === undefined) return;
+    if (!acceptedTypes.includes(nextFile.type)) {
+      setMessage('Use a JPEG, PNG, or WebP image.');
+      return;
+    }
+    if (nextFile.size > 4_000_000) {
+      setMessage('Choose an image smaller than 4 MB.');
+      return;
+    }
+    if (previewUrl !== null) URL.revokeObjectURL(previewUrl);
+    const nextPreview = URL.createObjectURL(nextFile);
+    setFile(nextFile);
+    setPreviewUrl(nextPreview);
+    setPhase('upload');
+  };
+
+  const activeError = upload.error ?? generate.error ?? retry.error ?? remove.error;
+  const current = design.data;
 
   return (
-    <main className="market-page hair-studio-page">
+    <main className="market-page hair-studio-page hair-studio-v2">
       <ClientHeader />
-      <section className="hair-studio-header market-section">
+      <section className="market-section hair-studio-v2-header">
         <div>
           <p className="eyebrow">cutG AI Hair Studio</p>
-          <h1>See the cut before the chair.</h1>
-          <p>Three private stills. Practical style recommendations. One realistic preview.</p>
+          <h1>Preview your next look.</h1>
+          <p>One clear portrait, a controlled style direction, and a private AI visualization.</p>
         </div>
         <div className="hair-studio-trust">
           <ShieldCheck size={18} />
-          <span>
-            Raw scans automatically expire after {config.data?.retentionHours ?? 24} hours.
-          </span>
+          Raw portraits expire after {config.data?.retentionHours ?? 24} hours
         </div>
       </section>
 
-      <section className="market-section hair-studio-content">
-        {config.isSuccess && !config.data.enabled ? (
-          <TextBriefFallback />
+      <section className="market-section hair-studio-v2-shell">
+        <nav className="hair-phase-nav" aria-label="Hair studio progress">
+          {['Photo', 'Style', 'Preview'].map((label, index) => {
+            const activeIndex = phase === 'consent' || phase === 'upload' ? 0 : phase === 'styles' ? 1 : 2;
+            return <span className={index <= activeIndex ? 'is-active' : ''} key={label}>{index + 1}. {label}</span>;
+          })}
+        </nav>
+
+        {!config.isLoading && config.data?.enabled === false ? (
+          <Notice>AI visualization is disabled. Your existing saved style briefs remain available.</Notice>
         ) : phase === 'consent' ? (
-          <section className="hair-consent-panel">
-            <div className="hair-consent-copy">
+          <section className="hair-upload-layout">
+            <div className="hair-upload-copy">
               <span className="hair-step-number">01</span>
-              <p className="eyebrow">Before the camera</p>
-              <h2>Your face stays private by design.</h2>
-              <p>
-                cutG captures only three accepted still images. Camera video, face landmarks, and
-                rejected frames never leave this device. The preview is a visualization, not a
-                guaranteed haircut result.
-              </p>
+              <h2>Start with a clear portrait</h2>
+              <p>Face the camera, use even light, and keep your full hairline visible. Your image remains private and is used only to produce this preview.</p>
               <ul>
-                <li>
-                  <Check size={15} /> Front, left, and right stills only
-                </li>
-                <li>
-                  <Check size={15} /> Private storage and short-lived access links
-                </li>
-                <li>
-                  <Check size={15} /> Delete your generated look whenever you choose
-                </li>
+                <li><Check size={15} /> One person in frame</li>
+                <li><Check size={15} /> No hats, filters, or dark shadows</li>
+                <li><Check size={15} /> JPEG, PNG, or WebP under 4 MB</li>
               </ul>
+              <label className="hair-consent-check"><input checked={adult} onChange={(event) => setAdult(event.target.checked)} type="checkbox" />I confirm that I am at least 18.</label>
+              <label className="hair-consent-check"><input checked={consent} onChange={(event) => setConsent(event.target.checked)} type="checkbox" />I consent to private face-image processing for this preview.</label>
             </div>
-            <div className="hair-consent-actions">
-              <label>
-                <input
-                  checked={adult}
-                  onChange={(event) => setAdult(event.target.checked)}
-                  type="checkbox"
-                />
-                <span>I confirm that I am at least 18 years old.</span>
-              </label>
-              <label>
-                <input
-                  checked={consent}
-                  onChange={(event) => setConsent(event.target.checked)}
-                  type="checkbox"
-                />
-                <span>I consent to face image processing for this hairstyle preview.</span>
-              </label>
-              <button
-                className="button button-primary"
-                disabled={!adult || !consent || createScan.isPending || config.isLoading}
-                onClick={() => createScan.mutate()}
-                type="button"
-              >
-                <WandSparkles size={17} /> Begin private scan
-              </button>
+            <button
+              className="hair-dropzone"
+              disabled={!adult || !consent}
+              onClick={() => inputRef.current?.click()}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => { event.preventDefault(); acceptFile(event.dataTransfer.files[0]); }}
+              type="button"
+            >
+              <ImagePlus size={34} />
+              <strong>Drop a portrait here</strong>
+              <span>or choose from your device</span>
+              <small>Private upload. No public gallery.</small>
+            </button>
+          </section>
+        ) : phase === 'upload' ? (
+          <section className="hair-photo-review">
+            <div className="hair-photo-frame">{previewUrl !== null && <Image alt="Selected portrait" fill sizes="420px" src={previewUrl} unoptimized />}</div>
+            <div>
+              <p className="eyebrow">Portrait review</p>
+              <h2>Ready for a quality check?</h2>
+              <p>We will verify lighting, sharpness, framing, and that exactly one face is visible before generation.</p>
+              <div className="button-row">
+                <button className="button button-primary" disabled={file === null || upload.isPending} onClick={() => file !== null && upload.mutate(file)} type="button"><Upload size={16} />{upload.isPending ? 'Checking portrait...' : 'Use this portrait'}</button>
+                <button className="button button-secondary" onClick={() => inputRef.current?.click()} type="button">Choose another</button>
+              </div>
             </div>
           </section>
-        ) : phase === 'camera' ? (
-          <HairScanCapture onComplete={(accepted) => uploadCaptures.mutate(accepted)} />
-        ) : phase === 'uploading' ? (
-          <StudioWaiting
-            title="Securing your three stills"
-            copy="Images are uploading directly to private storage."
-            progress={45}
-          />
-        ) : phase === 'preferences' ? (
-          <PreferencesStep
-            onBack={() => setPhase('camera')}
-            onContinue={() => completeScan.mutate()}
-            pending={completeScan.isPending}
-            preferences={preferences}
-            setPreferences={setPreferences}
-          />
         ) : phase === 'styles' ? (
-          <StyleStep
-            customDirection={customDirection}
-            design={design.data}
-            generating={generate.isPending}
-            onDirection={setCustomDirection}
-            onGenerate={() => generate.mutate()}
-            onSelect={setSelectedStyle}
-            onRetry={() => retry.mutate()}
-            scan={scan.data}
-            selected={selectedStyle}
-          />
+          <section className="hair-style-picker-v2">
+            <div className="hair-style-heading"><div><p className="eyebrow">Style direction</p><h2>Choose what changes. Everything else stays you.</h2></div><button className="button button-ghost" onClick={() => setPhase('upload')} type="button">Change photo</button></div>
+            <div className="hair-category-tabs">
+              {(['haircut', 'beard', 'color', 'combo'] as Category[]).map((value) => <button className={category === value ? 'is-active' : ''} key={value} onClick={() => { setCategory(value); const first = HAIR_STYLE_CATALOG.find((style) => style.category === value); if (first) setSelectedStyleId(first.id); }} type="button">{value}</button>)}
+            </div>
+            <div className="hair-style-options">
+              {visibleStyles.map((style) => <button className={selectedStyleId === style.id ? 'is-selected' : ''} key={style.id} onClick={() => setSelectedStyleId(style.id)} type="button"><span>{selectedStyleId === style.id ? <Check size={14} /> : <Sparkles size={14} />}</span><strong>{style.name}</strong><small>{style.description}</small></button>)}
+            </div>
+            <label className="hair-direction-field"><span>Optional details for the AI and your barber</span><textarea maxLength={800} onChange={(event) => setDirection(event.target.value)} placeholder="Keep more length at the crown, soften the temple blend..." value={direction} /></label>
+            <button className="button button-primary" disabled={generate.isPending} onClick={() => generate.mutate()} type="button"><WandSparkles size={17} />Generate preview</button>
+          </section>
+        ) : phase === 'generating' ? (
+          <section className="hair-generation-stage">
+            {current?.generationStatus === 'FAILED' ? <><RotateCcw size={30} /><h2>The preview needs another pass.</h2><p>{current.errorMessage ?? 'Generation could not be completed.'}</p><button className="button button-primary" disabled={retry.isPending} onClick={() => retry.mutate()} type="button">Retry generation</button></> : <><Sparkles size={34} /><p className="eyebrow">AI visualization in progress</p><h2>Keeping your identity. Reworking only the hair.</h2><p>Preparing strands, blend, texture, and realistic lighting. This page updates automatically.</p><div className="hair-progress"><span style={{ width: `${Math.max(8, current?.progress ?? 8)}%` }} /></div></>}
+          </section>
         ) : (
-          <ResultStep
-            attaching={attach.isPending}
-            design={design.data}
-            frontCapture={frontCapture}
-            isMock={config.data?.isMock ?? false}
-            onAttach={() => attach.mutate()}
-            onDelete={() => remove.mutate()}
-            onRetry={() => {
-              setDesignId(null);
-              setPhase('styles');
-            }}
-          />
+          <section className="hair-result-v2">
+            <div className="hair-result-v2-heading"><div><p className="eyebrow">AI visualization</p><h2>{current?.styleName}</h2></div><span><Sparkles size={14} />AI generated</span></div>
+            <div className="hair-compare-slider">
+              {current?.sourcePhotoUrl !== null && current?.sourcePhotoUrl !== undefined && <Image alt="Original portrait" fill sizes="900px" src={current.sourcePhotoUrl} unoptimized />}
+              <div className="hair-generated-layer" style={{ clipPath: `inset(0 ${100 - comparison}% 0 0)` }}>{current?.generatedPreviewUrl !== null && current?.generatedPreviewUrl !== undefined && <Image alt="Generated hairstyle" fill sizes="900px" src={current.generatedPreviewUrl} unoptimized />}</div>
+              <div className="hair-compare-line" style={{ left: `${comparison}%` }}><span /></div>
+              <span className="hair-compare-label hair-compare-original">Original</span><span className="hair-compare-label hair-compare-result">Preview</span>
+              <input aria-label="Compare original and generated preview" max="100" min="0" onChange={(event) => setComparison(Number(event.target.value))} type="range" value={comparison} />
+            </div>
+            <Notice>This is an AI visualization for communicating with your barber, not a guaranteed haircut outcome.</Notice>
+            <div className="button-row">
+              <Link className="button button-primary" href={`/barbers?designId=${current?.id ?? ''}`}>Book with this style <ArrowRight size={16} /></Link>
+              <button className="button button-secondary" onClick={() => { setPhase('styles'); setDesignId(null); }} type="button"><RotateCcw size={16} />Try another</button>
+              <button className="button button-secondary" onClick={() => void navigator.clipboard.writeText(window.location.href).then(() => setMessage('Hair Studio link copied.'))} type="button"><Share2 size={16} />Share</button>
+              <button className="button button-ghost" onClick={() => current && remove.mutate(current.id)} type="button"><Trash2 size={16} />Delete</button>
+            </div>
+          </section>
         )}
 
-        {activeError !== null && activeError !== undefined && (
-          <Notice>{errorMessage(activeError)}</Notice>
-        )}
-        {message !== null && <Notice tone="success">{message}</Notice>}
+        <input accept={acceptedTypes.join(',')} hidden onChange={(event) => acceptFile(event.target.files?.[0])} ref={inputRef} type="file" />
+        {activeError !== null && activeError !== undefined && <Notice>{errorMessage(activeError)}</Notice>}
+        {message !== null && <Notice>{message}</Notice>}
 
-        <SavedLooks designs={designs.data?.designs ?? []} />
+        <section className="saved-looks-v2">
+          <div><p className="eyebrow">Private gallery</p><h2>Saved looks</h2></div>
+          <div className="saved-look-grid-v2">
+            {(designs.data?.designs ?? []).map((saved) => <button key={saved.id} onClick={() => { setDesignId(saved.id); setPhase(saved.generationStatus === 'COMPLETED' ? 'result' : 'generating'); }} type="button"><div>{saved.generatedPreviewUrl ? <Image alt={saved.styleName} fill sizes="240px" src={saved.generatedPreviewUrl} unoptimized /> : <Sparkles size={22} />}</div><strong>{saved.styleName}</strong><span>{saved.generationStatus?.toLowerCase() ?? saved.aiStatus}</span></button>)}
+            {(designs.data?.designs.length ?? 0) === 0 && <p className="muted">Generated looks will appear here.</p>}
+          </div>
+        </section>
       </section>
     </main>
-  );
-}
-
-function StudioWaiting({
-  title,
-  copy,
-  progress,
-}: {
-  title: string;
-  copy: string;
-  progress: number;
-}): React.ReactElement {
-  return (
-    <section className="hair-studio-waiting">
-      <Sparkles size={28} />
-      <h2>{title}</h2>
-      <p>{copy}</p>
-      <div className="hair-progress">
-        <span style={{ width: `${progress}%` }} />
-      </div>
-    </section>
-  );
-}
-
-function PreferencesStep({
-  preferences,
-  setPreferences,
-  onBack,
-  onContinue,
-  pending,
-}: {
-  preferences: typeof defaultPreferences;
-  setPreferences: React.Dispatch<React.SetStateAction<typeof defaultPreferences>>;
-  onBack: () => void;
-  onContinue: () => void;
-  pending: boolean;
-}): React.ReactElement {
-  const fields = [
-    ['desiredLength', 'Desired length', ['very-short', 'short', 'medium', 'long', 'keep-length']],
-    ['maintenance', 'Maintenance', ['low', 'moderate', 'high']],
-    ['texture', 'Texture direction', ['natural', 'straight', 'wavy', 'curly', 'coily']],
-    ['fadePreference', 'Fade preference', ['none', 'low', 'mid', 'high', 'taper']],
-    ['overallStyle', 'Overall style', ['classic', 'clean', 'modern', 'bold', 'professional']],
-  ] as const;
-  return (
-    <section className="hair-preferences-step">
-      <span className="hair-step-number">02</span>
-      <p className="eyebrow">Your routine, your style</p>
-      <h2>What should the recommendations optimize for?</h2>
-      <div className="hair-preference-grid">
-        {fields.map(([key, label, values]) => (
-          <label key={key}>
-            <span>{label}</span>
-            <select
-              value={preferences[key]}
-              onChange={(event) =>
-                setPreferences((current) => ({ ...current, [key]: event.target.value }))
-              }
-            >
-              {values.map((value) => (
-                <option key={value} value={value}>
-                  {value.replace('-', ' ')}
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
-      </div>
-      <div className="button-row">
-        <button className="button button-secondary" onClick={onBack} type="button">
-          <ArrowLeft size={16} /> Retake scan
-        </button>
-        <button
-          className="button button-primary"
-          disabled={pending}
-          onClick={onContinue}
-          type="button"
-        >
-          <Sparkles size={16} /> Find my styles
-        </button>
-      </div>
-    </section>
-  );
-}
-
-function StyleStep({
-  scan,
-  selected,
-  onSelect,
-  customDirection,
-  onDirection,
-  onGenerate,
-  generating,
-  design,
-  onRetry,
-}: {
-  scan: HairScan | undefined;
-  selected: HairStyleSuggestion | null;
-  onSelect: (style: HairStyleSuggestion) => void;
-  customDirection: string;
-  onDirection: (value: string) => void;
-  onGenerate: () => void;
-  generating: boolean;
-  design: HairDesign | undefined;
-  onRetry: () => void;
-}): React.ReactElement {
-  if (scan === undefined || ['QUEUED', 'PROCESSING'].includes(scan.analysisStatus)) {
-    return (
-      <StudioWaiting
-        title="Finding cuts that fit your routine"
-        copy="Reviewing visible hair characteristics and your preferences without inferring sensitive traits."
-        progress={scan?.analysisStatus === 'PROCESSING' ? 72 : 30}
-      />
-    );
-  }
-  if (scan.analysisStatus === 'FAILED')
-    return <Notice>{scan.analysisError ?? 'Style recommendations could not be prepared.'}</Notice>;
-  const processing =
-    design !== undefined && ['QUEUED', 'PROCESSING'].includes(design.generationStatus ?? '');
-  return (
-    <section className="hair-style-step">
-      <span className="hair-step-number">03</span>
-      <p className="eyebrow">Three controlled recommendations</p>
-      <h2>Choose the direction you want to visualize.</h2>
-      <div className="hair-suggestion-grid">
-        {scan.suggestions.map((suggestion) => (
-          <button
-            className={selected?.id === suggestion.id ? 'is-selected' : ''}
-            key={suggestion.id}
-            onClick={() => onSelect(suggestion)}
-            type="button"
-          >
-            <span className="hair-suggestion-check">
-              {selected?.id === suggestion.id ? <Check size={14} /> : null}
-            </span>
-            <strong>{suggestion.name}</strong>
-            <p>{suggestion.description}</p>
-            <small>{suggestion.reason}</small>
-          </button>
-        ))}
-      </div>
-      <label className="hair-direction-field">
-        <span>Optional barber-level direction</span>
-        <textarea
-          maxLength={800}
-          onChange={(event) => onDirection(event.target.value)}
-          placeholder="Keep the temple blend soft, leave a little more weight at the crown..."
-          value={customDirection}
-        />
-      </label>
-      {processing ? (
-        <StudioWaiting
-          title="Building your preview"
-          copy="Preserving your identity while changing only the hair."
-          progress={design?.progress ?? 15}
-        />
-      ) : design?.generationStatus === 'FAILED' ? (
-        <div>
-          <Notice>{design.errorMessage ?? 'The preview could not be generated.'}</Notice>
-          <button className="button button-secondary" onClick={onRetry} type="button">
-            <RotateCcw size={16} /> Retry
-          </button>
-        </div>
-      ) : (
-        <button
-          className="button button-primary"
-          disabled={selected === null || generating}
-          onClick={onGenerate}
-          type="button"
-        >
-          <WandSparkles size={17} /> Generate one preview
-        </button>
-      )}
-    </section>
-  );
-}
-
-function ResultStep({
-  design,
-  frontCapture,
-  isMock,
-  onAttach,
-  onDelete,
-  onRetry,
-  attaching,
-}: {
-  design: HairDesign | undefined;
-  frontCapture: CapturedHairImage | undefined;
-  isMock: boolean;
-  onAttach: () => void;
-  onDelete: () => void;
-  onRetry: () => void;
-  attaching: boolean;
-}): React.ReactElement {
-  return (
-    <section className="hair-result-step">
-      <div className="hair-result-heading">
-        <div>
-          <p className="eyebrow">Your AI visualization</p>
-          <h2>{design?.styleName}</h2>
-        </div>
-        <span>
-          <Sparkles size={15} /> AI generated
-        </span>
-      </div>
-      <div className="hair-comparison">
-        <figure>
-          {frontCapture !== undefined && (
-            <Image
-              alt="Original front scan"
-              fill
-              sizes="50vw"
-              src={frontCapture.previewUrl}
-              unoptimized
-            />
-          )}
-          <figcaption>Original</figcaption>
-        </figure>
-        <figure>
-          {design?.generatedPreviewUrl !== null && design?.generatedPreviewUrl !== undefined && (
-            <Image
-              alt={`${design.styleName} AI hairstyle preview`}
-              fill
-              sizes="50vw"
-              src={design.generatedPreviewUrl}
-              unoptimized
-            />
-          )}
-          <figcaption>{isMock ? 'Local demo output' : 'Generated preview'}</figcaption>
-        </figure>
-      </div>
-      <Notice tone="success">
-        This is an AI visualization for communication with your barber, not a guaranteed haircut
-        outcome.
-      </Notice>
-      <div className="button-row">
-        <button
-          className="button button-primary"
-          disabled={attaching}
-          onClick={onAttach}
-          type="button"
-        >
-          <Paperclip size={16} /> Attach to next booking
-        </button>
-        <button className="button button-secondary" onClick={onRetry} type="button">
-          <RotateCcw size={16} /> Try another style
-        </button>
-        <button className="button button-ghost" onClick={onDelete} type="button">
-          <Trash2 size={16} /> Delete
-        </button>
-      </div>
-    </section>
-  );
-}
-
-function SavedLooks({ designs }: { designs: HairDesign[] }): React.ReactElement {
-  return (
-    <section className="saved-looks-section">
-      <div>
-        <p className="eyebrow">Your visual briefs</p>
-        <h2>Saved looks</h2>
-      </div>
-      <div className="saved-look-grid">
-        {designs.map((design) => (
-          <article className="saved-look-card" key={design.id}>
-            {design.generatedPreviewUrl !== null ? (
-              <div className="saved-look-image">
-                <Image
-                  alt={design.styleName}
-                  fill
-                  sizes="260px"
-                  src={design.generatedPreviewUrl}
-                  unoptimized
-                />
-              </div>
-            ) : (
-              <Sparkles size={20} />
-            )}
-            <strong>{design.styleName}</strong>
-            <span>{design.description ?? 'No extra notes'}</span>
-            <small>
-              {design.appointmentId === null ? 'Ready to attach' : 'Attached to an appointment'}
-            </small>
-          </article>
-        ))}
-        {designs.length === 0 && <p className="muted">Your saved looks will appear here.</p>}
-      </div>
-    </section>
-  );
-}
-
-function TextBriefFallback(): React.ReactElement {
-  return (
-    <section className="hair-studio-waiting">
-      <Clock3 size={26} />
-      <h2>AI visualization is resting right now</h2>
-      <p>
-        You can still describe a style in your appointment notes. Your existing saved briefs remain
-        available below.
-      </p>
-    </section>
   );
 }

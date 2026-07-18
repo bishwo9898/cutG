@@ -235,7 +235,7 @@ export type StyleReference = {
 export type HairDesign = {
   id: string;
   styleName: string;
-  styleCategory: 'haircut' | 'beard' | 'color';
+  styleCategory: 'haircut' | 'beard' | 'color' | 'combo';
   description: string | null;
   sourcePhotoUrl: string | null;
   generatedPreviewUrl: string | null;
@@ -262,7 +262,7 @@ export type HairCaptureQuality = {
 export type HairStyleSuggestion = {
   id: string;
   name: string;
-  category: 'haircut' | 'beard' | 'color';
+  category: 'haircut' | 'beard' | 'color' | 'combo';
   description: string;
   reason: string;
 };
@@ -283,13 +283,15 @@ export type HairScan = {
   }>;
   expiresAt: string;
   createdAt: string;
+  selectedCaptureId?: string | null;
 };
 
 export type HairStudioConfig = {
   enabled: boolean;
-  provider: 'demo' | 'gemini';
+  provider: 'demo' | 'fal';
   consentVersion: string;
   requiredAngles: HairScanAngle[];
+  webRequiredAngles?: HairScanAngle[];
   maxCaptureBytes: number;
   retentionHours: number;
   dailyGenerationLimit: number;

@@ -6,6 +6,7 @@ import { authRouter } from './auth';
 import { barberRouter } from './barbers';
 import { clientRouter } from './clients';
 import { healthRouter } from './health';
+import { internalAiRouter } from './internalAi';
 import { paymentRouter } from './payments';
 
 export const routes: ExpressRouter = Router();
@@ -29,4 +30,5 @@ routes.use('/auth', authRouter);
 routes.use('/barbers', barberRouter);
 routes.use('/clients', clientRouter);
 routes.use('/health', healthRouter);
+routes.use('/internal/ai', internalAiRouter);
 routes.use('/payments', paymentRouter);
