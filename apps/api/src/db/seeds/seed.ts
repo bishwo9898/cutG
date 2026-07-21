@@ -317,6 +317,17 @@ const buildAppointments = (clients: ClientSeed[], slots: SlotSeed[]): Appointmen
 };
 
 export async function seed(knex: Knex): Promise<void> {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PRODUCTION_TEST_SEED !== 'true') {
+    throw new Error(
+      'Production test seeding is disabled. Set ALLOW_PRODUCTION_TEST_SEED=true for an intentional one-off seed run.',
+    );
+  }
+
+  const isProductionSeed = process.env.NODE_ENV === 'production';
+  const productionStripeAccountId = process.env.PRODUCTION_SEED_STRIPE_ACCOUNT_ID?.trim();
+  const hasProductionStripeAccount =
+    productionStripeAccountId !== undefined && productionStripeAccountId.startsWith('acct_');
+
   const seededUsers = await knex('users')
     .select<{ id: string }[]>('id')
     .whereIn('email', SEED_EMAILS)
@@ -436,10 +447,14 @@ export async function seed(knex: Knex): Promise<void> {
       profile_photo_key: `barbers/barber-${index + 1}.webp`,
       subscription_tier: barber.tier,
       subscription_valid_until: addDays(new Date(), 30),
-      stripe_account_id: 'acct_seed_barber_test_local',
-      stripe_onboarding_complete: true,
-      stripe_charges_enabled: true,
-      stripe_payouts_enabled: true,
+      stripe_account_id: isProductionSeed
+        ? hasProductionStripeAccount
+          ? productionStripeAccountId
+          : null
+        : 'acct_seed_barber_test_local',
+      stripe_onboarding_complete: isProductionSeed ? hasProductionStripeAccount : true,
+      stripe_charges_enabled: isProductionSeed ? hasProductionStripeAccount : true,
+      stripe_payouts_enabled: isProductionSeed ? hasProductionStripeAccount : true,
       is_verified: barber.tier !== 'FREE',
       verified_at: barber.tier !== 'FREE' ? new Date() : null,
       metadata: { seeded: true, specialties: ['fades', 'lineups', 'classic cuts'] },
@@ -624,11 +639,11 @@ export async function seed(knex: Knex): Promise<void> {
       tier: barber.tier,
       status: 'ACTIVE',
       stripe_customer_id:
-        barber.tier === 'FREE'
+        barber.tier === 'FREE' || isProductionSeed
           ? null
           : `cus_seed_${barber.profileId.replaceAll('-', '').slice(0, 12)}`,
       stripe_subscription_id:
-        barber.tier === 'FREE'
+        barber.tier === 'FREE' || isProductionSeed
           ? null
           : `sub_seed_${barber.profileId.replaceAll('-', '').slice(0, 12)}`,
       billing_interval: barber.tier === 'FREE' ? null : 'month',

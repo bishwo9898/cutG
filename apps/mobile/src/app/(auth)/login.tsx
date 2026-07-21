@@ -8,7 +8,7 @@ import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { errorMessage } from '@/lib/errors';
+import { authErrorMessage } from '@/lib/errors';
 import { mobileApi } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
 import { colors, typography } from '@/theme';
@@ -49,7 +49,7 @@ export default function LoginScreen(): React.ReactElement {
         response.user.userType === 'BARBER' ? '/(barber)/today' : '/(client)/discover',
       );
     } catch (error) {
-      setError('root', { message: errorMessage(error) });
+      setError('root', { message: authErrorMessage(error) });
     }
   };
 

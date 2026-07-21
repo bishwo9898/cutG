@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Technical foundation for cutG, a barber operations and client booking platform.",
-  "packageManager": "pnpm@10.3.0",
+  "packageManager": "pnpm@10.26.0",
   "engines": {
     "node": ">=20.9.0",
     "pnpm": ">=9.0.0"
@@ -13,7 +13,7 @@
     "dev:api": "pnpm --filter @barber-saas/api dev",
     "dev:web": "pnpm --filter @barber-saas/web dev",
     "dev:ai": "services/ai/.venv/bin/uvicorn app.main:app --app-dir services/ai --reload --port 8000",
-    "dev:ai-worker": "cd services/ai && .venv/bin/rq worker cutg-ai-hair --url redis://localhost:6380 --worker-class rq.worker.SpawnWorker",
+    "dev:ai-worker": "cd services/ai && sh scripts/run_worker.sh",
     "build": "pnpm -r build",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
@@ -23,6 +23,7 @@
     "test": "pnpm test:api && pnpm --filter @barber-saas/web test && pnpm --filter @barber-saas/mobile test && pnpm test:ai",
     "test:ai": "services/ai/.venv/bin/python -m pytest services/ai/tests",
     "verify:hair-studio": "node scripts/verify-hair-studio.mjs",
+    "verify:production": "node scripts/verify-production.mjs",
     "test:api": "node scripts/test-api.mjs",
     "test:api:local": "docker compose up -d postgres-test && pnpm test:api",
     "db:migrate": "pnpm --filter @barber-saas/api db:migrate",

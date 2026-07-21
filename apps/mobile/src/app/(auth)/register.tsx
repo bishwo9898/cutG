@@ -9,7 +9,7 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { mobileApi } from '@/lib/apiClient';
-import { errorMessage } from '@/lib/errors';
+import { authErrorMessage } from '@/lib/errors';
 import { colors, typography } from '@/theme';
 
 const RegisterFormSchema = z
@@ -48,7 +48,7 @@ export default function RegisterScreen(): React.ReactElement {
         '/(auth)/verify-email?email=' + encodeURIComponent(values.email) + '&role=' + userType,
       );
     } catch (error) {
-      setError('root', { message: errorMessage(error) });
+      setError('root', { message: authErrorMessage(error) });
     }
   };
 

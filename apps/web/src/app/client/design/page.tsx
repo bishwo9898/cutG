@@ -211,6 +211,14 @@ export default function HairDesignPage(): React.ReactElement {
           })}
         </nav>
 
+        {config.data?.isMock === true && (
+          <Notice>
+            Demo provider is active. It verifies the private upload and job pipeline, but returns
+            the original portrait unchanged. A configured production image provider is required to
+            generate a different hairstyle.
+          </Notice>
+        )}
+
         {!config.isLoading && config.data?.enabled === false ? (
           <Notice>
             AI visualization is disabled. Your existing saved style briefs remain available.

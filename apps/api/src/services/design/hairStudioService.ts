@@ -28,6 +28,7 @@ import { buildHairEditPrompt, HAIR_PROMPT_VERSION } from './hairPrompt';
 
 type Row = Record<string, unknown>;
 const REQUIRED_ANGLES: HairScanAngle[] = ['FRONT'];
+const GENERATION_MODEL = env.AI_PROVIDER === 'mock' ? 'mock-passthrough' : env.AI_GENERATION_MODEL;
 const iso = (value: unknown): string =>
   value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
 
@@ -420,7 +421,7 @@ export const generateHairDesign = async (clientId: string, input: GenerateHairDe
         design.id,
         input.scanId,
         env.AI_PROVIDER,
-        env.AI_GENERATION_MODEL,
+        GENERATION_MODEL,
         HAIR_PROMPT_VERSION,
         prompt,
         input.idempotencyKey,
@@ -439,7 +440,7 @@ export const generateHairDesign = async (clientId: string, input: GenerateHairDe
         generation_status: 'QUEUED',
         progress: 0,
         provider: env.AI_PROVIDER,
-        model: env.AI_GENERATION_MODEL,
+        model: GENERATION_MODEL,
       },
       generationId,
       sourceKey,
@@ -487,21 +488,86 @@ export const retryHairDesign = async (
   input: RetryHairDesignRequest,
 ) => {
   requireAiEnabled();
-  const design = await getOwnedDesignRow(clientId, designId);
-  if (!['FAILED', 'CANCELLED'].includes(String(design.generation_status))) {
-    throw new AppError(409, 'Only failed previews can be retried.', 'AI_RETRY_NOT_ALLOWED');
-  }
-  const previous = await query<Row>(
-    'SELECT scan_session_id FROM hair_design_generations WHERE id=$1',
-    [design.current_generation_id],
-  );
-  return generateHairDesign(clientId, {
-    scanId: String(previous[0]?.scan_session_id),
-    styleName: String(design.style_name),
-    styleCategory: design.style_category as GenerateHairDesignRequest['styleCategory'],
-    ...(typeof design.description === 'string' ? { description: design.description } : {}),
-    idempotencyKey: input.idempotencyKey,
+  const result = await withTransaction(async (executor) => {
+    const duplicate = await query<Row>(
+      `SELECT g.id FROM hair_design_generations g
+       JOIN client_hair_designs d ON d.id=g.design_id
+       WHERE g.idempotency_key=$1 AND d.client_id=$2`,
+      [input.idempotencyKey, clientId],
+      executor,
+    );
+    if (duplicate[0] !== undefined) return { generationId: null, sourceKey: null, prompt: null };
+
+    const design = await getOwnedDesignRow(clientId, designId, executor);
+    if (!['FAILED', 'CANCELLED'].includes(String(design.generation_status))) {
+      throw new AppError(409, 'Only failed previews can be retried.', 'AI_RETRY_NOT_ALLOWED');
+    }
+    await assertGenerationAllowance(clientId, executor);
+    const previousGenerationId = String(design.current_generation_id);
+    const previous = await query<Row>(
+      'SELECT scan_session_id FROM hair_design_generations WHERE id=$1',
+      [previousGenerationId],
+      executor,
+    );
+    const scanId = String(previous[0]?.scan_session_id ?? '');
+    const sourceKey = String(design.source_asset_key ?? '');
+    if (scanId === '' || sourceKey === '') {
+      throw new AppError(409, 'The original portrait is no longer available.', 'AI_RETRY_EXPIRED');
+    }
+    const generationId = randomUUID();
+    const retryInput: GenerateHairDesignRequest = {
+      scanId,
+      styleName: String(design.style_name),
+      styleCategory: design.style_category as GenerateHairDesignRequest['styleCategory'],
+      ...(typeof design.description === 'string' ? { description: design.description } : {}),
+      idempotencyKey: input.idempotencyKey,
+    };
+    const prompt = buildHairEditPrompt(retryInput);
+    await query(
+      `INSERT INTO hair_design_generations
+        (id,design_id,scan_session_id,provider,model,status,prompt_version,prompt_text,
+         idempotency_key,retry_of_id)
+       VALUES ($1,$2,$3,$4,$5,'QUEUED',$6,$7,$8,$9)`,
+      [
+        generationId,
+        designId,
+        scanId,
+        env.AI_PROVIDER,
+        GENERATION_MODEL,
+        HAIR_PROMPT_VERSION,
+        prompt,
+        input.idempotencyKey,
+        previousGenerationId,
+      ],
+      executor,
+    );
+    await query(
+      `UPDATE client_hair_designs SET current_generation_id=$1,ai_status='queued',
+        ai_error_code=NULL,ai_error_message=NULL WHERE id=$2 AND client_id=$3`,
+      [generationId, designId, clientId],
+      executor,
+    );
+    return { generationId, sourceKey, prompt };
   });
+  if (result.generationId !== null && result.sourceKey !== null && result.prompt !== null) {
+    try {
+      const queued = await enqueueAiGeneration({
+        generationId: result.generationId,
+        inputUrl: await createPresignedDownloadUrl(result.sourceKey),
+        prompt: result.prompt,
+      });
+      await query('UPDATE hair_design_generations SET python_job_id=$1,progress=5 WHERE id=$2', [
+        queued.jobId,
+        result.generationId,
+      ]);
+    } catch (error) {
+      await failAiGeneration(result.generationId, {
+        errorCode: 'AI_SERVICE_UNAVAILABLE',
+        errorMessage: error instanceof Error ? error.message : 'AI service unavailable.',
+      });
+    }
+  }
+  return getHairDesign(clientId, designId);
 };
 
 export const completeAiGeneration = async (
@@ -657,7 +723,8 @@ export const maintainHairStudio = async (): Promise<{
     `UPDATE hair_design_generations
      SET status='FAILED',progress=100,error_code='AI_JOB_STALE',
        error_message='Generation timed out before receiving a worker callback.',failed_at=CURRENT_TIMESTAMP
-     WHERE status='PROCESSING' AND started_at < CURRENT_TIMESTAMP - interval '5 minutes'
+     WHERE (status='QUEUED' AND created_at < CURRENT_TIMESTAMP - interval '2 minutes')
+        OR (status='PROCESSING' AND started_at < CURRENT_TIMESTAMP - interval '5 minutes')
      RETURNING id,design_id`,
   );
   for (const generation of stale) {

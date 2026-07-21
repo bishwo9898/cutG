@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import Depends, FastAPI, HTTPException
 from redis import Redis
-from rq import Queue
+from rq import Queue, Worker
 from rq.job import Job
 
 from .auth import require_internal_auth
@@ -20,13 +20,37 @@ from .models import (
 app = FastAPI(title="cutG AI Hair Service", version="1.0.0")
 
 
+def active_model() -> str:
+    return "mock-passthrough" if settings.provider == "mock" else settings.model
+
+
 def queue() -> Queue:
     return Queue("cutg-ai-hair", connection=Redis.from_url(settings.redis_url))
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "provider": settings.provider, "model": settings.model}
+def health() -> dict[str, str | int | bool]:
+    target_queue = queue()
+    try:
+        worker_count = Worker.count(connection=target_queue.connection, queue=target_queue)
+        queue_depth = target_queue.count
+    except Exception:
+        return {
+            "status": "degraded",
+            "provider": settings.provider,
+            "model": active_model(),
+            "worker_ready": False,
+            "worker_count": 0,
+            "queue_depth": 0,
+        }
+    return {
+        "status": "ok" if worker_count > 0 else "degraded",
+        "provider": settings.provider,
+        "model": active_model(),
+        "worker_ready": worker_count > 0,
+        "worker_count": worker_count,
+        "queue_depth": queue_depth,
+    }
 
 
 @app.post("/ai/validate-frames", response_model=ValidateFramesResponse)
@@ -67,7 +91,20 @@ def validate_frames(
 def create_generation(
     request: GenerateRequest, _: None = Depends(require_internal_auth)
 ) -> GenerateResponse:
-    job = queue().enqueue(
+    target_queue = queue()
+    try:
+        worker_count = Worker.count(connection=target_queue.connection, queue=target_queue)
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Redis is unavailable.") from error
+    if worker_count == 0:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "The AI generation worker is not running. "
+                "Start it with `make ai-worker` or `pnpm dev`."
+            ),
+        )
+    job = target_queue.enqueue(
         "app.tasks.generate_design",
         {
             "generation_id": request.generation_id,

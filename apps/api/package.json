@@ -11,8 +11,10 @@
     "test": "vitest run src",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:migrate": "knex --knexfile src/knexfile.ts migrate:latest",
+    "db:migrate:compiled": "knex --knexfile dist/knexfile.js migrate:latest",
     "db:rollback": "knex --knexfile src/knexfile.ts migrate:rollback",
-    "db:seed": "knex --knexfile src/knexfile.ts seed:run"
+    "db:seed": "knex --knexfile src/knexfile.ts seed:run",
+    "db:seed:compiled": "knex --knexfile dist/knexfile.js seed:run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1089.0",

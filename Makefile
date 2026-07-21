@@ -50,7 +50,7 @@ ai-dev: ## Start the FastAPI AI service
 	services/ai/.venv/bin/uvicorn app.main:app --app-dir services/ai --reload --port 8000
 
 ai-worker: ## Start the durable Python RQ worker
-	cd services/ai && .venv/bin/rq worker cutg-ai-hair --url $${REDIS_URL:-redis://localhost:6380} --worker-class rq.worker.SpawnWorker
+	cd services/ai && sh scripts/run_worker.sh
 
 ai-test: ## Run Python AI service tests
 	services/ai/.venv/bin/python -m pytest services/ai/tests

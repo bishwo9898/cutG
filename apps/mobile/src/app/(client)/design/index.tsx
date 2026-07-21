@@ -82,6 +82,12 @@ export default function HairDesignStudioScreen(): React.ReactElement {
           <Text style={styles.error}>AI previews are temporarily unavailable.</Text>
         ) : null}
         {begin.isError ? <Text style={styles.error}>{errorMessage(begin.error)}</Text> : null}
+        {config.data?.isMock === true ? (
+          <Text style={styles.warning}>
+            Demo provider is active. It checks the full private job flow but returns your original
+            portrait unchanged.
+          </Text>
+        ) : null}
       </Card>
       <View style={styles.sectionHeading}>
         <Text style={styles.title}>Saved looks</Text>
@@ -140,4 +146,5 @@ const styles = StyleSheet.create({
   steps: { flexDirection: 'row', justifyContent: 'space-between' },
   thumbnail: { borderRadius: 12, height: 88, width: 72 },
   title: { ...typography.h3, color: colors.textPrimary },
+  warning: { ...typography.bodySmall, color: colors.warning },
 });

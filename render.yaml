@@ -1,0 +1,182 @@
+previews:
+  generation: off
+
+envVarGroups:
+  - name: cutg-ai-shared
+    envVars:
+      - key: AI_PROVIDER
+        value: mock
+      - key: AI_INTERNAL_SECRET
+        generateValue: true
+      - key: AI_GENERATION_MODEL
+        value: fal-ai/flux-pro/kontext
+
+services:
+  - type: web
+    name: cutg-api
+    runtime: docker
+    region: virginia
+    plan: starter
+    branch: main
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    preDeployCommand: pnpm --dir apps/api db:migrate:compiled
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cutg-postgres
+          property: connectionString
+      - key: DATABASE_POOL_MIN
+        value: 0
+      - key: DATABASE_POOL_MAX
+        value: 5
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: cutg-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRY
+        value: 24h
+      - key: JWT_REFRESH_EXPIRY
+        value: 30d
+      - key: WEB_APP_URL
+        value: https://cut-g-web.vercel.app
+      - key: MOBILE_APP_URL
+        value: cutg://
+      - key: ENABLE_ANALYTICS
+        value: false
+      - key: ENABLE_AI_FEATURES
+        value: true
+      - key: AI_SERVICE_HOSTPORT
+        fromService:
+          type: web
+          name: cutg-ai
+          property: hostport
+      - key: AI_SCAN_RETENTION_HOURS
+        value: 24
+      - key: AI_GENERATION_DAILY_LIMIT
+        value: 5
+      - key: AI_MONTHLY_BUDGET_CENTS
+        value: 2500
+      - key: EMAIL_PROVIDER
+        value: sendgrid
+      - key: EMAIL_FROM
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_FORCE_PATH_STYLE
+        sync: false
+      - key: S3_PRESIGNED_TTL_SECONDS
+        value: 600
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_BASIC_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_BASIC_ANNUAL
+        sync: false
+      - key: STRIPE_PRICE_PREMIUM_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_PREMIUM_ANNUAL
+        sync: false
+      - key: STRIPE_SUBSCRIPTION_SUCCESS_URL
+        value: cutg://subscription/success
+      - key: STRIPE_SUBSCRIPTION_CANCEL_URL
+        value: cutg://subscription/cancelled
+      - fromGroup: cutg-ai-shared
+
+  - type: web
+    name: cutg-ai
+    runtime: docker
+    region: virginia
+    plan: starter
+    branch: main
+    dockerfilePath: ./services/ai/Dockerfile
+    dockerContext: ./services/ai
+    healthCheckPath: /health
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: cutg-redis
+          property: connectionString
+      - key: AI_CALLBACK_HOSTPORT
+        fromService:
+          type: web
+          name: cutg-api
+          property: hostport
+      - key: AI_REQUEST_TIMEOUT_SECONDS
+        value: 90
+      - key: FAL_KEY
+        sync: false
+      - fromGroup: cutg-ai-shared
+
+  - type: worker
+    name: cutg-ai-worker
+    runtime: docker
+    region: virginia
+    plan: starter
+    branch: main
+    dockerfilePath: ./services/ai/Dockerfile
+    dockerContext: ./services/ai
+    dockerCommand: sh scripts/run_worker.sh
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: cutg-redis
+          property: connectionString
+      - key: AI_CALLBACK_HOSTPORT
+        fromService:
+          type: web
+          name: cutg-api
+          property: hostport
+      - key: AI_REQUEST_TIMEOUT_SECONDS
+        value: 90
+      - key: FAL_KEY
+        sync: false
+      - fromGroup: cutg-ai-shared
+
+  - type: keyvalue
+    name: cutg-redis
+    region: virginia
+    plan: starter
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+    persistenceMode: journal-snapshot
+
+databases:
+  - name: cutg-postgres
+    region: virginia
+    plan: basic-256mb
+    postgresMajorVersion: '15'
+    databaseName: cutg
+    user: cutg
+    ipAllowList: []
+    connectionPool: pgbouncer

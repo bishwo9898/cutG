@@ -1,0 +1,11 @@
+.venv
+models
+tests
+__pycache__
+.pytest_cache
+.mypy_cache
+*.pyc
+.env
+.env.*
+*.log
+.DS_Store

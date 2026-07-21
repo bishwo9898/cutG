@@ -15,14 +15,11 @@ const server: Server = app.listen(env.PORT, env.HOST, (): void => {
   });
 });
 
-const maintenanceTimer = setInterval(
-  (): void => {
-    void maintainHairStudio().catch((error: unknown) => {
-      logger.error('Hair Studio maintenance failed', error);
-    });
-  },
-  5 * 60 * 1000,
-);
+const maintenanceTimer = setInterval((): void => {
+  void maintainHairStudio().catch((error: unknown) => {
+    logger.error('Hair Studio maintenance failed', error);
+  });
+}, 60 * 1000);
 maintenanceTimer.unref();
 void maintainHairStudio().catch((error: unknown) => {
   logger.error('Initial Hair Studio maintenance failed', error);

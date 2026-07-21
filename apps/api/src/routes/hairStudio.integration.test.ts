@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { app } from '../app';
 import { closeDatabase, pool } from '../config/database';
 import { env } from '../config/env';
+import { maintainHairStudio } from '../services/design/hairStudioService';
 import { createVerifiedUser, resetTestDatabase } from '../test/fixtures';
 
 let clientToken = '';
@@ -209,6 +210,30 @@ describe('AI Hair Studio API', () => {
     expect(row.rows[0]).toMatchObject({ status: 'PROCESSING', progress: 15 });
   });
 
+  it('retries a failed generation on the same saved design', async () => {
+    const current = await pool.query<{ id: string }>(
+      'SELECT current_generation_id AS id FROM client_hair_designs WHERE id=$1',
+      [designId],
+    );
+    const failed = await request(app)
+      .post(`/internal/ai/generations/${current.rows[0]?.id ?? ''}/fail`)
+      .set('X-CutG-AI-Secret', env.AI_INTERNAL_SECRET)
+      .send({ errorCode: 'TEST_FAILURE', errorMessage: 'Expected worker failure.' });
+    expect(failed.status).toBe(200);
+
+    const retried = await request(app)
+      .post(`/clients/me/designs/${designId}/retry`)
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ idempotencyKey: randomUUID() });
+    expect(retried.status).toBe(202);
+    expect(retried.body).toMatchObject({ id: designId, generationStatus: 'QUEUED' });
+    const generations = await pool.query<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM hair_design_generations WHERE design_id=$1',
+      [designId],
+    );
+    expect(generations.rows[0]?.count).toBe('2');
+  });
+
   it('soft-deletes a design and cancels its queued generation', async () => {
     const removed = await request(app)
       .delete(`/clients/me/designs/${designId}`)
@@ -218,7 +243,7 @@ describe('AI Hair Studio API', () => {
     const row = await pool.query<{ status: string }>(
       `SELECT g.status FROM hair_design_generations g
        JOIN client_hair_designs d ON d.id=g.design_id
-       WHERE d.id=$1 AND d.client_id=$2`,
+       WHERE d.id=$1 AND d.client_id=$2 AND g.id=d.current_generation_id`,
       [designId, clientId],
     );
     expect(row.rows[0]?.status).toBe('CANCELLED');
@@ -226,6 +251,34 @@ describe('AI Hair Studio API', () => {
       .get(`/clients/me/designs/${designId}`)
       .set('Authorization', `Bearer ${clientToken}`);
     expect(missing.status).toBe(404);
+  });
+
+  it('fails queued generations that never reach a worker', async () => {
+    const staleDesign = await pool.query<{ id: string }>(
+      `INSERT INTO client_hair_designs (client_id,style_name,style_category,ai_status)
+       VALUES ($1,'Stale preview','haircut','queued') RETURNING id`,
+      [clientId],
+    );
+    const generationId = randomUUID();
+    await pool.query(
+      `INSERT INTO hair_design_generations
+        (id,design_id,scan_session_id,provider,model,status,prompt_version,idempotency_key,created_at)
+       VALUES ($1,$2,$3,'mock','test-model','QUEUED','test-v1',$4,
+         CURRENT_TIMESTAMP - interval '3 minutes')`,
+      [generationId, staleDesign.rows[0]?.id, scanId, randomUUID()],
+    );
+    await pool.query('UPDATE client_hair_designs SET current_generation_id=$1 WHERE id=$2', [
+      generationId,
+      staleDesign.rows[0]?.id,
+    ]);
+
+    const maintenance = await maintainHairStudio();
+    expect(maintenance.failedGenerations).toBe(1);
+    const generation = await pool.query<{ status: string; error_code: string }>(
+      'SELECT status,error_code FROM hair_design_generations WHERE id=$1',
+      [generationId],
+    );
+    expect(generation.rows[0]).toMatchObject({ status: 'FAILED', error_code: 'AI_JOB_STALE' });
   });
 
   it('counts delivered previews, not failed or cancelled jobs, toward the daily limit', async () => {

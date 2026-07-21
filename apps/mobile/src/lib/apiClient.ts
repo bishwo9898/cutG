@@ -23,6 +23,8 @@ import type {
   TravelEstimateRequest,
   UpdateAddressRequest,
 } from '@barber-saas/shared-types';
+import ExpoConstants from 'expo-constants';
+import { Platform } from 'react-native';
 
 import { useAuthStore } from '@/store/authStore';
 
@@ -51,13 +53,21 @@ import type {
   HairStudioConfig,
 } from './types';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+const expoDevelopmentHost = ExpoConstants.expoConfig?.hostUri?.split(':')[0];
+const defaultDevelopmentApiUrl =
+  expoDevelopmentHost !== undefined && expoDevelopmentHost.length > 0
+    ? `http://${expoDevelopmentHost}:4000`
+    : Platform.OS === 'android'
+      ? 'http://10.0.2.2:4000'
+      : 'http://localhost:4000';
 
-const publicClient = new ApiClient({ baseUrl: API_URL });
+export const MOBILE_API_URL = process.env.EXPO_PUBLIC_API_URL ?? defaultDevelopmentApiUrl;
+
+const publicClient = new ApiClient({ baseUrl: MOBILE_API_URL });
 
 const createAuthedClient = (): ApiClient =>
   new ApiClient({
-    baseUrl: API_URL,
+    baseUrl: MOBILE_API_URL,
     headers: (): Record<string, string> => {
       const token = useAuthStore.getState().accessToken;
       return token === null ? {} : { Authorization: 'Bearer ' + token };

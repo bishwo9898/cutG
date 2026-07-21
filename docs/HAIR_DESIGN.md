@@ -45,7 +45,8 @@ same minimum-32-character `AI_INTERNAL_SECRET` and callback comparison is timing
 ## Providers and limits
 
 `AI_PROVIDER=mock` is the local and CI default. It returns the accepted portrait as a deterministic
-zero-cost result while exercising RQ, callbacks, storage, polling, deletion, and booking.
+zero-cost result while exercising RQ, callbacks, storage, polling, deletion, and booking. It does
+not alter the hairstyle; the UI labels this as demo mode.
 
 `AI_PROVIDER=fal` uses `fal-ai/flux-pro/kontext`. The worker submits the private front portrait with
 the hardened hair-only prompt, disables prompt enhancement, requires exactly one JPEG result, and
@@ -112,3 +113,43 @@ HAIR_STUDIO_REAL_PROVIDER=1 pnpm verify:hair-studio
 
 If the provider or credentials are unavailable, the verifier exits at the named
 `real-provider-preflight` stage before creating a scan or submitting a paid request.
+
+## How generation moves through the system
+
+1. Express creates a `QUEUED` generation and sends a short-lived signed source URL to FastAPI.
+2. FastAPI verifies that an RQ worker is registered before putting the job in Redis.
+3. The RQ worker calls Express to move the generation to `PROCESSING`.
+4. In `mock` mode the worker returns the source portrait unchanged. In `fal` mode it submits the
+   identity-preserving edit request to fal.ai and waits for one JPEG output.
+5. The worker calls Express with completion or failure. Express copies a successful output into
+   private cutG storage and only then marks the generation `COMPLETED`.
+
+The browser never calls fal.ai and never receives `FAL_KEY`. A real hairstyle transformation only
+occurs when the server and worker are explicitly started with `AI_PROVIDER=fal` and a valid funded
+`FAL_KEY`.
+
+For local real-provider testing, set `AI_PROVIDER=fal` in the root `.env.local` so Express and Python
+agree on job metadata. Put only the credential in the ignored `services/ai/.env` file so Node,
+browsers, and Expo never load it:
+
+```env
+# services/ai/.env
+FAL_KEY=your-server-only-key
+```
+
+Restart FastAPI and the RQ worker after changing provider configuration. Mock jobs and health output
+use the explicit model label `mock-passthrough`; seeing that label guarantees fal.ai was not called.
+
+## Queue troubleshooting
+
+Check the complete AI runtime with:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Healthy generation requires `"worker_ready": true`. Start all four development processes with
+`pnpm dev`, or start the missing worker separately with `make ai-worker`. The worker launcher retries
+Redis connection failures instead of exiting permanently. FastAPI rejects new generation requests
+when no worker is available, and Express converts queued jobs that never start into retryable
+`AI_JOB_STALE` failures rather than leaving the UI spinning forever.
