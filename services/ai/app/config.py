@@ -34,6 +34,9 @@ class Settings:
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6380")
     fal_key: str = os.getenv("FAL_KEY", "")
     request_timeout_seconds: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "90"))
+    strict_capture_validation: bool = os.getenv(
+        "AI_STRICT_CAPTURE_VALIDATION", "false"
+    ).lower() in {"1", "true", "yes", "on"}
     face_model_path: str = os.getenv(
         "AI_FACE_MODEL_PATH",
         str(SERVICE_ROOT / "models" / "blaze_face_short_range.tflite"),

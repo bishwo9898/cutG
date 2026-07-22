@@ -1,4 +1,5 @@
 from io import BytesIO
+from types import SimpleNamespace
 
 import numpy as np
 from fastapi.testclient import TestClient
@@ -41,6 +42,30 @@ def test_accepts_quality_capture_and_scores_pose(monkeypatch) -> None:
     )
     assert result.accepted is True
     assert result.quality_score > 0.7
+
+
+def test_permissive_mode_records_quality_without_rejecting_side_profiles(monkeypatch) -> None:
+    rng = np.random.default_rng(8)
+    output = BytesIO()
+    Image.fromarray(rng.integers(20, 80, (700, 700, 3), dtype=np.uint8)).save(
+        output, format="JPEG"
+    )
+    monkeypatch.setattr(image_validation, "_download", lambda _url: output.getvalue())
+    monkeypatch.setattr(
+        image_validation, "_face_analysis", lambda _rgb: (1, 0.22, 0.0, 0.8, False)
+    )
+    monkeypatch.setattr(
+        image_validation,
+        "settings",
+        SimpleNamespace(strict_capture_validation=False),
+    )
+    result = image_validation.inspect_frame(
+        FrameInput(capture_id="profile", angle="FRONT", url="https://example.test/profile.jpg")
+    )
+    assert result.accepted is True
+    assert result.pose_score == 0.0
+    assert result.hairline_visible is False
+    assert result.rejection_reason is None
 
 
 def test_rejects_cropped_hairline(monkeypatch) -> None:

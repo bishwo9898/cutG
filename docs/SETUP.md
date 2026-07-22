@@ -103,6 +103,7 @@ Local development is free and deterministic:
 ```env
 ENABLE_AI_FEATURES=true
 AI_PROVIDER=mock
+AI_STRICT_CAPTURE_VALIDATION=false
 REDIS_URL=redis://localhost:6380
 S3_ENDPOINT=http://localhost:9000
 S3_BUCKET=cutg-ai-local
@@ -115,7 +116,10 @@ official MediaPipe detector model. `pnpm dev` and `make dev` start API, web, Fas
 RQ worker. Local development uses RQ's spawn worker so native image libraries run safely on macOS.
 `make setup` also creates the private MinIO bucket. Web and mobile use a photo picker for one
 front-facing headshot, upload it through a private presigned URL, and rely on server-side MediaPipe
-quality validation before generation. No native camera development build is required.
+quality analysis before generation. With `AI_STRICT_CAPTURE_VALIDATION=false`, development accepts
+side profiles and low-quality but readable images while still recording their metrics. Set it to
+`true` when capture guidance should block unsuitable images. No native camera development build is
+required.
 
 For production fal.ai processing:
 
@@ -123,6 +127,7 @@ For production fal.ai processing:
 AI_PROVIDER=fal
 FAL_KEY=replace_with_server_key
 AI_GENERATION_MODEL=fal-ai/flux-pro/kontext
+AI_STRICT_CAPTURE_VALIDATION=false
 AI_INTERNAL_SECRET=replace_with_at_least_32_random_characters
 ```
 

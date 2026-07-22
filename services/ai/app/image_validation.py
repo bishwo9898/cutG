@@ -86,24 +86,28 @@ def inspect_frame(frame: FrameInput) -> FrameMetrics:
     sharpness = float(np.mean(np.square(gradients[0])) + np.mean(np.square(gradients[1])))
     face_count, face_size, pose_score, yaw, hairline_visible = _face_analysis(rgb)
     reason: str | None = None
+    # Testing mode intentionally records all quality metrics without blocking generation. Keep the
+    # basic resolution/readability boundary because downstream providers still require real image
+    # input, but permit profiles, unusual framing, low light, blur, and imperfect face detection.
     if width < 200 or height < 200:
         reason = "Image resolution is too low."
-    elif brightness < 38:
-        reason = "Image is too dark."
-    elif brightness > 235:
-        reason = "Image is overexposed."
-    elif sharpness < 12:
-        reason = "Image is too blurry."
-    elif face_count != 1:
-        reason = "Exactly one face must be visible."
-    elif not hairline_visible:
-        reason = "Move down so your full hairline is visible."
-    elif face_size < 0.05:
-        reason = "Move closer so your face fills more of the frame."
-    elif face_size > 0.65:
-        reason = "Move slightly farther from the camera."
-    elif pose_score < 0.35:
-        reason = "Look straight at the camera."
+    elif settings.strict_capture_validation:
+        if brightness < 38:
+            reason = "Image is too dark."
+        elif brightness > 235:
+            reason = "Image is overexposed."
+        elif sharpness < 12:
+            reason = "Image is too blurry."
+        elif face_count != 1:
+            reason = "Exactly one face must be visible."
+        elif not hairline_visible:
+            reason = "Move down so your full hairline is visible."
+        elif face_size < 0.05:
+            reason = "Move closer so your face fills more of the frame."
+        elif face_size > 0.65:
+            reason = "Move slightly farther from the camera."
+        elif pose_score < 0.35:
+            reason = "Look straight at the camera."
     face_size_score = max(0.0, 1.0 - abs(face_size - 0.22) / 0.22)
     score = (
         min(1.0, sharpness / 120.0) * 0.30

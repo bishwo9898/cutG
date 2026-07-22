@@ -53,6 +53,11 @@ the hardened hair-only prompt, disables prompt enhancement, requires exactly one
 records provider request ID, duration, and estimated cost. An uncertain paid submission is not
 automatically retried. A real smoke test is opt-in and requires funded `FAL_KEY` credentials.
 
+`AI_STRICT_CAPTURE_VALIDATION=false` is the testing default. The validator still requires a
+readable image of at least 200 × 200 pixels, but pose, lighting, blur, detected face count, framing,
+and hairline metrics become advisory and do not block generation. Set the flag to `true` before a
+quality-controlled public launch.
+
 One client may have one active generation and five delivered previews per rolling 24 hours by
 default. Failed and cancelled jobs do not consume the quota. The optional monthly budget ceiling
 can pause new generation without removing saved designs.

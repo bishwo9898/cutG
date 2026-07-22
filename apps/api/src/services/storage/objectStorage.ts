@@ -1,6 +1,8 @@
 import {
+  CreateBucketCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -19,14 +21,50 @@ const client = new S3Client({
   },
 });
 
-export const createPresignedUploadUrl = async (key: string, contentType: string): Promise<string> =>
-  getSignedUrl(
+let storageReadiness: Promise<void> | undefined;
+
+const statusCode = (error: unknown): number | undefined => {
+  if (typeof error !== 'object' || error === null || !('$metadata' in error)) return undefined;
+  const metadata = (error as { $metadata?: { httpStatusCode?: unknown } }).$metadata;
+  return typeof metadata?.httpStatusCode === 'number' ? metadata.httpStatusCode : undefined;
+};
+
+const checkStorage = async (): Promise<void> => {
+  try {
+    await client.send(new HeadBucketCommand({ Bucket: env.S3_BUCKET }));
+  } catch (error) {
+    if (env.NODE_ENV === 'production' || statusCode(error) !== 404) throw error;
+
+    // Local MinIO data can outlive configuration changes. Recreate the configured private bucket
+    // on demand so a legacy AWS_S3_BUCKET value cannot produce a valid URL for a missing bucket.
+    await client.send(new CreateBucketCommand({ Bucket: env.S3_BUCKET }));
+  }
+};
+
+export const ensurePrivateStorageReady = async (): Promise<void> => {
+  storageReadiness ??= checkStorage();
+  try {
+    await storageReadiness;
+  } catch (error) {
+    storageReadiness = undefined;
+    throw error;
+  }
+};
+
+export const createPresignedUploadUrl = async (
+  key: string,
+  contentType: string,
+): Promise<string> => {
+  await ensurePrivateStorageReady();
+  return getSignedUrl(
     client,
     new PutObjectCommand({ Bucket: env.S3_BUCKET, Key: key, ContentType: contentType }),
     { expiresIn: env.S3_PRESIGNED_TTL_SECONDS },
   );
+};
 
 export const createPresignedDownloadUrl = async (key: string): Promise<string> => {
+  await ensurePrivateStorageReady();
   return getSignedUrl(client, new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }), {
     expiresIn: env.S3_PRESIGNED_TTL_SECONDS,
   });

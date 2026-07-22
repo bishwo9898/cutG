@@ -10,6 +10,8 @@ envVarGroups:
         generateValue: true
       - key: AI_GENERATION_MODEL
         value: fal-ai/flux-pro/kontext
+      - key: AI_STRICT_CAPTURE_VALIDATION
+        value: false
 
 services:
   - type: web
