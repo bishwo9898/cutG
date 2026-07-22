@@ -1,11 +1,10 @@
 # AI Hair Studio
 
-Last updated: July 18, 2026
+Last updated: July 21, 2026
 
-The Hair Studio provides private hairstyle visualizations on web and native mobile. A client uploads
-one clear, front-facing headshot, chooses from the shared cutG style catalog or describes a custom
-style, and may attach the completed preview atomically while booking. No live camera or face-scanning
-experience is used.
+The Hair Studio provides private hairstyle visualizations on web and native mobile. A client can
+take a new camera photo or upload an existing portrait, choose from the shared cutG style catalog or
+describe a custom style, and attach the completed preview atomically while booking.
 
 ## Privacy and storage
 
@@ -14,9 +13,9 @@ experience is used.
 - Images are resized and uploaded directly to private S3-compatible storage through short-lived
   presigned URLs. Image bytes never travel through Express JSON or navigation parameters.
 - The FastAPI service downloads only API-issued signed capture URLs, verifies image type and size,
-  and uses MediaPipe Tasks to reject unreadable, too-small, dark, overexposed, blurry, incorrectly
-  posed, distant, hairline-cropped, or non-single-face headshots. The portrait must pass this
-  server-side quality check before generation.
+  and uses MediaPipe Tasks to record capture-quality metrics. Unreadable and too-small images remain
+  blocked. Other quality boundaries are advisory in permissive testing mode and enforced when strict
+  validation is enabled.
 - Raw scan objects expire after `AI_SCAN_RETENTION_HOURS` (24 hours by default). Generated previews
   remain private until the client deletes them.
 - fal.ai output is copied immediately into cutG-owned private storage. Browser and mobile clients
@@ -27,7 +26,7 @@ experience is used.
 ## Architecture
 
 ```text
-Web or native single-headshot upload
+Web live camera, native camera, or private single-headshot upload
   -> presigned private S3 upload
   -> Express ownership, consent, limits, and idempotency
   -> FastAPI MediaPipe quality validation
@@ -49,9 +48,11 @@ zero-cost result while exercising RQ, callbacks, storage, polling, deletion, and
 not alter the hairstyle; the UI labels this as demo mode.
 
 `AI_PROVIDER=fal` uses `fal-ai/flux-pro/kontext`. The worker submits the private front portrait with
-the hardened hair-only prompt, disables prompt enhancement, requires exactly one JPEG result, and
-records provider request ID, duration, and estimated cost. An uncertain paid submission is not
-automatically retried. A real smoke test is opt-in and requires funded `FAL_KEY` credentials.
+the versioned `flux-kontext-hair-v4` prompt. Every preset expands into concrete barber geometry,
+length, texture, blending, region, identity-preservation, and photographic-realism constraints.
+Prompt enhancement remains disabled, exactly one JPEG result is required, and provider request ID,
+duration, and estimated cost are recorded. An uncertain paid submission is not automatically
+retried. A real smoke test is opt-in and requires funded `FAL_KEY` credentials.
 
 `AI_STRICT_CAPTURE_VALIDATION=false` is the testing default. The validator still requires a
 readable image of at least 200 × 200 pixels, but pose, lighting, blur, detected face count, framing,
@@ -98,7 +99,8 @@ make dev
 
 `make ai-install` creates `services/ai/.venv`, installs pinned dependencies, and downloads the
 official MediaPipe BlazeFace model. `pnpm dev` starts Express, Next.js, FastAPI, and the RQ worker.
-Mobile uses the Expo photo library picker and does not require a camera development build.
+Web uses `getUserMedia` with a native `capture="user"` fallback. Mobile uses Expo Image Picker for
+camera and photo-library capture; native builds include explicit camera and photo permission text.
 
 Tests use mock provider mode:
 

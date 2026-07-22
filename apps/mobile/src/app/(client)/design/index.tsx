@@ -50,8 +50,8 @@ export default function HairDesignStudioScreen(): React.ReactElement {
         <Text style={styles.eyebrow}>PRIVATE AI PREVIEW</Text>
         <Text style={styles.hero}>Your next cut, visualized on you.</Text>
         <Text style={styles.meta}>
-          Upload one clear headshot, choose a style, and receive a private visualization your barber
-          can use as a reference.
+          Take or upload one clear headshot, choose a style, and receive a private visualization
+          your barber can use as a reference.
         </Text>
         <View style={styles.steps}>
           <Text style={styles.step}>01 · Photo</Text>
@@ -75,7 +75,7 @@ export default function HairDesignStudioScreen(): React.ReactElement {
         </View>
         <Button
           disabled={!adult || !consent || !enabled || begin.isPending}
-          title={begin.isPending ? 'Preparing upload…' : 'Choose a headshot'}
+          title={begin.isPending ? 'Preparing camera…' : 'Take or choose a headshot'}
           onPress={() => begin.mutate()}
         />
         {!enabled ? (

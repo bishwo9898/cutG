@@ -24,6 +24,29 @@ export default function HairPhotoScreen(): React.ReactElement {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const useResult = (result: ImagePicker.ImagePickerResult): void => {
+    const asset = result.canceled ? undefined : result.assets[0];
+    if (asset !== undefined) {
+      setPhoto({ uri: asset.uri, width: asset.width, height: asset.height });
+    }
+  };
+
+  const takePhoto = async (): Promise<void> => {
+    setError(null);
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      setError('Camera permission is required to take a headshot.');
+      return;
+    }
+    useResult(
+      await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 5],
+        quality: 1,
+      }),
+    );
+  };
+
   const choosePhoto = async (): Promise<void> => {
     setError(null);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -31,15 +54,14 @@ export default function HairPhotoScreen(): React.ReactElement {
       setError('Photo-library permission is required to choose a headshot.');
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 5],
-      quality: 1,
-    });
-    const asset = result.canceled ? undefined : result.assets[0];
-    if (asset === undefined) return;
-    setPhoto({ uri: asset.uri, width: asset.width, height: asset.height });
+    useResult(
+      await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 5],
+        quality: 1,
+      }),
+    );
   };
 
   const upload = async (): Promise<void> => {
@@ -91,43 +113,63 @@ export default function HairPhotoScreen(): React.ReactElement {
       />
       <Card>
         {photo === null ? (
-          <Pressable style={styles.dropzone} onPress={() => void choosePhoto()}>
-            <Text style={styles.icon}>＋</Text>
-            <Text style={styles.title}>Choose from your photos</Text>
+          <View style={styles.captureOptions}>
+            <View style={styles.dropzone}>
+              <Text style={styles.icon}>◎</Text>
+              <Text style={styles.title}>Take a photo now</Text>
+              <Text style={styles.meta}>Use the front camera and preview it before upload.</Text>
+              <Button title="Open camera" onPress={() => void takePhoto()} />
+            </View>
+            <Button
+              title="Choose from your photos"
+              variant="secondary"
+              onPress={() => void choosePhoto()}
+            />
             <Text style={styles.meta}>
-              Use a front-facing portrait with one person and a visible hairline.
+              Front-facing photos work best. Side profiles are accepted for testing.
             </Text>
-          </Pressable>
+          </View>
         ) : (
           <View style={styles.previewWrap}>
             <Image source={{ uri: photo.uri }} style={styles.preview} />
             <Text style={styles.title}>Use this headshot?</Text>
             <Text style={styles.meta}>
-              We’ll privately check its quality before generating your hairstyle.
+              We’ll privately analyze it before generating your hairstyle.
             </Text>
             <Button
               disabled={processing}
               title={processing ? 'Uploading and checking…' : 'Use this headshot'}
               onPress={() => void upload()}
             />
-            <Pressable disabled={processing} onPress={() => void choosePhoto()}>
-              <Text style={styles.change}>Choose another photo</Text>
-            </Pressable>
+            <View style={styles.captureOptions}>
+              <Button
+                disabled={processing}
+                title="Retake photo"
+                variant="secondary"
+                onPress={() => void takePhoto()}
+              />
+              <Pressable disabled={processing} onPress={() => void choosePhoto()}>
+                <Text style={styles.change}>Choose another photo</Text>
+              </Pressable>
+            </View>
           </View>
         )}
         {error !== null ? <Text style={styles.error}>{error}</Text> : null}
       </Card>
       <Card>
         <Text style={styles.title}>For the best preview</Text>
-        <Text style={styles.meta}>• Face forward in even lighting</Text>
+        <Text style={styles.meta}>• Face forward when possible and use even lighting</Text>
         <Text style={styles.meta}>• Keep your full hair and hairline visible</Text>
-        <Text style={styles.meta}>• Avoid hats, filters, blur, and other people</Text>
+        <Text style={styles.meta}>
+          • Natural, unfiltered photos produce the most realistic result
+        </Text>
       </Card>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  captureOptions: { gap: spacing.md },
   change: { ...typography.button, color: colors.accentLight, textAlign: 'center' },
   dropzone: {
     alignItems: 'center',

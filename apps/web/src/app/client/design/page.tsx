@@ -227,10 +227,10 @@ export default function HairDesignPage(): React.ReactElement {
           <section className="hair-upload-layout">
             <div className="hair-upload-copy">
               <span className="hair-step-number">01</span>
-              <h2>Upload one clear headshot</h2>
+              <h2>Take or upload one clear headshot</h2>
               <p>
-                Use a front-facing photo with even light and your full hairline visible. Your image
-                remains private and is used only to produce this preview.
+                A front-facing photo with even light gives the AI the most detail. Side profiles are
+                accepted for testing. Your image remains private and is used only for this preview.
               </p>
               <ul>
                 <li>
@@ -240,7 +240,7 @@ export default function HairDesignPage(): React.ReactElement {
                   <Check size={15} /> No hats, filters, or dark shadows
                 </li>
                 <li>
-                  <Check size={15} /> Front-facing headshot with your hair visible
+                  <Check size={15} /> Keep as much of your hair visible as possible
                 </li>
               </ul>
               <label className="hair-consent-check">
@@ -267,8 +267,8 @@ export default function HairDesignPage(): React.ReactElement {
               type="button"
             >
               <Sparkles size={34} />
-              <strong>Choose a headshot</strong>
-              <span>Upload from your device</span>
+              <strong>Take or choose a headshot</strong>
+              <span>Use your camera or photo library</span>
               <small>JPEG, PNG, or WebP · up to 4 MB</small>
             </button>
           </section>

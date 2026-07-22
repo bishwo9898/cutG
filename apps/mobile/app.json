@@ -21,7 +21,14 @@
       "expo-router",
       "expo-secure-store",
       "expo-location",
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow cutG to take a private hairstyle preview photo.",
+          "microphonePermission": false,
+          "photosPermission": "Allow cutG to select a private hairstyle preview photo."
+        }
+      ],
       "expo-notifications",
       [
         "@stripe/stripe-react-native",

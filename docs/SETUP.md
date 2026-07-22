@@ -114,12 +114,12 @@ S3_SECRET_ACCESS_KEY=cutg-local-secret
 `make ai-install` creates `services/ai/.venv`, installs pinned dependencies, and downloads the
 official MediaPipe detector model. `pnpm dev` and `make dev` start API, web, FastAPI, and the Python
 RQ worker. Local development uses RQ's spawn worker so native image libraries run safely on macOS.
-`make setup` also creates the private MinIO bucket. Web and mobile use a photo picker for one
-front-facing headshot, upload it through a private presigned URL, and rely on server-side MediaPipe
-quality analysis before generation. With `AI_STRICT_CAPTURE_VALIDATION=false`, development accepts
-side profiles and low-quality but readable images while still recording their metrics. Set it to
-`true` when capture guidance should block unsuitable images. No native camera development build is
-required.
+`make setup` also creates the private MinIO bucket. Web and mobile can take a new camera photo or
+choose one from the photo library, upload it through a private presigned URL, and rely on server-side
+MediaPipe quality analysis before generation. With `AI_STRICT_CAPTURE_VALIDATION=false`, development
+accepts side profiles and low-quality but readable images while still recording their metrics. Set
+it to `true` when capture guidance should block unsuitable images. Rebuild the native app after
+changing camera permission configuration in `apps/mobile/app.json`.
 
 For production fal.ai processing:
 
