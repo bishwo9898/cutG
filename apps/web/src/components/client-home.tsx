@@ -61,7 +61,7 @@ export function ClientHome(): React.ReactElement {
       <section className="market-hero">
         <div>
           <p className="eyebrow">Danville's barber marketplace</p>
-          <h1>Find your perfect barber.</h1>
+          <h1>Find your Mobile barber.</h1>
           <p>
             Compare trusted professionals, book an open time, or have a mobile barber come to you.
           </p>
