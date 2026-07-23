@@ -46,7 +46,8 @@ presigned storage URLs, and receives authenticated worker callbacks. Python owns
 validation and the mock/fal.ai provider call, but has no database credentials.
 
 The public contract depends on provider-neutral job and design states. Local development uses a
-deterministic mock; production uses FLUX.1 Kontext Pro through fal.ai.
+deterministic mock; production uses masked GPT Image 2 edits through fal.ai and composites only the
+permitted hair region back over the untouched source portrait.
 
 Raw images never pass through Express JSON. Browser uploads go directly to private S3-compatible
 storage. Signed read URLs are generated only after client or assigned-barber ownership checks.

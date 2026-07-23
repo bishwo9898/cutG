@@ -89,7 +89,7 @@ const EnvSchema = z
     AI_PROVIDER: z.enum(['mock', 'fal']).default('mock'),
     AI_SERVICE_URL: z.string().url().default('http://localhost:8000'),
     AI_INTERNAL_SECRET: z.string().min(32).default('cutg-local-ai-secret-change-before-production'),
-    AI_GENERATION_MODEL: z.string().min(1).default('fal-ai/flux-pro/kontext'),
+    AI_GENERATION_MODEL: z.string().min(1).default('openai/gpt-image-2/edit'),
     AI_SCAN_RETENTION_HOURS: z.coerce.number().int().min(1).max(168).default(24),
     AI_GENERATION_DAILY_LIMIT: z.coerce.number().int().min(1).max(100).default(5),
     AI_MONTHLY_BUDGET_CENTS: z.coerce.number().nonnegative().default(0),

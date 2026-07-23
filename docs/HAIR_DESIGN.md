@@ -31,7 +31,7 @@ Web live camera, native camera, or private single-headshot upload
   -> Express ownership, consent, limits, and idempotency
   -> FastAPI MediaPipe quality validation
   -> Redis RQ durable generation job
-  -> Python worker: mock or FLUX.1 Kontext Pro via fal.ai
+  -> Python worker: mock or GPT Image 2 Edit via fal.ai
   -> authenticated processing/completion/failure callback
   -> Express copies output to private S3 and records usage
   -> web/mobile poll the owned design and can book with designId
@@ -47,12 +47,21 @@ same minimum-32-character `AI_INTERNAL_SECRET` and callback comparison is timing
 zero-cost result while exercising RQ, callbacks, storage, polling, deletion, and booking. It does
 not alter the hairstyle; the UI labels this as demo mode.
 
-`AI_PROVIDER=fal` uses `fal-ai/flux-pro/kontext`. The worker submits the private front portrait with
-the versioned `flux-kontext-hair-v4` prompt. Every preset expands into concrete barber geometry,
-length, texture, blending, region, identity-preservation, and photographic-realism constraints.
-Prompt enhancement remains disabled, exactly one JPEG result is required, and provider request ID,
-duration, and estimated cost are recorded. An uncertain paid submission is not automatically
-retried. A real smoke test is opt-in and requires funded `FAL_KEY` credentials.
+`AI_PROVIDER=fal` uses `openai/gpt-image-2/edit` through fal.ai at high quality. The worker submits
+the private front portrait with the versioned `gpt-image-2-masked-hair-v1` prompt and a deterministic
+scalp, facial-hair, or combined edit mask derived from the centered capture contract. Every preset
+expands into concrete barber geometry, length, texture, blending, region, identity-preservation, and
+photographic-realism constraints. Exactly one PNG result is required. The worker then composites
+only the feathered edit region over the normalized source before cutG copies it into private
+storage. This makes preservation of the face, skin, clothes, lighting, and background deterministic
+rather than relying on prompt compliance alone. Provider request ID, duration, and estimated cost
+are recorded. An uncertain paid submission is not automatically retried. A real smoke test is
+opt-in and requires funded `FAL_KEY` credentials.
+
+`AI_GENERATION_QUALITY` defaults to `high`. `AI_USE_HAIR_MASK=true` is the production default and
+should only be disabled for provider diagnosis. The legacy FLUX Kontext adapter remains available
+when explicitly selected with `AI_GENERATION_MODEL`, but it does not provide GPT Image 2's masked
+edit and preservation-composite path.
 
 `AI_STRICT_CAPTURE_VALIDATION=false` is the testing default. The validator still requires a
 readable image of at least 200 × 200 pixels, but pose, lighting, blur, detected face count, framing,

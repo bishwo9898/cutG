@@ -110,6 +110,7 @@ def create_generation(
             "generation_id": request.generation_id,
             "input_url": str(request.input_url),
             "prompt": request.prompt,
+            "edit_region": request.edit_region,
         },
         job_id=f"generation-{request.generation_id}",
         result_ttl=86_400,

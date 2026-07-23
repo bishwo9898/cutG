@@ -10,7 +10,7 @@ describe('hair edit prompt', () => {
       description: 'Keep natural curls on top',
     });
 
-    expect(HAIR_PROMPT_VERSION).toBe('flux-kontext-hair-v4');
+    expect(HAIR_PROMPT_VERSION).toBe('gpt-image-2-masked-hair-v1');
     expect(prompt).toContain('Image 1 is the customer portrait');
     expect(prompt).toContain('begin the taper below the temple');
     expect(prompt).toContain('Keep natural curls on top');

@@ -65,6 +65,7 @@ class GenerateRequest(BaseModel):
     generation_id: str
     input_url: HttpUrl
     prompt: str = Field(min_length=20, max_length=6000)
+    edit_region: Literal["scalp", "facial", "combo"] = "scalp"
 
 
 class GenerateResponse(BaseModel):

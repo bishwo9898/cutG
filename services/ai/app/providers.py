@@ -11,6 +11,7 @@ import httpx
 from PIL import Image, ImageOps
 
 from .config import settings
+from .hair_mask import create_edit_masks
 
 
 @dataclass(frozen=True)
@@ -21,7 +22,22 @@ class ProviderResult:
     estimated_cost_cents: float
 
 
-def _fal_generate(input_url: str, prompt: str) -> ProviderResult:
+def _data_url(image: Image.Image, image_format: str = "PNG") -> str:
+    output = BytesIO()
+    image.save(output, format=image_format, optimize=True)
+    mime = "image/png" if image_format == "PNG" else "image/jpeg"
+    return f"data:{mime};base64," + base64.b64encode(output.getvalue()).decode()
+
+
+def _estimated_cost_cents(model: str, quality: str) -> float:
+    if model == "openai/gpt-image-2/edit":
+        return {"low": 1.8, "medium": 5.4, "high": 17.8}[quality]
+    if "nano-banana-pro" in model:
+        return 15.0
+    return 4.0
+
+
+def _fal_generate(input_url: str, prompt: str, edit_region: str) -> ProviderResult:
     started = time.monotonic()
     os.environ["FAL_KEY"] = settings.fal_key
     with httpx.Client(timeout=settings.request_timeout_seconds) as client:
@@ -31,36 +47,85 @@ def _fal_generate(input_url: str, prompt: str) -> ProviderResult:
             raise RuntimeError("Source portrait exceeds the provider input limit")
     image = ImageOps.exif_transpose(Image.open(BytesIO(source.content))).convert("RGB")
     image.thumbnail((1536, 1536), Image.Resampling.LANCZOS)
-    normalized = BytesIO()
-    image.save(normalized, format="JPEG", quality=92, optimize=True)
-    data_url = "data:image/jpeg;base64," + base64.b64encode(normalized.getvalue()).decode()
+    source_data_url = _data_url(image)
+    blend_mask: Image.Image | None = None
 
-    handler = fal_client.submit(
-        settings.model,
-        arguments={
-            "image_url": data_url,
+    if settings.model == "openai/gpt-image-2/edit":
+        strict_mask, blend_mask = create_edit_masks(image, edit_region)
+        arguments: dict[str, object] = {
+            "image_urls": [source_data_url],
             "prompt": prompt,
-            "guidance_scale": 2.5,
+            "image_size": "auto",
+            "quality": settings.generation_quality,
+            "num_images": 1,
+            "output_format": "png",
+        }
+        if settings.use_hair_mask:
+            arguments["mask_image_url"] = _data_url(strict_mask)
+    elif "nano-banana" in settings.model:
+        arguments = {
+            "image_urls": [source_data_url],
+            "prompt": prompt,
+            "aspect_ratio": "auto",
+            "resolution": "2K",
+            "num_images": 1,
+            "output_format": "png",
+        }
+    else:
+        arguments = {
+            "image_url": source_data_url,
+            "prompt": prompt,
+            "guidance_scale": 3.5 if "/flux-pro/" in settings.model else 2.5,
             "num_images": 1,
             "output_format": "jpeg",
             "safety_tolerance": "2",
             "enhance_prompt": False,
-        },
+        }
+
+    handler = fal_client.submit(
+        settings.model,
+        arguments=arguments,
     )
     result = handler.get()
     request_id = str(handler.request_id)
     images = result.get("images") or []
     if len(images) != 1 or not images[0].get("url"):
         raise RuntimeError("fal must return exactly one generated image")
+    output_url = str(images[0]["url"])
+    if settings.model == "openai/gpt-image-2/edit" and settings.use_hair_mask:
+        if blend_mask is None:
+            raise RuntimeError("Hair preservation mask was not created")
+        with httpx.Client(timeout=settings.request_timeout_seconds) as client:
+            generated_response = client.get(output_url, follow_redirects=True)
+            generated_response.raise_for_status()
+        generated = Image.open(BytesIO(generated_response.content)).convert("RGB")
+        if generated.size != image.size:
+            generated = generated.resize(image.size, Image.Resampling.LANCZOS)
+        composed = Image.composite(generated, image, blend_mask)
+        composed_bytes = BytesIO()
+        composed.save(composed_bytes, format="PNG", optimize=True)
+        output_url = fal_client.upload(
+            composed_bytes.getvalue(),
+            "image/png",
+            "cutg-hair-preview.png",
+        )
+
     return ProviderResult(
-        output_url=str(images[0]["url"]),
+        output_url=output_url,
         request_id=request_id,
         duration_ms=int((time.monotonic() - started) * 1000),
-        estimated_cost_cents=4.0,
+        estimated_cost_cents=_estimated_cost_cents(
+            settings.model, settings.generation_quality
+        ),
     )
 
 
-def generate(input_url: str, prompt: str, generation_id: str) -> ProviderResult:
+def generate(
+    input_url: str,
+    prompt: str,
+    generation_id: str,
+    edit_region: str = "scalp",
+) -> ProviderResult:
     if settings.provider == "mock":
         return ProviderResult(
             output_url=input_url,
@@ -68,4 +133,4 @@ def generate(input_url: str, prompt: str, generation_id: str) -> ProviderResult:
             duration_ms=25,
             estimated_cost_cents=0,
         )
-    return _fal_generate(input_url, prompt)
+    return _fal_generate(input_url, prompt, edit_region)

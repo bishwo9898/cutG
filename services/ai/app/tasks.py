@@ -17,7 +17,12 @@ def generate_design(payload: dict[str, str]) -> None:
     generation_id = payload["generation_id"]
     try:
         _callback(f"/generations/{generation_id}/processing", {})
-        result = generate(payload["input_url"], payload["prompt"], generation_id)
+        result = generate(
+            payload["input_url"],
+            payload["prompt"],
+            generation_id,
+            payload.get("edit_region", "scalp"),
+        )
         _callback(
             f"/generations/{generation_id}/complete",
             {

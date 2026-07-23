@@ -1,4 +1,4 @@
-export const HAIR_PROMPT_VERSION = 'flux-kontext-hair-v4';
+export const HAIR_PROMPT_VERSION = 'gpt-image-2-masked-hair-v1';
 
 const STYLE_SPECIFICATIONS: Record<string, readonly string[]> = {
   'textured crop': [

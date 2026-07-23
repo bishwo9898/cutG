@@ -9,7 +9,11 @@ envVarGroups:
       - key: AI_INTERNAL_SECRET
         generateValue: true
       - key: AI_GENERATION_MODEL
-        value: fal-ai/flux-pro/kontext
+        value: openai/gpt-image-2/edit
+      - key: AI_GENERATION_QUALITY
+        value: high
+      - key: AI_USE_HAIR_MASK
+        value: true
       - key: AI_STRICT_CAPTURE_VALIDATION
         value: false
 

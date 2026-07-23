@@ -30,7 +30,14 @@ class Settings:
             else "http://localhost:4000/internal/ai"
         ),
     )
-    model: str = os.getenv("AI_GENERATION_MODEL", "fal-ai/flux-pro/kontext")
+    model: str = os.getenv("AI_GENERATION_MODEL", "openai/gpt-image-2/edit")
+    generation_quality: str = os.getenv("AI_GENERATION_QUALITY", "high")
+    use_hair_mask: bool = os.getenv("AI_USE_HAIR_MASK", "true").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6380")
     fal_key: str = os.getenv("FAL_KEY", "")
     request_timeout_seconds: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "90"))
@@ -49,6 +56,8 @@ class Settings:
             raise RuntimeError("AI_INTERNAL_SECRET must be at least 32 characters")
         if self.provider == "fal" and not self.fal_key:
             raise RuntimeError("FAL_KEY is required when AI_PROVIDER=fal")
+        if self.generation_quality not in {"low", "medium", "high"}:
+            raise RuntimeError("AI_GENERATION_QUALITY must be low, medium, or high")
 
 
 settings = Settings()

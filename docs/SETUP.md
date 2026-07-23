@@ -126,7 +126,9 @@ For production fal.ai processing:
 ```env
 AI_PROVIDER=fal
 FAL_KEY=replace_with_server_key
-AI_GENERATION_MODEL=fal-ai/flux-pro/kontext
+AI_GENERATION_MODEL=openai/gpt-image-2/edit
+AI_GENERATION_QUALITY=high
+AI_USE_HAIR_MASK=true
 AI_STRICT_CAPTURE_VALIDATION=false
 AI_INTERNAL_SECRET=replace_with_at_least_32_random_characters
 ```

@@ -31,6 +31,8 @@ const REQUIRED_ANGLES: HairScanAngle[] = ['FRONT'];
 const GENERATION_MODEL = env.AI_PROVIDER === 'mock' ? 'mock-passthrough' : env.AI_GENERATION_MODEL;
 const iso = (value: unknown): string =>
   value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
+const editRegion = (category: string): 'scalp' | 'facial' | 'combo' =>
+  category === 'beard' ? 'facial' : category === 'combo' ? 'combo' : 'scalp';
 
 const requireAiEnabled = (): void => {
   if (!env.ENABLE_AI_FEATURES) {
@@ -453,6 +455,7 @@ export const generateHairDesign = async (clientId: string, input: GenerateHairDe
         generationId: result.generationId,
         inputUrl: await createPresignedDownloadUrl(result.sourceKey),
         prompt: result.prompt,
+        editRegion: editRegion(input.styleCategory),
       });
       await query(`UPDATE hair_design_generations SET python_job_id=$1,progress=5 WHERE id=$2`, [
         queued.jobId,
@@ -496,7 +499,8 @@ export const retryHairDesign = async (
       [input.idempotencyKey, clientId],
       executor,
     );
-    if (duplicate[0] !== undefined) return { generationId: null, sourceKey: null, prompt: null };
+    if (duplicate[0] !== undefined)
+      return { generationId: null, sourceKey: null, prompt: null, styleCategory: null };
 
     const design = await getOwnedDesignRow(clientId, designId, executor);
     if (!['FAILED', 'CANCELLED'].includes(String(design.generation_status))) {
@@ -547,7 +551,7 @@ export const retryHairDesign = async (
       [generationId, designId, clientId],
       executor,
     );
-    return { generationId, sourceKey, prompt };
+    return { generationId, sourceKey, prompt, styleCategory: retryInput.styleCategory };
   });
   if (result.generationId !== null && result.sourceKey !== null && result.prompt !== null) {
     try {
@@ -555,6 +559,7 @@ export const retryHairDesign = async (
         generationId: result.generationId,
         inputUrl: await createPresignedDownloadUrl(result.sourceKey),
         prompt: result.prompt,
+        editRegion: editRegion(result.styleCategory),
       });
       await query('UPDATE hair_design_generations SET python_job_id=$1,progress=5 WHERE id=$2', [
         queued.jobId,

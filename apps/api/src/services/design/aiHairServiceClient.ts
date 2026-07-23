@@ -135,6 +135,7 @@ export const enqueueAiGeneration = async (input: {
   generationId: string;
   inputUrl: string;
   prompt: string;
+  editRegion: 'scalp' | 'facial' | 'combo';
 }): Promise<{ jobId: string; status: string }> => {
   const result = await request<{ job_id: string; status: string }>('/ai/generations', {
     method: 'POST',
@@ -142,6 +143,7 @@ export const enqueueAiGeneration = async (input: {
       generation_id: input.generationId,
       input_url: input.inputUrl,
       prompt: input.prompt,
+      edit_region: input.editRegion,
     }),
   });
   return { jobId: result.job_id, status: result.status };
