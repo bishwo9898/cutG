@@ -10,9 +10,12 @@ def test_scalp_mask_edits_hair_zone_but_protects_face_and_background() -> None:
     assert strict.size == image.size
     assert feathered.size == image.size
     assert strict.getpixel((500, 130)) == 255
-    assert strict.getpixel((500, 580)) == 0
-    assert strict.getpixel((40, 200)) == 0
+    assert strict.getpixel((500, 700)) == 0
+    assert strict.getpixel((10, 200)) == 0
     assert strict.getpixel((500, 1200)) == 0
+    # The full side silhouette and fringe remain editable so a short cut can remove them.
+    assert strict.getpixel((90, 400)) == 255
+    assert strict.getpixel((500, 520)) == 255
 
 
 def test_facial_mask_leaves_scalp_locked() -> None:

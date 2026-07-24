@@ -32,35 +32,29 @@ def create_edit_masks(
     box = _capture_face_box(image)
     strict = Image.new("L", image.size, 0)
     draw = ImageDraw.Draw(strict)
-    left = max(0, box.left - round(box.width * 0.35))
-    right = min(image.width, box.left + box.width + round(box.width * 0.35))
-    hair_bottom = min(image.height, box.top + round(box.height * 0.38))
+    # The editable area must contain the *entire original* hair silhouette, not just the desired
+    # final silhouette. Short cuts need room to replace removed long hair with the real background.
+    left = max(0, box.left - round(box.width * 0.78))
+    right = min(image.width, box.left + box.width + round(box.width * 0.78))
+    hair_bottom = min(image.height, box.top + round(box.height * 0.62))
     hair_top = max(0, box.top - round(box.height * 1.45))
 
     if edit_region in {"scalp", "combo"}:
-        draw.ellipse(
-            (left, hair_top, right, hair_bottom + round(box.height * 0.08)),
+        draw.rounded_rectangle(
+            (left, hair_top, right, hair_bottom),
+            radius=max(16, round(box.width * 0.24)),
             fill=255,
         )
+        # Start face protection at the eye line, below normal bangs and fringe. The previous mask
+        # began near the forehead and therefore composited original locks back over new hair.
         draw.rounded_rectangle(
             (
-                left,
-                max(hair_top, round(image.height * 0.12)),
-                right,
-                hair_bottom,
+                box.left + round(box.width * 0.04),
+                box.top + round(box.height * 0.55),
+                box.left + round(box.width * 0.96),
+                image.height,
             ),
-            radius=max(12, round(box.width * 0.18)),
-            fill=255,
-        )
-        # Preserve the identity-critical face core while leaving temples, sideburns, forehead
-        # overlap, ears, and the complete current hair silhouette editable.
-        draw.ellipse(
-            (
-                box.left + round(box.width * 0.03),
-                box.top + round(box.height * 0.05),
-                box.left + round(box.width * 0.97),
-                box.top + round(box.height * 1.18),
-            ),
+            radius=max(8, round(box.width * 0.06)),
             fill=0,
         )
 

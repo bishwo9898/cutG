@@ -10,7 +10,7 @@ describe('hair edit prompt', () => {
       description: 'Keep natural curls on top',
     });
 
-    expect(HAIR_PROMPT_VERSION).toBe('gpt-image-2-masked-hair-v1');
+    expect(HAIR_PROMPT_VERSION).toBe('gpt-image-2-masked-hair-v2');
     expect(prompt).toContain('Image 1 is the customer portrait');
     expect(prompt).toContain('begin the taper below the temple');
     expect(prompt).toContain('Keep natural curls on top');
@@ -46,5 +46,27 @@ describe('hair edit prompt', () => {
     expect(prompt).toContain('technically achievable barber result');
     expect(prompt).toContain('existing growth direction');
     expect(prompt).toContain('Loose waves with a subtle neckline taper');
+  });
+
+  it('forces complete original-hair removal for buzz cuts', () => {
+    const prompt = buildHairEditPrompt({
+      styleName: 'Buzz Cut',
+      styleCategory: 'haircut',
+    });
+
+    expect(prompt).toContain('remove every long original hair strand and fringe');
+    expect(prompt).toContain('original background naturally reconstructed');
+    expect(prompt).toContain('no holes, cutout arcs, circular or sloped mask boundaries');
+  });
+
+  it('forces a custom perm to replace rather than overlay the old hairstyle', () => {
+    const prompt = buildHairEditPrompt({
+      styleName: 'My custom cut',
+      styleCategory: 'haircut',
+      description: 'Give it a realistic perm with a low taper',
+    });
+
+    expect(prompt).toContain('one unified professionally permed result');
+    expect(prompt).toContain('do not leave straight or differently styled pieces');
   });
 });

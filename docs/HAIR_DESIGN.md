@@ -48,10 +48,13 @@ zero-cost result while exercising RQ, callbacks, storage, polling, deletion, and
 not alter the hairstyle; the UI labels this as demo mode.
 
 `AI_PROVIDER=fal` uses `openai/gpt-image-2/edit` through fal.ai at high quality. The worker submits
-the private front portrait with the versioned `gpt-image-2-masked-hair-v1` prompt and a deterministic
+the private front portrait with the versioned `gpt-image-2-masked-hair-v2` prompt and a deterministic
 scalp, facial-hair, or combined edit mask derived from the centered capture contract. Every preset
 expands into concrete barber geometry, length, texture, blending, region, identity-preservation, and
-photographic-realism constraints. Exactly one PNG result is required. The worker then composites
+photographic-realism constraints. Scalp masks include the complete original hair silhouette so
+short cuts can reconstruct the background instead of retaining old fringe or side tufts. Buzz-cut
+and perm prompts also require complete replacement of the old hairstyle rather than layering.
+Exactly one PNG result is required. The worker then composites
 only the feathered edit region over the normalized source before cutG copies it into private
 storage. This makes preservation of the face, skin, clothes, lighting, and background deterministic
 rather than relying on prompt compliance alone. Provider request ID, duration, and estimated cost
