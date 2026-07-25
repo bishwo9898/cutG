@@ -1,33 +1,159 @@
 import {
   ArrowUpRight,
-  CalendarCheck,
+  Calendar,
+  Car,
   Check,
   Clock3,
+  Compass,
   MapPin,
   Search,
-  Scissors,
   ShieldCheck,
-  Store,
-  TrendingUp,
+  Sparkles,
+  Star,
 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { BarberCard } from '@/components/client-ui';
+import { ActivityTicker } from '@/components/landing/activity-ticker';
+import { HairDesignSlider } from '@/components/landing/hair-design-slider';
+import { LandingNav } from '@/components/landing/landing-nav';
+import { BarberCover } from '@/components/client/barber-cover';
 import type { Pagination, PublicBarber } from '@/lib/contracts';
 
 export const metadata: Metadata = {
-  title: 'cutG - Book Barbers Near You or Bring Them to Your Door',
+  title: 'cutG - Premium barber booking, mobile service, and AI preview',
   description:
-    'Find top-rated barbers, book instantly, and get mobile barber service at your home or office.',
+    'Book trusted barbers, preview your next cut with AI, and track mobile service in real time.',
   openGraph: {
     title: 'cutG - Your barber, wherever you are',
-    description: 'Book a trusted barber nearby or bring professional service to your door.',
+    description:
+      'Book trusted barbers nearby, bring them to your door, and preview your next look before the appointment.',
     type: 'website',
   },
 };
 
 type SearchResponse = { barbers: PublicBarber[]; pagination: Pagination };
+type ShowcaseBarber = {
+  id: string;
+  businessName: string;
+  city: string;
+  state: string;
+  averageRating: number;
+  totalReviews: number;
+  lowestServicePrice: number;
+  profilePhotoUrl: string | null;
+  mobile: boolean;
+};
+
+const proofStats = [
+  { value: '4.9★', label: 'Average client rating' },
+  { value: '2,400+', label: 'Bookings completed' },
+  { value: '12 cities', label: 'Mobile barbers live now' },
+];
+
+const steps = [
+  {
+    number: '01',
+    title: 'Find your barber.',
+    body: 'Browse by rating, specialty, or style. Filter for mobile service if you want them at your door.',
+  },
+  {
+    number: '02',
+    title: 'Book in seconds.',
+    body: 'Pick your service and time. Pay securely. Your barber gets notified instantly.',
+  },
+  {
+    number: '03',
+    title: 'Get the cut.',
+    body: 'At their shop or yours. Show your AI preview so the look is clear before the first pass.',
+  },
+];
+
+const reviews = [
+  {
+    quote:
+      'Booked a mobile barber to my hotel before a pitch meeting. Showed the AI preview on the way in. Perfect cut in forty minutes.',
+    author: 'Marcus T.',
+    city: 'New York',
+  },
+  {
+    quote:
+      'The live tracking is what sold me. I knew exactly when he was two minutes out, and the whole thing felt premium start to finish.',
+    author: 'Jordan K.',
+    city: 'Los Angeles',
+  },
+  {
+    quote:
+      'I doubled my monthly clients in six weeks. The mobile service setup alone gave me a cleaner business than DMs ever could.',
+    author: 'Chris A.',
+    city: 'Austin',
+  },
+];
+
+const barberPlans = [
+  {
+    name: 'Free',
+    subtitle: 'Just getting started',
+    price: '—',
+    features: ['Up to 5 services', '14-day calendar horizon', 'Client bookings'],
+  },
+  {
+    name: 'Basic',
+    subtitle: 'Growing your clientele',
+    price: '$9/mo',
+    features: ['Up to 20 services', 'Priority in search', '60-day slot generation'],
+  },
+  {
+    name: 'Premium',
+    subtitle: 'Full power',
+    price: '$19/mo',
+    featured: true,
+    features: ['Unlimited services', 'Analytics access', 'Mobile service support'],
+  },
+];
+
+const tickerItems = [
+  { location: 'Marcus J. in Brooklyn', action: 'just booked a low taper.', time: '2 min ago' },
+  { location: 'Tyler K. in Austin', action: 'just opened the AI preview.', time: '8 min ago' },
+  { location: 'Nina R. in Chicago', action: 'just reserved a mobile visit.', time: '11 min ago' },
+  { location: 'Sasha P. in Queens', action: 'just saved a barber for later.', time: '14 min ago' },
+];
+
+const fallbackBarbers: ShowcaseBarber[] = [
+  {
+    id: 'fallback-1',
+    businessName: 'The Classic Room',
+    city: 'Brooklyn',
+    state: 'NY',
+    averageRating: 5,
+    totalReviews: 42,
+    lowestServicePrice: 45,
+    profilePhotoUrl: '/images/barbers/barber-1.webp',
+    mobile: true,
+  },
+  {
+    id: 'fallback-2',
+    businessName: 'Upper Cut Studio',
+    city: 'Manhattan',
+    state: 'NY',
+    averageRating: 4.9,
+    totalReviews: 128,
+    lowestServicePrice: 35,
+    profilePhotoUrl: '/images/barbers/barber-2.webp',
+    mobile: false,
+  },
+  {
+    id: 'fallback-3',
+    businessName: 'The Fade Shop',
+    city: 'Queens',
+    state: 'NY',
+    averageRating: 4.8,
+    totalReviews: 96,
+    lowestServicePrice: 40,
+    profilePhotoUrl: '/images/barbers/barber-3.webp',
+    mobile: true,
+  },
+];
 
 const featuredBarbers = async (): Promise<PublicBarber[]> => {
   const baseUrl = process.env.API_BASE_URL ?? 'http://localhost:4000';
@@ -44,232 +170,411 @@ const featuredBarbers = async (): Promise<PublicBarber[]> => {
 
 export default async function LandingPage(): Promise<React.ReactElement> {
   const barbers = await featuredBarbers();
+  const featured = (barbers.length > 0
+    ? barbers.map((barber) => ({
+        id: barber.id,
+        businessName: barber.businessName,
+        city: barber.city ?? '',
+        state: barber.state ?? '',
+        averageRating: barber.averageRating,
+        totalReviews: barber.totalReviews,
+        lowestServicePrice: barber.lowestServicePrice ?? 0,
+        profilePhotoUrl: barber.profilePhotoUrl,
+        mobile: barber.mobileService?.isEnabled === true,
+      }))
+    : fallbackBarbers) satisfies ShowcaseBarber[];
+
   return (
-    <main className="landing-page">
-      <header className="landing-nav">
-        <Link className="brand-lockup" href="/">
-          <span className="brand-mark">
-            <Scissors size={18} />
-          </span>
-          cutG
-        </Link>
-        <nav>
-          <Link href="#how-it-works">The experience</Link>
-          <Link href="#for-barbers">For professionals</Link>
-          <Link href="/client/login">Sign in</Link>
-          <Link className="button landing-nav-button" href="/client/register">
-            Book a barber <ArrowUpRight size={15} />
-          </Link>
-        </nav>
-      </header>
+    <main className="landing-cinematic-page">
+      <LandingNav />
 
-      <section className="landing-hero">
-        <div className="landing-hero-content">
-          <p className="eyebrow">The modern barber marketplace</p>
-          <h1>A better cut starts here.</h1>
-          <p>
-            Discover trusted barbers, reserve the right time, and choose the chair or your door—all
-            in one beautifully simple experience.
-          </p>
-          <div className="button-row">
-            <Link className="button button-primary" href="/client/register">
-              Find your barber <ArrowUpRight size={17} />
-            </Link>
-            <Link className="button landing-outline-button" href="/barber/register">
-              Join as a professional
-            </Link>
-          </div>
-          <div className="landing-trust-row">
-            <span>
-              <ShieldCheck size={15} /> Verified professionals
-            </span>
-            <span>
-              <Clock3 size={15} /> Book in under a minute
-            </span>
-          </div>
-        </div>
-        <aside className="landing-hero-card" aria-label="Sample booking">
-          <div className="landing-hero-card-topline">
-            <span>Next available</span>
-            <strong>Today</strong>
-          </div>
-          <div className="landing-hero-card-profile">
-            <span className="landing-hero-avatar">JM</span>
-            <div>
-              <strong>Jordan Miles</strong>
-              <span>Fade specialist · 4.9</span>
+      <section className="landing-cinematic-hero">
+        <div className="landing-cinematic-aurora landing-cinematic-aurora-left" />
+        <div className="landing-cinematic-aurora landing-cinematic-aurora-right" />
+        <div className="landing-cinematic-shell landing-cinematic-hero-grid">
+          <div className="landing-cinematic-hero-copy">
+            <p className="landing-cinematic-eyebrow">Barbering, reimagined</p>
+            <h1>
+              Your barber,
+              <br />
+              <em>whenever you want.</em>
+              <br />
+              Wherever you are.
+            </h1>
+            <p className="landing-cinematic-hero-subhead">
+              Book top barbers in minutes, bring them to your door, and preview your next look
+              before you ever sit in the chair.
+            </p>
+            <div className="landing-cinematic-hero-actions">
+              <Link className="landing-cinematic-button landing-cinematic-button-primary" href="/client/barbers">
+                Find your barber <ArrowUpRight size={16} />
+              </Link>
+              <Link className="landing-cinematic-button landing-cinematic-button-ghost" href="/barber/register">
+                I&apos;m a barber
+              </Link>
             </div>
-            <ShieldCheck size={18} />
+            <div className="landing-cinematic-trust-row">
+              <span>
+                <ShieldCheck size={15} /> Verified professionals
+              </span>
+              <span>
+                <Clock3 size={15} /> Book in under a minute
+              </span>
+              <span>
+                <Sparkles size={15} /> AI preview before booking
+              </span>
+            </div>
+            <ActivityTicker items={tickerItems} />
           </div>
-          <div className="landing-hero-card-slots">
-            <span>3:30 PM</span>
-            <span>5:00 PM</span>
-            <span>6:15 PM</span>
-          </div>
-          <div className="landing-hero-card-footer">
-            <span>Classic fade</span>
-            <strong>From $38</strong>
-          </div>
-        </aside>
+
+          <aside className="landing-cinematic-hero-stack" aria-label="Product story preview">
+            <div className="landing-cinematic-surface landing-cinematic-surface-strong">
+              <div className="landing-cinematic-surface-header">
+                <span>Next available</span>
+                <strong>Today</strong>
+              </div>
+              <div className="landing-cinematic-booking-card">
+                <div>
+                  <p>Jordan Miles</p>
+                  <span>Low taper · 4.9 rating</span>
+                </div>
+                <span className="landing-cinematic-status-pill">Verified</span>
+              </div>
+              <div className="landing-cinematic-slot-row">
+                <span>3:30 PM</span>
+                <span>5:00 PM</span>
+                <span>6:15 PM</span>
+              </div>
+              <div className="landing-cinematic-hero-gridline">
+                <div>
+                  <small>Service</small>
+                  <strong>Classic fade</strong>
+                </div>
+                <div>
+                  <small>Price</small>
+                  <strong>From $38</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="landing-cinematic-hero-mini-grid">
+              <div className="landing-cinematic-surface">
+                <small>AI Hair Studio</small>
+                <strong>Preview approved</strong>
+                <p>Low taper, natural curl texture, beard blend attached to booking.</p>
+              </div>
+              <div className="landing-cinematic-surface">
+                <small>Mobile service</small>
+                <strong>Live arrival</strong>
+                <p>Travel fee shown upfront. Barber is 12 minutes away and on the move.</p>
+              </div>
+            </div>
+          </aside>
+        </div>
       </section>
 
-      <section className="landing-proof" aria-label="cutG advantages">
-        <div>
-          <strong>One place</strong>
-          <span>Search, compare, and book</span>
-        </div>
-        <div>
-          <strong>Two ways</strong>
-          <span>In-shop or mobile service</span>
-        </div>
-        <div>
-          <strong>Zero guesswork</strong>
-          <span>Clear services and pricing</span>
+      <section className="landing-cinematic-section" id="hair-design">
+        <div className="landing-cinematic-shell">
+          <div className="landing-cinematic-section-heading">
+            <div>
+              <p className="landing-cinematic-eyebrow">AI Hair Design Studio</p>
+              <h2>See it before you commit.</h2>
+            </div>
+            <p>
+              Scan your face, pick a style, and walk in with a realistic preview attached to the
+              appointment.
+            </p>
+          </div>
+          <HairDesignSlider />
         </div>
       </section>
 
-      <section className="landing-section" id="how-it-works">
-        <div className="landing-section-heading">
-          <p className="eyebrow">Designed around your day</p>
-          <h2>Your next cut, without the back-and-forth.</h2>
+      <section className="landing-cinematic-section landing-cinematic-section-surface" id="tracking">
+        <div className="landing-cinematic-shell landing-cinematic-tracking-grid">
+          <div className="landing-cinematic-tracking-copy">
+            <p className="landing-cinematic-eyebrow">Mobile Barber</p>
+            <h2>The barber comes to you.</h2>
+            <p>
+              No more driving across town. Book a mobile barber to your home, office, or hotel,
+              then follow the appointment from confirmed to arrived.
+            </p>
+            <div className="landing-cinematic-stat-capsules">
+              <div>
+                <strong>10 mi</strong>
+                <span>Max travel radius</span>
+              </div>
+              <div>
+                <strong>Live GPS</strong>
+                <span>Real-time tracking</span>
+              </div>
+              <div>
+                <strong>$0 setup</strong>
+                <span>No hidden costs</span>
+              </div>
+            </div>
+            <Link className="landing-cinematic-button landing-cinematic-button-primary" href="/client/barbers?mobileOnly=true">
+              Explore mobile barbers
+            </Link>
+          </div>
+
+          <div className="landing-cinematic-tracking-story">
+            <div className="landing-cinematic-story-card">
+              <div className="landing-cinematic-story-head">
+                <div>
+                  <small>Live GPS Tracking</small>
+                  <strong>Know exactly when your barber arrives.</strong>
+                </div>
+                <span>12 min away</span>
+              </div>
+              <div className="landing-cinematic-map-card" aria-hidden="true">
+                <div className="landing-cinematic-map-grid" />
+                <div className="landing-cinematic-map-path" />
+                <div className="landing-cinematic-map-home">
+                  <MapPin size={18} />
+                </div>
+                <div className="landing-cinematic-map-barber">
+                  <Car size={16} />
+                  <span>On the way</span>
+                </div>
+              </div>
+              <div className="landing-cinematic-timeline">
+                {[
+                  ['Booked', 'Jan 20 at 9:41 AM', true],
+                  ['Confirmed', 'Jan 20 at 9:44 AM', true],
+                  ['On the way', 'Jan 20 at 9:48 AM', true],
+                  ['Arrived', 'Waiting for arrival'],
+                  ['Done', 'Service complete'],
+                ].map(([label, copy, active]) => (
+                  <div className={`landing-cinematic-timeline-row${active ? ' is-active' : ''}`} key={String(label)}>
+                    <span />
+                    <div>
+                      <strong>{label}</strong>
+                      <small>{copy}</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="landing-steps">
-          {[
-            [
-              Search,
-              'Find your match',
-              'Explore nearby professionals by style, rating, service, and price.',
-            ],
-            [
-              CalendarCheck,
-              'Choose your time',
-              'See real availability and reserve the appointment that fits your day.',
-            ],
-            [
-              Scissors,
-              'Leave looking sharp',
-              'Take the chair or have a mobile barber bring the experience to you.',
-            ],
-          ].map(([Icon, title, copy]) => {
-            const StepIcon = Icon as typeof Search;
-            return (
-              <article key={String(title)}>
-                <StepIcon size={22} />
-                <h3>{String(title)}</h3>
-                <p>{String(copy)}</p>
+      </section>
+
+      <section className="landing-cinematic-section" id="how-it-works">
+        <div className="landing-cinematic-shell">
+          <div className="landing-cinematic-section-heading landing-cinematic-section-heading-centered">
+            <div>
+              <p className="landing-cinematic-eyebrow">The experience</p>
+              <h2>Ready in three steps.</h2>
+            </div>
+          </div>
+          <div className="landing-cinematic-steps">
+            {steps.map((step) => (
+              <article key={step.number}>
+                <span>{step.number}</span>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
               </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="landing-mobile-band">
-        <div className="landing-mobile-copy">
-          <p className="eyebrow">The chair, reimagined</p>
-          <h2>Great service. Your address.</h2>
-          <p>
-            Skip the commute. Choose an address, see the travel price before booking, and follow
-            each visit from confirmed to arrived.
-          </p>
-          <Link className="button button-primary" href="/client/barbers?mobileOnly=true">
-            Explore mobile barbers <ArrowUpRight size={16} />
-          </Link>
-        </div>
-        <div className="landing-map-scene" aria-hidden="true">
-          <span className="map-route" />
-          <span className="map-origin">
-            <Store size={20} />
-          </span>
-          <span className="map-destination">
-            <MapPin size={24} />
-          </span>
-        </div>
-      </section>
-
-      <section className="landing-section">
-        <div className="landing-section-heading split-heading">
-          <div>
-            <p className="eyebrow">Featured</p>
-            <h2>Barbers clients trust</h2>
-          </div>
-          <Link className="text-link" href="/client/barbers">
-            Browse all barbers
-          </Link>
-        </div>
-        {barbers.length === 0 ? (
-          <p className="muted">Featured barbers will appear when the API is running.</p>
-        ) : (
-          <div className="featured-strip">
-            {barbers.map((barber) => (
-              <BarberCard barber={barber} key={barber.id} />
             ))}
           </div>
-        )}
+        </div>
       </section>
 
-      <section className="landing-barber-band" id="for-barbers">
-        <div className="landing-section-heading">
-          <p className="eyebrow">Your craft. Your business.</p>
-          <h2>A calmer way to run a busier chair.</h2>
+      <section className="landing-cinematic-section landing-cinematic-featured">
+        <div className="landing-cinematic-shell">
+          <div className="landing-cinematic-section-heading">
+            <div>
+              <p className="landing-cinematic-eyebrow">The collective</p>
+              <h2>Barbers clients already trust.</h2>
+            </div>
+            <Link className="landing-cinematic-text-link" href="/client/barbers">
+              Browse all barbers
+            </Link>
+          </div>
+          <div className="landing-cinematic-barber-grid">
+            {featured.map((barber) => (
+              <Link
+                className="landing-cinematic-barber-card"
+                href={`/client/barbers/${barber.id}`}
+                key={barber.id}
+              >
+                <div className="landing-cinematic-barber-card-image">
+                  <BarberCover alt={`${barber.businessName} portrait`} src={barber.profilePhotoUrl} />
+                </div>
+                <div className="landing-cinematic-barber-card-body">
+                  <div className="landing-cinematic-barber-card-topline">
+                    <div>
+                      <h3>{barber.businessName}</h3>
+                      <p>
+                        {[barber.city, barber.state].filter(Boolean).join(', ') || 'Location coming soon'}
+                      </p>
+                    </div>
+                    {barber.mobile && <span className="landing-cinematic-status-pill">Mobile</span>}
+                  </div>
+                  <div className="landing-cinematic-barber-card-meta">
+                    <span>
+                      <Star size={14} /> {barber.averageRating.toFixed(1)} ({barber.totalReviews})
+                    </span>
+                    <strong>From ${barber.lowestServicePrice.toFixed(0)}</strong>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
-        <div className="landing-benefits">
-          <article>
-            <Search size={21} />
-            <h3>Get discovered</h3>
-            <p>Show up when nearby clients search for their next barber.</p>
-          </article>
-          <article>
-            <CalendarCheck size={21} />
-            <h3>Manage everything</h3>
-            <p>Keep bookings, availability, services, and earnings organized.</p>
-          </article>
-          <article>
-            <TrendingUp size={21} />
-            <h3>Go mobile</h3>
-            <p>Offer home visits with clear travel areas and fees.</p>
-          </article>
-        </div>
-        <Link className="button button-primary" href="/barber/register">
-          Build your business on cutG <ArrowUpRight size={16} />
-        </Link>
       </section>
 
-      <section className="landing-section pricing-preview">
-        <div>
-          <p className="eyebrow">Start on your terms</p>
-          <h2>Everything you need to open your digital chair.</h2>
+      <section className="landing-cinematic-section landing-cinematic-proof-band">
+        <div className="landing-cinematic-shell">
+          <div className="landing-cinematic-section-heading">
+            <div>
+              <p className="landing-cinematic-eyebrow">Social proof</p>
+              <h2>Confidence without the hard sell.</h2>
+            </div>
+          </div>
+          <div className="landing-cinematic-reviews">
+            {reviews.map((review) => (
+              <article className="landing-cinematic-review-card" key={review.author}>
+                <div className="landing-cinematic-stars">
+                  {Array.from({ length: 5 }, (_, index) => (
+                    <Star fill="currentColor" key={index} size={14} />
+                  ))}
+                </div>
+                <p>{review.quote}</p>
+                <strong>
+                  {review.author}, {review.city}
+                </strong>
+              </article>
+            ))}
+          </div>
+          <div className="landing-cinematic-proof-stats">
+            {proofStats.map((stat) => (
+              <div key={stat.label}>
+                <strong>{stat.value}</strong>
+                <span>{stat.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="landing-plan-points">
-          <span>
-            <Check size={15} /> A polished public profile
-          </span>
-          <span>
-            <Check size={15} /> Booking and calendar tools
-          </span>
-          <span>
-            <Check size={15} /> Clear business insights
-          </span>
-        </div>
-        <Link className="button button-secondary" href="/barber/register">
-          Start free <ArrowUpRight size={16} />
-        </Link>
       </section>
 
-      <footer className="landing-footer">
-        <div className="brand-lockup">
-          <span className="brand-mark">
-            <Scissors size={18} />
-          </span>
-          cutG
+      <section className="landing-cinematic-section landing-cinematic-section-surface" id="for-barbers">
+        <div className="landing-cinematic-shell">
+          <div className="landing-cinematic-section-heading">
+            <div>
+              <p className="landing-cinematic-eyebrow">For barbers</p>
+              <h2>Your shop. Your rules. Your clients.</h2>
+            </div>
+            <p>
+              cutG helps barbers get discovered, manage the book, and run mobile service without
+              turning the business into chaos.
+            </p>
+          </div>
+
+          <div className="landing-cinematic-barber-benefits">
+            {[
+              [
+                Search,
+                'Get discovered',
+                'Clients search by style, rating, and location. Show up where they are already looking.',
+              ],
+              [
+                Calendar,
+                'Manage everything',
+                'Appointments, schedule, earnings, and reviews live in one calmer operating system.',
+              ],
+              [
+                Compass,
+                'Go mobile',
+                'Set the radius, fee, and travel rules that make house calls profitable.',
+              ],
+            ].map(([Icon, title, body]) => {
+              const BenefitIcon = Icon as typeof Search;
+              return (
+                <article key={String(title)}>
+                  <BenefitIcon size={20} />
+                  <h3>{String(title)}</h3>
+                  <p>{String(body)}</p>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="landing-cinematic-pricing">
+            {barberPlans.map((plan) => (
+              <article className={plan.featured ? 'is-featured' : ''} key={plan.name}>
+                {plan.featured && <span className="landing-cinematic-pricing-chip">Most popular</span>}
+                <small>{plan.name}</small>
+                <h3>{plan.subtitle}</h3>
+                <strong>{plan.price}</strong>
+                <ul>
+                  {plan.features.map((feature) => (
+                    <li key={feature}>
+                      <Check size={14} /> {feature}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+
+          <div className="landing-cinematic-pricing-footer">
+            <p>Clients always book free. No contracts. Cancel anytime.</p>
+            <Link className="landing-cinematic-button landing-cinematic-button-primary" href="/barber/register">
+              Join as a barber
+            </Link>
+          </div>
         </div>
-        <p>Professional barbering, booked your way.</p>
-        <nav>
-          <Link href="/client">For clients</Link>
-          <Link href="/barber/register">For barbers</Link>
-          <span>Privacy</span>
-          <span>Terms</span>
-        </nav>
-        <small>© 2026 cutG</small>
+      </section>
+
+      <section className="landing-cinematic-section">
+        <div className="landing-cinematic-shell landing-cinematic-final-cta">
+          <div className="landing-cinematic-final-copy">
+            <p className="landing-cinematic-eyebrow">Last call</p>
+            <h2>Your next great cut is waiting.</h2>
+            <p>
+              Browse without pressure, save the right barber, and book when the match feels right.
+            </p>
+          </div>
+          <div className="landing-cinematic-final-grid">
+            <article>
+              <small>For clients</small>
+              <h3>Find a barber</h3>
+              <p>Browse, book, and track the visit in one place.</p>
+              <Link className="landing-cinematic-button landing-cinematic-button-primary" href="/client/barbers">
+                Start browsing
+              </Link>
+            </article>
+            <article>
+              <small>For barbers</small>
+              <h3>Grow your business</h3>
+              <p>Your schedule. Your clients. Your terms.</p>
+              <Link className="landing-cinematic-button landing-cinematic-button-ghost" href="/barber/register">
+                Join as a barber
+              </Link>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <footer className="landing-cinematic-footer">
+        <div className="landing-cinematic-shell">
+          <div className="landing-cinematic-footer-top">
+            <div>
+              <span className="landing-cinematic-brand">
+                <span className="landing-cinematic-brand-mark">cut</span>
+                <span>G</span>
+              </span>
+              <p>The modern barbershop experience.</p>
+            </div>
+            <nav>
+              <Link href="/client">For clients</Link>
+              <Link href="/barber/register">For barbers</Link>
+              <span>Privacy</span>
+              <span>Terms</span>
+            </nav>
+          </div>
+          <small>© 2026 cutG. All rights reserved.</small>
+        </div>
       </footer>
     </main>
   );
