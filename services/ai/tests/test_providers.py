@@ -101,7 +101,7 @@ def test_fal_rejects_alternate_versions(monkeypatch) -> None:
         providers.generate("https://private.test/source.jpg", "strict prompt", "generation")
 
 
-def test_gpt_image_uses_high_quality_hair_mask_and_preservation_composite(
+def test_gpt_image_uses_high_quality_hair_mask_and_returns_provider_asset(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -123,11 +123,6 @@ def test_gpt_image_uses_high_quality_hair_mask_and_preservation_composite(
             Image.new("L", image.size, 255),
         ),
     )
-    monkeypatch.setattr(
-        providers.fal_client,
-        "upload",
-        lambda *_args, **_kwargs: "https://provider.test/composited.png",
-    )
 
     result = providers.generate(
         "https://private.test/source.jpg",
@@ -144,5 +139,5 @@ def test_gpt_image_uses_high_quality_hair_mask_and_preservation_composite(
     assert arguments["quality"] == "high"
     assert arguments["image_size"] == "auto"
     assert arguments["output_format"] == "png"
-    assert result.output_url == "https://provider.test/composited.png"
+    assert result.output_url == "https://provider.test/result.png"
     assert result.estimated_cost_cents == 17.8

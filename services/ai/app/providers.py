@@ -48,10 +48,9 @@ def _fal_generate(input_url: str, prompt: str, edit_region: str) -> ProviderResu
     image = ImageOps.exif_transpose(Image.open(BytesIO(source.content))).convert("RGB")
     image.thumbnail((1536, 1536), Image.Resampling.LANCZOS)
     source_data_url = _data_url(image)
-    blend_mask: Image.Image | None = None
 
     if settings.model == "openai/gpt-image-2/edit":
-        strict_mask, blend_mask = create_edit_masks(image, edit_region)
+        strict_mask, _blend_mask = create_edit_masks(image, edit_region)
         arguments: dict[str, object] = {
             "image_urls": [source_data_url],
             "prompt": prompt,
@@ -92,23 +91,6 @@ def _fal_generate(input_url: str, prompt: str, edit_region: str) -> ProviderResu
     if len(images) != 1 or not images[0].get("url"):
         raise RuntimeError("fal must return exactly one generated image")
     output_url = str(images[0]["url"])
-    if settings.model == "openai/gpt-image-2/edit" and settings.use_hair_mask:
-        if blend_mask is None:
-            raise RuntimeError("Hair preservation mask was not created")
-        with httpx.Client(timeout=settings.request_timeout_seconds) as client:
-            generated_response = client.get(output_url, follow_redirects=True)
-            generated_response.raise_for_status()
-        generated = Image.open(BytesIO(generated_response.content)).convert("RGB")
-        if generated.size != image.size:
-            generated = generated.resize(image.size, Image.Resampling.LANCZOS)
-        composed = Image.composite(generated, image, blend_mask)
-        composed_bytes = BytesIO()
-        composed.save(composed_bytes, format="PNG", optimize=True)
-        output_url = fal_client.upload(
-            composed_bytes.getvalue(),
-            "image/png",
-            "cutg-hair-preview.png",
-        )
 
     return ProviderResult(
         output_url=output_url,

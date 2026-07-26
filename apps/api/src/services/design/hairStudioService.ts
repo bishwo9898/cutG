@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 import type {
   CompleteHairCaptureRequest,
@@ -16,11 +18,13 @@ import { env } from '../../config/env';
 import { query, withTransaction, type DatabaseExecutor } from '../../db/queries/barber.queries';
 import { AppError } from '../../middleware/errorHandler';
 import {
-  copyRemoteImageToStorage,
   createPresignedDownloadUrl,
   createPresignedUploadUrl,
   deleteStoredObject,
+  downloadRemoteImage,
+  storeImageBuffer,
   verifyUploadedObject,
+  type DownloadedImage,
 } from '../storage/objectStorage';
 
 import { enqueueAiGeneration, validateAiFrames } from './aiHairServiceClient';
@@ -29,10 +33,61 @@ import { buildHairEditPrompt, HAIR_PROMPT_VERSION } from './hairPrompt';
 type Row = Record<string, unknown>;
 const REQUIRED_ANGLES: HairScanAngle[] = ['FRONT'];
 const GENERATION_MODEL = env.AI_PROVIDER === 'mock' ? 'mock-passthrough' : env.AI_GENERATION_MODEL;
+const DEBUG_ARTIFACT_ROOT = resolve(__dirname, '../../../../../tmp/hair-studio-debug');
 const iso = (value: unknown): string =>
   value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
 const editRegion = (category: string): 'scalp' | 'facial' | 'combo' =>
   category === 'beard' ? 'facial' : category === 'combo' ? 'combo' : 'scalp';
+const extensionFromContentType = (contentType: string): string =>
+  contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
+
+const saveDebugArtifacts = async (input: {
+  clientId: string;
+  designId: string;
+  generationId: string;
+  sourceAssetKey: string | null;
+  providerOutputUrl: string;
+  providerImage: DownloadedImage;
+  storedOutputKey: string;
+}): Promise<void> => {
+  const folder = resolve(DEBUG_ARTIFACT_ROOT, input.clientId, input.designId, input.generationId);
+  await mkdir(folder, { recursive: true });
+
+  let sourceFileName: string | null = null;
+  let sourceContentType: string | null = null;
+  if (input.sourceAssetKey !== null) {
+    const sourceImage = await downloadRemoteImage(
+      await createPresignedDownloadUrl(input.sourceAssetKey),
+    );
+    sourceFileName = `source-uploaded.${extensionFromContentType(sourceImage.contentType)}`;
+    sourceContentType = sourceImage.contentType;
+    await writeFile(resolve(folder, sourceFileName), sourceImage.body);
+  }
+
+  const providerFileName = `fal-returned.${extensionFromContentType(input.providerImage.contentType)}`;
+  await writeFile(resolve(folder, providerFileName), input.providerImage.body);
+  await writeFile(
+    resolve(folder, 'metadata.json'),
+    JSON.stringify(
+      {
+        createdAt: new Date().toISOString(),
+        clientId: input.clientId,
+        designId: input.designId,
+        generationId: input.generationId,
+        sourceAssetKey: input.sourceAssetKey,
+        sourceFileName,
+        sourceContentType,
+        providerOutputUrl: input.providerOutputUrl,
+        providerFileName,
+        providerContentType: input.providerImage.contentType,
+        providerSizeBytes: input.providerImage.sizeBytes,
+        storedOutputKey: input.storedOutputKey,
+      },
+      null,
+      2,
+    ),
+  );
+};
 
 const requireAiEnabled = (): void => {
   if (!env.ENABLE_AI_FEATURES) {
@@ -585,7 +640,7 @@ export const completeAiGeneration = async (
   },
 ) => {
   const rows = await query<Row>(
-    `SELECT g.*,d.client_id,d.id AS hair_design_id FROM hair_design_generations g
+    `SELECT g.*,d.client_id,d.id AS hair_design_id,d.source_asset_key FROM hair_design_generations g
      JOIN client_hair_designs d ON d.id=g.design_id WHERE g.id=$1`,
     [generationId],
   );
@@ -594,8 +649,19 @@ export const completeAiGeneration = async (
     throw new AppError(404, 'Generation not found.', 'AI_JOB_NOT_FOUND');
   if (generation.status === 'COMPLETED') return { accepted: true, duplicate: true };
   if (!['QUEUED', 'PROCESSING'].includes(String(generation.status))) return { accepted: false };
-  const outputKey = `hair-designs/${String(generation.client_id)}/${String(generation.hair_design_id)}/${generationId}.jpg`;
-  const stored = await copyRemoteImageToStorage(input.outputUrl, outputKey);
+  const providerImage = await downloadRemoteImage(input.outputUrl);
+  const outputKey = `hair-designs/${String(generation.client_id)}/${String(generation.hair_design_id)}/${generationId}.${extensionFromContentType(providerImage.contentType)}`;
+  const stored = await storeImageBuffer(outputKey, providerImage);
+  await saveDebugArtifacts({
+    clientId: String(generation.client_id),
+    designId: String(generation.hair_design_id),
+    generationId,
+    sourceAssetKey:
+      typeof generation.source_asset_key === 'string' ? generation.source_asset_key : null,
+    providerOutputUrl: input.outputUrl,
+    providerImage,
+    storedOutputKey: outputKey,
+  }).catch(() => undefined);
   await withTransaction(async (executor) => {
     await query(
       `UPDATE hair_design_generations SET status='COMPLETED',progress=100,provider_request_id=$1,

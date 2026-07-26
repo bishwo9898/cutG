@@ -22,6 +22,11 @@ const client = new S3Client({
 });
 
 let storageReadiness: Promise<void> | undefined;
+export type DownloadedImage = {
+  body: Buffer;
+  contentType: string;
+  sizeBytes: number;
+};
 
 const statusCode = (error: unknown): number | undefined => {
   if (typeof error !== 'object' || error === null || !('$metadata' in error)) return undefined;
@@ -84,10 +89,7 @@ export const verifyUploadedObject = async (
   }
 };
 
-export const copyRemoteImageToStorage = async (
-  sourceUrl: string,
-  destinationKey: string,
-): Promise<{ contentType: string; sizeBytes: number }> => {
+export const downloadRemoteImage = async (sourceUrl: string): Promise<DownloadedImage> => {
   const response = await fetch(sourceUrl, { signal: AbortSignal.timeout(60_000) });
   if (!response.ok) throw new Error('Generated image could not be downloaded.');
   const contentType = response.headers.get('content-type')?.split(';')[0] ?? '';
@@ -98,16 +100,31 @@ export const copyRemoteImageToStorage = async (
   if (body.length === 0 || body.length > 12_000_000) {
     throw new Error('Generated image size was invalid.');
   }
+  return { body, contentType, sizeBytes: body.length };
+};
+
+export const storeImageBuffer = async (
+  destinationKey: string,
+  image: DownloadedImage,
+): Promise<{ contentType: string; sizeBytes: number }> => {
   await client.send(
     new PutObjectCommand({
       Bucket: env.S3_BUCKET,
       Key: destinationKey,
-      Body: body,
-      ContentType: contentType,
+      Body: image.body,
+      ContentType: image.contentType,
       Metadata: { private: 'true' },
     }),
   );
-  return { contentType, sizeBytes: body.length };
+  return { contentType: image.contentType, sizeBytes: image.sizeBytes };
+};
+
+export const copyRemoteImageToStorage = async (
+  sourceUrl: string,
+  destinationKey: string,
+): Promise<{ contentType: string; sizeBytes: number }> => {
+  const image = await downloadRemoteImage(sourceUrl);
+  return storeImageBuffer(destinationKey, image);
 };
 
 export const deleteStoredObject = async (key: string): Promise<void> => {
