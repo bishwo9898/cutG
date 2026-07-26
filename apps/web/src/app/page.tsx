@@ -16,6 +16,7 @@ import Link from 'next/link';
 
 import { ActivityTicker } from '@/components/landing/activity-ticker';
 import { HairDesignSlider } from '@/components/landing/hair-design-slider';
+import { HeroFlipWord } from '@/components/landing/hero-flip-word';
 import { LandingNav } from '@/components/landing/landing-nav';
 import { BarberCover } from '@/components/client/barber-cover';
 import type { Pagination, PublicBarber } from '@/lib/contracts';
@@ -195,11 +196,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
           <div className="landing-cinematic-hero-copy">
             <p className="landing-cinematic-eyebrow">Barbering, reimagined</p>
             <h1>
-              Your barber,
-              <br />
-              <em>whenever you want.</em>
-              <br />
-              Wherever you are.
+              Your barber, <HeroFlipWord words={['whenever', 'wherever']} /> you want
             </h1>
             <p className="landing-cinematic-hero-subhead">
               Book top barbers in minutes, bring them to your door, and preview your next look
