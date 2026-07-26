@@ -1,20 +1,16 @@
 import {
   ArrowUpRight,
   Calendar,
-  Car,
   Check,
-  Clock3,
   Compass,
   MapPin,
+  Scissors,
   Search,
-  ShieldCheck,
-  Sparkles,
   Star,
 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { ActivityTicker } from '@/components/landing/activity-ticker';
 import { HairDesignSlider } from '@/components/landing/hair-design-slider';
 import { HeroFlipWord } from '@/components/landing/hero-flip-word';
 import { LandingNav } from '@/components/landing/landing-nav';
@@ -24,7 +20,7 @@ import type { Pagination, PublicBarber } from '@/lib/contracts';
 export const metadata: Metadata = {
   title: 'cutG - Premium barber booking, mobile service, and AI preview',
   description:
-    'Book trusted barbers, preview your next cut with AI, and track mobile service in real time.',
+    'Book trusted barbers, preview your next cut with AI, and bring premium barber service to your door.',
   openGraph: {
     title: 'cutG - Your barber, wherever you are',
     description:
@@ -46,12 +42,6 @@ type ShowcaseBarber = {
   mobile: boolean;
 };
 
-const proofStats = [
-  { value: '4.9★', label: 'Average client rating' },
-  { value: '2,400+', label: 'Bookings completed' },
-  { value: '12 cities', label: 'Mobile barbers live now' },
-];
-
 const steps = [
   {
     number: '01',
@@ -67,27 +57,6 @@ const steps = [
     number: '03',
     title: 'Get the cut.',
     body: 'At their shop or yours. Show your AI preview so the look is clear before the first pass.',
-  },
-];
-
-const reviews = [
-  {
-    quote:
-      'Booked a mobile barber to my hotel before a pitch meeting. Showed the AI preview on the way in. Perfect cut in forty minutes.',
-    author: 'Marcus T.',
-    city: 'New York',
-  },
-  {
-    quote:
-      'The live tracking is what sold me. I knew exactly when he was two minutes out, and the whole thing felt premium start to finish.',
-    author: 'Jordan K.',
-    city: 'Los Angeles',
-  },
-  {
-    quote:
-      'I doubled my monthly clients in six weeks. The mobile service setup alone gave me a cleaner business than DMs ever could.',
-    author: 'Chris A.',
-    city: 'Austin',
   },
 ];
 
@@ -111,13 +80,6 @@ const barberPlans = [
     featured: true,
     features: ['Unlimited services', 'Analytics access', 'Mobile service support'],
   },
-];
-
-const tickerItems = [
-  { location: 'Marcus J. in Brooklyn', action: 'just booked a low taper.', time: '2 min ago' },
-  { location: 'Tyler K. in Austin', action: 'just opened the AI preview.', time: '8 min ago' },
-  { location: 'Nina R. in Chicago', action: 'just reserved a mobile visit.', time: '11 min ago' },
-  { location: 'Sasha P. in Queens', action: 'just saved a barber for later.', time: '14 min ago' },
 ];
 
 const fallbackBarbers: ShowcaseBarber[] = [
@@ -192,6 +154,10 @@ export default async function LandingPage(): Promise<React.ReactElement> {
       <section className="landing-cinematic-hero">
         <div className="landing-cinematic-aurora landing-cinematic-aurora-left" />
         <div className="landing-cinematic-aurora landing-cinematic-aurora-right" />
+        <div className="landing-cinematic-hero-backdrop" aria-hidden="true">
+          <div className="landing-cinematic-hero-backdrop-image" />
+          <div className="landing-cinematic-hero-backdrop-wash" />
+        </div>
         <div className="landing-cinematic-shell landing-cinematic-hero-grid">
           <div className="landing-cinematic-hero-copy">
             <p className="landing-cinematic-eyebrow">Barbering, reimagined</p>
@@ -210,63 +176,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                 I&apos;m a barber
               </Link>
             </div>
-            <div className="landing-cinematic-trust-row">
-              <span>
-                <ShieldCheck size={15} /> Verified professionals
-              </span>
-              <span>
-                <Clock3 size={15} /> Book in under a minute
-              </span>
-              <span>
-                <Sparkles size={15} /> AI preview before booking
-              </span>
-            </div>
-            <ActivityTicker items={tickerItems} />
           </div>
-
-          <aside className="landing-cinematic-hero-stack" aria-label="Product story preview">
-            <div className="landing-cinematic-surface landing-cinematic-surface-strong">
-              <div className="landing-cinematic-surface-header">
-                <span>Next available</span>
-                <strong>Today</strong>
-              </div>
-              <div className="landing-cinematic-booking-card">
-                <div>
-                  <p>Jordan Miles</p>
-                  <span>Low taper · 4.9 rating</span>
-                </div>
-                <span className="landing-cinematic-status-pill">Verified</span>
-              </div>
-              <div className="landing-cinematic-slot-row">
-                <span>3:30 PM</span>
-                <span>5:00 PM</span>
-                <span>6:15 PM</span>
-              </div>
-              <div className="landing-cinematic-hero-gridline">
-                <div>
-                  <small>Service</small>
-                  <strong>Classic fade</strong>
-                </div>
-                <div>
-                  <small>Price</small>
-                  <strong>From $38</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="landing-cinematic-hero-mini-grid">
-              <div className="landing-cinematic-surface">
-                <small>AI Hair Studio</small>
-                <strong>Preview approved</strong>
-                <p>Low taper, natural curl texture, beard blend attached to booking.</p>
-              </div>
-              <div className="landing-cinematic-surface">
-                <small>Mobile service</small>
-                <strong>Live arrival</strong>
-                <p>Travel fee shown upfront. Barber is 12 minutes away and on the move.</p>
-              </div>
-            </div>
-          </aside>
         </div>
       </section>
 
@@ -278,8 +188,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               <h2>See it before you commit.</h2>
             </div>
             <p>
-              Scan your face, pick a style, and walk in with a realistic preview attached to the
-              appointment.
+              A single realistic preview helps you align on the look before the appointment begins.
             </p>
           </div>
           <HairDesignSlider />
@@ -289,24 +198,24 @@ export default async function LandingPage(): Promise<React.ReactElement> {
       <section className="landing-cinematic-section landing-cinematic-section-surface" id="tracking">
         <div className="landing-cinematic-shell landing-cinematic-tracking-grid">
           <div className="landing-cinematic-tracking-copy">
-            <p className="landing-cinematic-eyebrow">Mobile Barber</p>
-            <h2>The barber comes to you.</h2>
+            <p className="landing-cinematic-eyebrow">Mobile appointments</p>
+            <h2>Your barber, at your place.</h2>
             <p>
-              No more driving across town. Book a mobile barber to your home, office, or hotel,
-              then follow the appointment from confirmed to arrived.
+              Book a barber to your home, office, or hotel and get a smoother, more concierge-like
+              experience from confirmation to doorstep arrival.
             </p>
             <div className="landing-cinematic-stat-capsules">
               <div>
-                <strong>10 mi</strong>
-                <span>Max travel radius</span>
+                <strong>Home</strong>
+                <span>Private appointments at your place</span>
               </div>
               <div>
-                <strong>Live GPS</strong>
-                <span>Real-time tracking</span>
+                <strong>Office</strong>
+                <span>Built for lunch breaks and workdays</span>
               </div>
               <div>
-                <strong>$0 setup</strong>
-                <span>No hidden costs</span>
+                <strong>Hotel</strong>
+                <span>Travel pricing and window shown upfront</span>
               </div>
             </div>
             <Link className="landing-cinematic-button landing-cinematic-button-primary" href="/client/barbers?mobileOnly=true">
@@ -318,29 +227,44 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             <div className="landing-cinematic-story-card">
               <div className="landing-cinematic-story-head">
                 <div>
-                  <small>Live GPS Tracking</small>
-                  <strong>Know exactly when your barber arrives.</strong>
+                  <small>Doorstep service</small>
+                  <strong>From booked to doorstep, the visit feels handled.</strong>
                 </div>
-                <span>12 min away</span>
+                <span>Today · 3–5 PM</span>
               </div>
               <div className="landing-cinematic-map-card" aria-hidden="true">
+                <div className="landing-cinematic-map-aura landing-cinematic-map-aura-left" />
+                <div className="landing-cinematic-map-aura landing-cinematic-map-aura-right" />
                 <div className="landing-cinematic-map-grid" />
                 <div className="landing-cinematic-map-path" />
-                <div className="landing-cinematic-map-home">
-                  <MapPin size={18} />
+                <div className="landing-cinematic-map-stop landing-cinematic-map-stop-origin">
+                  <span className="landing-cinematic-map-stop-icon">
+                    <Scissors size={15} />
+                  </span>
+                  <div>
+                    <strong>Barber studio</strong>
+                    <small>Kit packed</small>
+                  </div>
                 </div>
-                <div className="landing-cinematic-map-barber">
-                  <Car size={16} />
-                  <span>On the way</span>
+                <div className="landing-cinematic-map-stop landing-cinematic-map-stop-destination">
+                  <span className="landing-cinematic-map-stop-icon">
+                    <MapPin size={15} />
+                  </span>
+                  <div>
+                    <strong>Your place</strong>
+                    <small>Home / office / hotel</small>
+                  </div>
                 </div>
+                <div className="landing-cinematic-map-route-pill">On the way · 12 min</div>
+                <div className="landing-cinematic-map-service-note">Chair-ready setup</div>
               </div>
               <div className="landing-cinematic-timeline">
                 {[
-                  ['Booked', 'Jan 20 at 9:41 AM', true],
-                  ['Confirmed', 'Jan 20 at 9:44 AM', true],
-                  ['On the way', 'Jan 20 at 9:48 AM', true],
-                  ['Arrived', 'Waiting for arrival'],
-                  ['Done', 'Service complete'],
+                  ['Booked', 'Service and travel fee locked in', true],
+                  ['Confirmed', 'Barber accepted the appointment', true],
+                  ['Travel set', 'Arrival window shared with the client', true],
+                  ['En route', 'Headed to the location'],
+                  ['At your door', 'Service begins on arrival'],
                 ].map(([label, copy, active]) => (
                   <div className={`landing-cinematic-timeline-row${active ? ' is-active' : ''}`} key={String(label)}>
                     <span />
@@ -415,40 +339,6 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                   </div>
                 </div>
               </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-cinematic-section landing-cinematic-proof-band">
-        <div className="landing-cinematic-shell">
-          <div className="landing-cinematic-section-heading">
-            <div>
-              <p className="landing-cinematic-eyebrow">Social proof</p>
-              <h2>Confidence without the hard sell.</h2>
-            </div>
-          </div>
-          <div className="landing-cinematic-reviews">
-            {reviews.map((review) => (
-              <article className="landing-cinematic-review-card" key={review.author}>
-                <div className="landing-cinematic-stars">
-                  {Array.from({ length: 5 }, (_, index) => (
-                    <Star fill="currentColor" key={index} size={14} />
-                  ))}
-                </div>
-                <p>{review.quote}</p>
-                <strong>
-                  {review.author}, {review.city}
-                </strong>
-              </article>
-            ))}
-          </div>
-          <div className="landing-cinematic-proof-stats">
-            {proofStats.map((stat) => (
-              <div key={stat.label}>
-                <strong>{stat.value}</strong>
-                <span>{stat.label}</span>
-              </div>
             ))}
           </div>
         </div>
@@ -536,7 +426,7 @@ export default async function LandingPage(): Promise<React.ReactElement> {
             <article>
               <small>For clients</small>
               <h3>Find a barber</h3>
-              <p>Browse, book, and track the visit in one place.</p>
+              <p>Browse, book, and manage the visit in one place.</p>
               <Link className="landing-cinematic-button landing-cinematic-button-primary" href="/client/barbers">
                 Start browsing
               </Link>
