@@ -21,7 +21,7 @@ export function LandingNav(): React.ReactElement {
 
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    return (): void => window.removeEventListener('scroll', onScroll);
   }, []);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function LandingNav(): React.ReactElement {
 
     const original = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => {
+    return (): void => {
       document.body.style.overflow = original;
     };
   }, [menuOpen]);

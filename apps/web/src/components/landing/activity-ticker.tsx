@@ -17,7 +17,7 @@ export function ActivityTicker({
     const timer = window.setInterval(() => {
       setIndex((current) => (current + 1) % items.length);
     }, 8000);
-    return () => window.clearInterval(timer);
+    return (): void => window.clearInterval(timer);
   }, [items.length]);
 
   const item =

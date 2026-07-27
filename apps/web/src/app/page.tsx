@@ -11,10 +11,10 @@ import {
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
+import { BarberCover } from '@/components/client/barber-cover';
 import { HairDesignSlider } from '@/components/landing/hair-design-slider';
 import { HeroFlipWord } from '@/components/landing/hero-flip-word';
 import { LandingNav } from '@/components/landing/landing-nav';
-import { BarberCover } from '@/components/client/barber-cover';
 import type { Pagination, PublicBarber } from '@/lib/contracts';
 
 export const metadata: Metadata = {

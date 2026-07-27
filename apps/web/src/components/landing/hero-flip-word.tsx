@@ -17,7 +17,7 @@ export function HeroFlipWord({
       setIndex((current) => (current + 1) % words.length);
     }, intervalMs);
 
-    return () => window.clearInterval(timer);
+    return (): void => window.clearInterval(timer);
   }, [intervalMs, words.length]);
 
   return (
