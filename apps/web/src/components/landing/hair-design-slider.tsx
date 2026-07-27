@@ -1,8 +1,8 @@
 'use client';
 
+import { ArrowLeftRight } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeftRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type PreviewConfig = {
@@ -44,7 +44,7 @@ export function HairDesignSlider(): React.ReactElement {
 
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
-    return () => {
+    return (): void => {
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
     };
