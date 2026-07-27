@@ -113,11 +113,12 @@ export const reverseGeocodeCoordinates = async (
   const options =
     typeof optionsOrFetcher === 'function' ? { fetcher: optionsOrFetcher } : optionsOrFetcher;
   const fetcher = options.fetcher ?? fetch;
+  const usingInjectedFetcher = options.fetcher !== undefined;
 
   if (env.NODE_ENV === 'test' && fetcher === fetch) {
     return coordinateFallback(latitude, longitude, options.barberId);
   }
-  if (env.GOOGLE_MAPS_API_KEY.length === 0) {
+  if (env.GOOGLE_MAPS_API_KEY.length === 0 && !usingInjectedFetcher) {
     logger.warn('Reverse geocoding skipped because GOOGLE_MAPS_API_KEY is empty', {
       provider: 'google',
       status: 'MISSING_KEY',
