@@ -457,9 +457,13 @@ export const validateHairScan = async (
     [JSON.stringify(input.preferences ?? {}), scanId],
   );
   try {
+    // Side profiles are retained as scan context, but generation currently uses only
+    // the front portrait. Keep them out of the AI validation payload until the
+    // generation pipeline is intentionally expanded to support multi-view inputs.
+    const aiCaptures = captures.filter((capture) => String(capture.angle) === 'FRONT');
     const validation = await validateAiFrames(
       await Promise.all(
-        captures.map(async (capture) => ({
+        aiCaptures.map(async (capture) => ({
           captureId: String(capture.id),
           angle: String(capture.angle),
           url: await createPresignedDownloadUrl(String(capture.object_key)),

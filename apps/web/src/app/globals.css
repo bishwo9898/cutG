@@ -9508,3 +9508,650 @@ input:checked + .toggle-track::after,
     justify-content: space-between;
   }
 }
+
+/* Guided AI Hair Studio capture */
+.hair-consent-backdrop {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: 24px;
+  background: rgba(5, 5, 4, 0.78);
+  backdrop-filter: blur(12px);
+}
+
+.hair-consent-modal {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 16px;
+  border: 1px solid #484439;
+  border-radius: 20px;
+  padding: clamp(24px, 5vw, 40px);
+  color: #f3eddc;
+  background:
+    radial-gradient(circle at 94% 0%, rgba(112, 188, 139, 0.12), transparent 34%), #121210;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.62);
+}
+
+.hair-consent-modal .hair-consent-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(112, 211, 151, 0.38);
+  border-radius: 50%;
+  color: #78d69f;
+  background: rgba(74, 170, 111, 0.1);
+}
+
+.hair-consent-modal .eyebrow {
+  margin: 2px 0 -10px;
+}
+
+.hair-consent-modal h2 {
+  margin: 0;
+  color: #f3eddc;
+  font-size: clamp(28px, 5vw, 38px);
+  letter-spacing: -0.02em;
+}
+
+.hair-consent-modal > p:not(.eyebrow) {
+  margin: 0;
+  color: #aaa496;
+  line-height: 1.65;
+}
+
+.hair-consent-modal > ul {
+  display: grid;
+  gap: 10px;
+  margin: 2px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hair-consent-modal > ul li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #d9d2c2;
+  font-size: 14px;
+}
+
+.hair-consent-modal > ul svg {
+  color: #76d69e;
+}
+
+.hair-consent-choices {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #353229;
+  border-radius: 12px;
+  background: #353229;
+}
+
+.hair-consent-choices label {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: start;
+  gap: 11px;
+  padding: 14px;
+  color: #d8d0bd;
+  background: #171714;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.hair-consent-choices input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #69c990;
+}
+
+.hair-consent-buttons {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 9px;
+}
+
+.hair-consent-buttons .button {
+  justify-content: center;
+}
+
+.hair-consent-modal > small {
+  color: #79756b;
+  text-align: center;
+}
+
+.hair-capture-entry {
+  align-items: stretch;
+}
+
+.hair-capture-entry .hair-capture-options,
+.hair-capture-entry .hair-capture-copy {
+  align-self: center;
+}
+
+.hair-scan-entry {
+  position: relative;
+  overflow: hidden;
+  border-style: solid;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(91, 186, 126, 0.15), transparent 37%), #151512;
+}
+
+.hair-scan-entry::after {
+  position: absolute;
+  width: 128px;
+  height: 170px;
+  border: 1px solid rgba(112, 211, 151, 0.22);
+  border-radius: 50%;
+  content: '';
+}
+
+.hair-scan-entry > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hair-entry-icon {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(112, 211, 151, 0.42);
+  border-radius: 50%;
+  color: #78d69f !important;
+  background: rgba(73, 160, 106, 0.12);
+}
+
+.hair-capture-copy {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+}
+
+.hair-capture-copy h2,
+.hair-scan-heading h2,
+.hair-review-copy h2 {
+  margin: 0;
+  color: #f3eddc;
+  font-size: clamp(26px, 4vw, 34px);
+  letter-spacing: -0.02em;
+}
+
+.hair-capture-copy > p:not(.eyebrow) {
+  margin: 0;
+  color: #aaa496;
+  line-height: 1.65;
+}
+
+.hair-quality-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hair-quality-list span,
+.hair-captured-summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #353229;
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: #cfc8b7;
+  background: #151512;
+  font-size: 12px;
+}
+
+.hair-quality-list svg,
+.hair-captured-summary svg {
+  color: #78d69f;
+}
+
+.hair-capture-privacy,
+.hair-scan-privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #8e897d !important;
+  font-size: 12px;
+}
+
+.hair-upload-rejected {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 14px;
+  border: 1px solid rgba(225, 112, 112, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(139, 49, 49, 0.08);
+}
+
+.hair-rejected-thumb {
+  position: relative;
+  min-height: 112px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #090909;
+}
+
+.hair-rejected-thumb img {
+  object-fit: cover;
+}
+
+.hair-upload-rejected strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #f0b1ac;
+}
+
+.hair-upload-rejected ul {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 12px;
+  padding-left: 18px;
+  color: #c5b8ad;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.hair-upload-rejected .button {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.hair-scan-stage {
+  display: grid;
+  gap: 18px;
+}
+
+.hair-scan-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.hair-scan-heading .eyebrow {
+  margin-bottom: 6px;
+}
+
+.hair-scan-close {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #39362e;
+  border-radius: 50%;
+  color: #d9d2c2;
+  background: #151512;
+  cursor: pointer;
+}
+
+.hair-scan-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+}
+
+.hair-scan-view {
+  position: relative;
+  min-height: min(68vh, 670px);
+  overflow: hidden;
+  border: 1px solid #353229;
+  border-radius: 20px;
+  background: #050504;
+  isolation: isolate;
+}
+
+.hair-scan-view video {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  display: block;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.hair-scan-shade {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: rgba(2, 3, 2, 0.53);
+  -webkit-mask: radial-gradient(
+    ellipse 27% 43% at 50% 47%,
+    transparent 96%,
+    rgba(0, 0, 0, 0.96) 100%
+  );
+  mask: radial-gradient(ellipse 27% 43% at 50% 47%, transparent 96%, rgba(0, 0, 0, 0.96) 100%);
+  pointer-events: none;
+}
+
+.hair-oval-guide {
+  position: absolute;
+  z-index: 2;
+  top: 47%;
+  left: 50%;
+  width: min(54%, 360px);
+  aspect-ratio: 100 / 128;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 14px rgba(92, 216, 139, 0.13));
+  pointer-events: none;
+}
+
+.hair-oval-guide svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hair-oval-guide ellipse {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.hair-oval-track {
+  stroke: rgba(99, 197, 135, 0.32);
+  stroke-width: 1.4;
+}
+
+.hair-oval-progress {
+  stroke: #70d498;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transition: stroke-dashoffset 90ms linear;
+}
+
+.hair-live-guidance {
+  position: absolute;
+  z-index: 3;
+  bottom: 20px;
+  left: 50%;
+  min-width: min(360px, calc(100% - 32px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(243, 237, 220, 0.2);
+  border-radius: 999px;
+  padding: 11px 16px;
+  color: #f3eddc;
+  background: rgba(10, 10, 8, 0.82);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.28);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  transform: translateX(-50%);
+  backdrop-filter: blur(10px);
+}
+
+.hair-live-guidance.is-ready {
+  border-color: rgba(112, 212, 152, 0.56);
+  color: #a4e8bd;
+  background: rgba(16, 55, 31, 0.82);
+}
+
+.hair-camera-loading {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #78d69f;
+  background: rgba(5, 5, 4, 0.64);
+}
+
+.hair-scan-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  border: 1px solid #353229;
+  border-radius: 20px;
+  padding: 22px;
+  background: #121210;
+}
+
+.hair-scan-sidebar h3 {
+  margin: 2px 0 -6px;
+  color: #f3eddc;
+  font-size: 21px;
+}
+
+.hair-scan-sidebar > p {
+  margin: 0;
+  color: #969085;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.hair-scan-time {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: #98dfb2;
+  background: rgba(76, 166, 108, 0.11);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.hair-scan-steps {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hair-scan-steps li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 10px;
+  color: #716d65;
+}
+
+.hair-scan-steps li > span {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.hair-scan-steps li > div {
+  display: grid;
+  gap: 2px;
+}
+
+.hair-scan-steps small {
+  color: inherit;
+  font-size: 10px;
+}
+
+.hair-scan-steps li.is-current {
+  border-color: #454137;
+  color: #f3eddc;
+  background: #191915;
+}
+
+.hair-scan-steps li.is-complete {
+  color: #79d69f;
+}
+
+.hair-scan-privacy {
+  border-top: 1px solid #302d27;
+  padding-top: 13px;
+}
+
+.hair-detector-note {
+  border: 1px solid rgba(215, 185, 96, 0.25);
+  border-radius: 8px;
+  padding: 9px;
+  color: #cbbd92 !important;
+  background: rgba(215, 185, 96, 0.07);
+}
+
+.hair-scan-review {
+  min-height: 520px;
+}
+
+.hair-original-preview {
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.hair-original-preview > span {
+  position: absolute;
+  z-index: 2;
+  bottom: 12px;
+  left: 12px;
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: #f3eddc;
+  background: rgba(9, 9, 8, 0.78);
+  font-size: 11px;
+  font-weight: 800;
+  backdrop-filter: blur(8px);
+}
+
+.hair-review-copy {
+  display: grid;
+  gap: 14px;
+}
+
+.hair-review-copy > p:not(.eyebrow) {
+  max-width: 590px;
+  margin: 0;
+}
+
+.hair-captured-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.hair-review-actions {
+  margin-top: 6px;
+}
+
+.spin {
+  animation: spin 800ms linear infinite;
+}
+
+@media (max-width: 940px) {
+  .hair-scan-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .hair-scan-sidebar {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .hair-scan-sidebar > h3,
+  .hair-scan-sidebar > p,
+  .hair-scan-steps,
+  .hair-scan-privacy,
+  .hair-detector-note {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .hair-consent-backdrop {
+    place-items: end center;
+    padding: 12px;
+  }
+
+  .hair-consent-modal {
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    border-radius: 18px;
+    padding: 24px;
+  }
+
+  .hair-consent-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .hair-capture-entry {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  .hair-scan-view {
+    min-height: 66svh;
+    border-radius: 14px;
+  }
+
+  .hair-oval-guide {
+    width: min(72%, 330px);
+  }
+
+  .hair-scan-shade {
+    -webkit-mask: radial-gradient(
+      ellipse 36% 42% at 50% 47%,
+      transparent 96%,
+      rgba(0, 0, 0, 0.96) 100%
+    );
+    mask: radial-gradient(ellipse 36% 42% at 50% 47%, transparent 96%, rgba(0, 0, 0, 0.96) 100%);
+  }
+
+  .hair-scan-sidebar {
+    grid-template-columns: 1fr;
+    border-radius: 14px;
+  }
+
+  .hair-scan-sidebar > * {
+    grid-column: 1;
+  }
+
+  .hair-scan-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .hair-scan-steps li {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .hair-upload-rejected {
+    grid-template-columns: 72px 1fr;
+  }
+
+  .hair-rejected-thumb {
+    min-height: 92px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hair-oval-progress {
+    transition: none;
+  }
+
+  .spin {
+    animation-duration: 1.5s;
+  }
+}

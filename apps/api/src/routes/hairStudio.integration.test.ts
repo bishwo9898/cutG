@@ -156,7 +156,7 @@ describe('AI Hair Studio API', () => {
     expect(hidden.status).toBe(404);
   });
 
-  it('completes one verified headshot and validates it exactly once', async () => {
+  it('stores side context but validates only the verified front headshot', async () => {
     await pool.query(
       `INSERT INTO hair_scan_captures
         (scan_session_id,angle,object_key,mime_type,size_bytes,checksum_sha256,width,height,
@@ -164,6 +164,22 @@ describe('AI Hair Studio API', () => {
        SELECT id,'FRONT',$1,'image/jpeg',20000,$2,900,1200,110,12,1,0.95,'VERIFIED',expires_at
        FROM hair_scan_sessions WHERE id=$3`,
       [`test/${scanId}/front.jpg`, 'a'.repeat(64), scanId],
+    );
+    await pool.query(
+      `INSERT INTO hair_scan_captures
+        (scan_session_id,angle,object_key,mime_type,size_bytes,checksum_sha256,width,height,
+         brightness,sharpness,face_count,pose_score,upload_status,delete_after)
+       SELECT id,'LEFT',$1,'image/jpeg',20000,$2,900,1200,110,12,1,0.8,'VERIFIED',expires_at
+       FROM hair_scan_sessions WHERE id=$3`,
+      [`test/${scanId}/left.jpg`, 'b'.repeat(64), scanId],
+    );
+    await pool.query(
+      `INSERT INTO hair_scan_captures
+        (scan_session_id,angle,object_key,mime_type,size_bytes,checksum_sha256,width,height,
+         brightness,sharpness,face_count,pose_score,upload_status,delete_after)
+       SELECT id,'RIGHT',$1,'image/jpeg',20000,$2,900,1200,110,12,1,0.8,'VERIFIED',expires_at
+       FROM hair_scan_sessions WHERE id=$3`,
+      [`test/${scanId}/right.jpg`, 'c'.repeat(64), scanId],
     );
     const completed = await request(app)
       .post(`/clients/me/hair-scans/${scanId}/complete`)

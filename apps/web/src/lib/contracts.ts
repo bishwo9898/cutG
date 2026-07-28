@@ -253,7 +253,7 @@ export type HairDesign = {
   createdAt: string;
 };
 
-export type HairScanAngle = 'FRONT';
+export type HairScanAngle = 'FRONT' | 'LEFT' | 'RIGHT';
 
 export type HairCaptureQuality = {
   brightness: number;

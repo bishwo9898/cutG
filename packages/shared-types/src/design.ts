@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const HairDesignCategorySchema = z.enum(['haircut', 'beard', 'color', 'combo']);
-export const HairScanAngleSchema = z.literal('FRONT');
+export const HairScanAngleSchema = z.enum(['FRONT', 'LEFT', 'RIGHT']);
 export const HairScanStatusSchema = z.enum(['CAPTURING', 'READY', 'EXPIRED', 'DELETED']);
 export const HairScanAnalysisStatusSchema = z.enum([
   'NOT_STARTED',

@@ -18,7 +18,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
-import { HairPhotoUpload, type UploadedHairImage } from '@/components/client/hair-photo-upload';
+import { HairPhotoUpload, type HairPhotoSelection } from '@/components/client/hair-photo-upload';
 import { ClientHeader } from '@/components/client-header';
 import { Notice } from '@/components/notice';
 import { browserApi } from '@/lib/browser-api';
@@ -104,35 +104,41 @@ export default function HairDesignPage(): React.ReactElement {
   const visibleStyles = HAIR_STYLE_CATALOG.filter((style) => style.category === category);
 
   const upload = useMutation({
-    mutationFn: async (capture: UploadedHairImage): Promise<HairScan> => {
-      const activeScan =
-        scan ??
-        (await clientApi.createHairScan<HairScan>(browserApi, {
-          consentAccepted: true,
-          ageConfirmed: true,
-          consentVersion: config.data?.consentVersion ?? '2026-07-17',
-        }));
+    mutationFn: async (selection: HairPhotoSelection): Promise<HairScan> => {
+      const activeScan = await clientApi.createHairScan<HairScan>(browserApi, {
+        consentAccepted: true,
+        ageConfirmed: true,
+        consentVersion: config.data?.consentVersion ?? '2026-07-17',
+      });
       setScan(activeScan);
-      const presigned = await clientApi.presignHairCapture<{
-        captureId: string;
-        uploadUrl: string;
-        headers: Record<string, string>;
-      }>(browserApi, activeScan.id, {
-        angle: 'FRONT',
-        mimeType: capture.mimeType,
-        sizeBytes: capture.blob.size,
-        checksumSha256: await sha256(capture.blob),
-      });
-      const uploaded = await fetch(presigned.uploadUrl, {
-        method: 'PUT',
-        headers: presigned.headers,
-        body: capture.blob,
-      });
-      if (!uploaded.ok) throw new Error('The private headshot upload failed.');
-      await clientApi.completeHairCapture(browserApi, activeScan.id, presigned.captureId, {
-        width: capture.width,
-        height: capture.height,
-      });
+      for (const capture of selection.captures) {
+        const presigned = await clientApi.presignHairCapture<{
+          captureId: string;
+          uploadUrl: string;
+          headers: Record<string, string>;
+        }>(browserApi, activeScan.id, {
+          angle: capture.angle,
+          mimeType: capture.mimeType,
+          sizeBytes: capture.blob.size,
+          checksumSha256: await sha256(capture.blob),
+        });
+        const uploaded = await fetch(presigned.uploadUrl, {
+          method: 'PUT',
+          headers: presigned.headers,
+          body: capture.blob,
+        });
+        if (!uploaded.ok) {
+          throw new Error(`The private ${capture.angle.toLowerCase()} photo upload failed.`);
+        }
+        await clientApi.completeHairCapture(browserApi, activeScan.id, presigned.captureId, {
+          width: capture.width,
+          height: capture.height,
+          brightness: capture.quality?.brightness,
+          sharpness: capture.quality?.sharpness,
+          faceCount: capture.quality?.faceCount,
+          poseScore: capture.quality?.poseScore,
+        });
+      }
       return clientApi.validateHairScan<HairScan>(browserApi, activeScan.id, {});
     },
     onSuccess: (validated) => {
@@ -211,7 +217,7 @@ export default function HairDesignPage(): React.ReactElement {
         <div>
           <p className="eyebrow">cutG AI Hair Studio</p>
           <h1>Preview your next look.</h1>
-          <p>One clear headshot, one style direction, and a private AI visualization.</p>
+          <p>A quick guided face scan, one style direction, and a private AI visualization.</p>
         </div>
         <div className="hair-studio-trust">
           <ShieldCheck size={18} />
@@ -246,62 +252,16 @@ export default function HairDesignPage(): React.ReactElement {
           <Notice>
             AI visualization is disabled. Your existing saved style briefs remain available.
           </Notice>
-        ) : phase === 'consent' || consentStatus.isLoading ? (
-          <section className="hair-upload-layout">
-            <div className="hair-upload-copy">
-              <span className="hair-step-number">Before you begin</span>
-              <h2>Confirm once. Preview privately.</h2>
-              <p>
-                These confirmations are saved to your account, so you will not be asked again unless
-                our privacy notice changes.
-              </p>
-              <ul>
-                <li>
-                  <Check size={15} /> Your original and generated look stay in your private gallery
-                </li>
-                <li>
-                  <Check size={15} /> Images are used only to create and compare your preview
-                </li>
-                <li>
-                  <Check size={15} /> You can delete a saved look and its stored images at any time
-                </li>
-              </ul>
-              <label className="hair-consent-check">
-                <input
-                  checked={adult}
-                  onChange={(event) => setAdult(event.target.checked)}
-                  type="checkbox"
-                />
-                I confirm that I am at least 18.
-              </label>
-              <label className="hair-consent-check">
-                <input
-                  checked={consent}
-                  onChange={(event) => setConsent(event.target.checked)}
-                  type="checkbox"
-                />
-                I consent to private face-image processing for this preview.
-              </label>
-            </div>
-            <button
-              className="hair-dropzone"
-              disabled={consentStatus.isLoading || !adult || !consent || acceptConsent.isPending}
-              onClick={() => acceptConsent.mutate()}
-              type="button"
-            >
-              <Sparkles size={34} />
-              <strong>
-                {acceptConsent.isPending ? 'Saving your confirmation…' : 'Continue to photo upload'}
-              </strong>
-              <span>Saved once for this account</span>
-              <small>Private by default · removable anytime</small>
-            </button>
+        ) : consentStatus.isLoading ? (
+          <section className="hair-studio-waiting">
+            <Sparkles size={30} />
+            <h2>Preparing your private studio…</h2>
           </section>
-        ) : phase === 'photo' ? (
+        ) : phase === 'consent' || phase === 'photo' ? (
           <HairPhotoUpload
-            busy={upload.isPending}
+            busy={upload.isPending || phase === 'consent'}
             maxBytes={config.data?.maxCaptureBytes ?? 4_000_000}
-            onComplete={(capture) => upload.mutate(capture)}
+            onComplete={(selection) => upload.mutate(selection)}
           />
         ) : phase === 'styles' ? (
           <section className="hair-style-picker-v2">
@@ -531,6 +491,76 @@ export default function HairDesignPage(): React.ReactElement {
           <Notice>{errorMessage(activeError)}</Notice>
         )}
         {message !== null && <Notice>{message}</Notice>}
+
+        {phase === 'consent' && !consentStatus.isLoading && (
+          <div className="hair-consent-backdrop">
+            <section
+              aria-labelledby="hair-consent-title"
+              aria-modal="true"
+              className="hair-consent-modal"
+              role="dialog"
+            >
+              <span className="hair-consent-icon">
+                <ShieldCheck size={23} />
+              </span>
+              <p className="eyebrow">One-time confirmation</p>
+              <h2 id="hair-consent-title">Your face. Your choice.</h2>
+              <p>
+                We need your permission to process a face image for private hairstyle previews. Once
+                accepted, this message will not appear again unless the privacy notice changes.
+              </p>
+              <ul>
+                <li>
+                  <Check size={15} /> Camera guidance runs on this device
+                </li>
+                <li>
+                  <Check size={15} /> Images are used only for your private preview
+                </li>
+                <li>
+                  <Check size={15} /> Saved looks can be deleted from your account
+                </li>
+              </ul>
+              <div className="hair-consent-choices">
+                <label>
+                  <input
+                    checked={adult}
+                    onChange={(event) => setAdult(event.target.checked)}
+                    type="checkbox"
+                  />
+                  <span>I confirm that I am at least 18.</span>
+                </label>
+                <label>
+                  <input
+                    checked={consent}
+                    onChange={(event) => setConsent(event.target.checked)}
+                    type="checkbox"
+                  />
+                  <span>I consent to private face-image processing for this preview.</span>
+                </label>
+              </div>
+              {acceptConsent.error !== null && (
+                <p className="error-text">{errorMessage(acceptConsent.error)}</p>
+              )}
+              <div className="hair-consent-buttons">
+                <button
+                  className="button button-primary"
+                  disabled={!adult || !consent || acceptConsent.isPending}
+                  onClick={() => acceptConsent.mutate()}
+                  type="button"
+                >
+                  <Sparkles size={16} />
+                  {acceptConsent.isPending ? 'Saving…' : 'Agree and start'}
+                </button>
+                <Link className="button button-ghost" href="/client">
+                  Not now
+                </Link>
+              </div>
+              <small>
+                Saved securely to this account · consent version {config.data?.consentVersion}
+              </small>
+            </section>
+          </div>
+        )}
 
         <section className="saved-looks-v2">
           <div>
