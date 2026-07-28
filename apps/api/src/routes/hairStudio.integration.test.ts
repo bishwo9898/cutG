@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { HairPreferences } from '@barber-saas/shared-types';
+import { AI_HAIR_CONSENT_VERSION, type HairPreferences } from '@barber-saas/shared-types';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -107,10 +107,36 @@ describe('AI Hair Studio API', () => {
   });
 
   it('creates an owned scan and rejects incomplete capture sets', async () => {
+    const before = await request(app)
+      .get('/clients/me/hair-studio/consent')
+      .set('Authorization', `Bearer ${clientToken}`);
+    expect(before.status).toBe(200);
+    expect(before.body).toMatchObject({ accepted: false });
+
+    const accepted = await request(app)
+      .put('/clients/me/hair-studio/consent')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({
+        consentAccepted: true,
+        ageConfirmed: true,
+        consentVersion: AI_HAIR_CONSENT_VERSION,
+      });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body).toMatchObject({
+      accepted: true,
+      ageConfirmed: true,
+      faceProcessingConsented: true,
+      consentVersion: AI_HAIR_CONSENT_VERSION,
+    });
+
     const created = await request(app)
       .post('/clients/me/hair-scans')
       .set('Authorization', `Bearer ${clientToken}`)
-      .send({ consentAccepted: true, ageConfirmed: true, consentVersion: 'test-v1' });
+      .send({
+        consentAccepted: true,
+        ageConfirmed: true,
+        consentVersion: AI_HAIR_CONSENT_VERSION,
+      });
     expect(created.status).toBe(201);
     scanId = (created.body as ScanBody).id;
 

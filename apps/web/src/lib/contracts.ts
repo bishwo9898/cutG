@@ -239,6 +239,7 @@ export type HairDesign = {
   description: string | null;
   sourcePhotoUrl: string | null;
   generatedPreviewUrl: string | null;
+  imageStorage?: 'cloudinary' | 'private-object-storage';
   aiStatus:
     'placeholder' | 'pending' | 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
   generationStatus?: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | null;
@@ -296,6 +297,15 @@ export type HairStudioConfig = {
   retentionHours: number;
   dailyGenerationLimit: number;
   isMock: boolean;
+  imageStorage?: 'cloudinary' | 'private-object-storage';
+};
+
+export type HairStudioConsent = {
+  accepted: boolean;
+  ageConfirmed: boolean;
+  faceProcessingConsented: boolean;
+  consentVersion: string;
+  acceptedAt: string | null;
 };
 
 export type BarberLocation =

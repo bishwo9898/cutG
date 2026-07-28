@@ -1,4 +1,5 @@
 import {
+  AcceptHairStudioConsentSchema,
   AddressParamsSchema,
   AttachHairDesignSchema,
   BookAppointmentSchema,
@@ -52,11 +53,13 @@ import {
   listHairDesigns,
 } from '../services/design/hairDesignService';
 import {
+  acceptHairStudioConsent,
   completeHairCapture,
   completeHairScan,
   createHairScan,
   deleteHairDesign,
   generateHairDesign,
+  getHairStudioConsent,
   getHairDesign,
   getHairScan,
   getHairStudioConfig,
@@ -189,6 +192,23 @@ clientRouter.get(
   '/me/hair-studio/config',
   asyncHandler(async (_request, response) => {
     response.json(await Promise.resolve(getHairStudioConfig()));
+  }),
+);
+clientRouter.get(
+  '/me/hair-studio/consent',
+  asyncHandler(async (request, response) => {
+    response.json(await getHairStudioConsent(userId(request)));
+  }),
+);
+clientRouter.put(
+  '/me/hair-studio/consent',
+  asyncHandler(async (request, response) => {
+    response.json(
+      await acceptHairStudioConsent(
+        userId(request),
+        AcceptHairStudioConsentSchema.parse(request.body),
+      ),
+    );
   }),
 );
 clientRouter.post(

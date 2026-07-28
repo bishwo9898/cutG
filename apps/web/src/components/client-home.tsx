@@ -2,10 +2,20 @@
 
 import { barberDiscoveryApi } from '@barber-saas/api-client';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarCheck2, Car, MapPin, Scissors, Search, Sparkles, Star } from 'lucide-react';
+import {
+  ArrowUpRight,
+  CalendarCheck2,
+  Car,
+  MapPin,
+  Scissors,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Star,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { ClientHeader } from '@/components/client-header';
 import { BarberCard } from '@/components/client-ui';
@@ -17,7 +27,6 @@ type BarberSearchResponse = { barbers: PublicBarber[]; pagination: Pagination };
 export function ClientHome(): React.ReactElement {
   const router = useRouter();
   const [query, setQuery] = useState('');
-  const [recentlyViewed, setRecentlyViewed] = useState<PublicBarber[]>([]);
   const featured = useQuery({
     queryKey: ['featured-barbers'],
     queryFn: () =>
@@ -35,17 +44,6 @@ export function ClientHome(): React.ReactElement {
         verified: true,
       }),
   });
-
-  useEffect(() => {
-    try {
-      const stored = JSON.parse(
-        localStorage.getItem('cutg_recent_barbers') ?? '[]',
-      ) as PublicBarber[];
-      setRecentlyViewed(stored.slice(0, 5));
-    } catch {
-      localStorage.removeItem('cutg_recent_barbers');
-    }
-  }, []);
 
   const submit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -94,29 +92,75 @@ export function ClientHome(): React.ReactElement {
         </div>
       </section>
 
-      <section className="market-section">
-        <div className="section-title">
-          <div>
-            <p className="eyebrow">Featured</p>
-            <h2>Top barbers near you</h2>
+      <section className="market-section design-home-band design-home-band-featured">
+        <div className="design-home-copy">
+          <p className="eyebrow">AI Hair Design Studio</p>
+          <h2>Know the look before the first cut.</h2>
+          <p>
+            Upload one clear photo, describe the style, and compare a realistic preview with your
+            original before you book.
+          </p>
+          <div className="design-home-proof">
+            <span>
+              <ShieldCheck size={15} /> Private gallery
+            </span>
+            <span>
+              <Sparkles size={15} /> Original vs. preview
+            </span>
           </div>
-          <Link className="text-link" href="/client/barbers">
-            View all
+          <Link className="button button-primary" href="/client/design">
+            Open AI Hair Studio <ArrowUpRight size={16} />
           </Link>
         </div>
-        {featured.isLoading ? (
-          <div className="barber-grid">
-            {Array.from({ length: 3 }, (_, index) => (
-              <div className="market-card skeleton-card" key={index} />
-            ))}
+        <div className="design-home-visual" aria-hidden="true">
+          <div className="design-home-visual-original">
+            <span>Original</span>
           </div>
-        ) : (
-          <div className="barber-grid">
-            {(featured.data?.barbers ?? []).map((barber) => (
-              <BarberCard barber={barber} key={barber.id} />
-            ))}
+          <div className="design-home-visual-preview">
+            <span>Preview</span>
           </div>
-        )}
+          <div className="design-home-visual-divider">
+            <Sparkles size={18} />
+          </div>
+        </div>
+      </section>
+
+      <section className="market-section nearby-barbers-section">
+        <div className="section-title">
+          <div>
+            <p className="eyebrow">Near you</p>
+            <h2>Trusted barbers, ready when you are.</h2>
+            <p className="nearby-barbers-intro">
+              Verified profiles, clear pricing, and real availability in one calm view.
+            </p>
+          </div>
+          <Link className="nearby-barbers-view-all" href="/client/barbers">
+            Explore all <ArrowUpRight size={15} />
+          </Link>
+        </div>
+        <div className="nearby-barbers-panel">
+          <div className="nearby-barbers-panel-topline">
+            <span>
+              <MapPin size={14} /> Danville, Kentucky
+            </span>
+            <span>
+              <ShieldCheck size={14} /> Verified professionals
+            </span>
+          </div>
+          {featured.isLoading ? (
+            <div className="barber-grid">
+              {Array.from({ length: 3 }, (_, index) => (
+                <div className="market-card skeleton-card" key={index} />
+              ))}
+            </div>
+          ) : (
+            <div className="barber-grid">
+              {(featured.data?.barbers ?? []).map((barber) => (
+                <BarberCard barber={barber} key={barber.id} showSave />
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
       {(mobile.data?.barbers.length ?? 0) > 0 && (
@@ -137,25 +181,6 @@ export function ClientHome(): React.ReactElement {
           </div>
         </section>
       )}
-
-      <section className="market-section design-home-band">
-        <div>
-          <p className="eyebrow">Design your look</p>
-          <h2>Walk in with a clear vision.</h2>
-          <p>Choose a style, describe the details, and attach the brief to your next booking.</p>
-        </div>
-        <div className="design-home-actions">
-          <Link className="button button-primary" href="/client/design">
-            <Sparkles size={16} /> Open Hair Design Studio
-          </Link>
-          <div className="style-chip-row">
-            <span>Fade</span>
-            <span>Taper</span>
-            <span>Textured top</span>
-            <span>Beard fade</span>
-          </div>
-        </div>
-      </section>
 
       <section className="market-section">
         <div className="section-title">
@@ -185,22 +210,6 @@ export function ClientHome(): React.ReactElement {
           </article>
         </div>
       </section>
-
-      {recentlyViewed.length > 0 && (
-        <section className="market-section">
-          <div className="section-title">
-            <div>
-              <p className="eyebrow">Pick up where you left off</p>
-              <h2>Recently viewed</h2>
-            </div>
-          </div>
-          <div className="horizontal-card-rail compact-rail">
-            {recentlyViewed.map((barber) => (
-              <BarberCard barber={barber} key={barber.id} />
-            ))}
-          </div>
-        </section>
-      )}
     </main>
   );
 }

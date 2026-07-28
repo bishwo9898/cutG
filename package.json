@@ -9,10 +9,11 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
-    "dev": "concurrently -n api,web,ai-api,ai-worker -c blue,green,magenta,cyan \"pnpm dev:api\" \"pnpm dev:web\" \"pnpm dev:ai\" \"pnpm dev:ai-worker\"",
+    "dev": "node scripts/dev-preflight.mjs && pnpm dev:infra && concurrently --kill-others-on-fail --restart-tries 4 --restart-after 1500 -n api,web,ai-api,ai-worker -c blue,green,magenta,cyan \"pnpm dev:api\" \"pnpm dev:web\" \"pnpm dev:ai\" \"pnpm dev:ai-worker\"",
+    "dev:infra": "docker compose up -d postgres redis minio minio-init",
     "dev:api": "pnpm --filter @barber-saas/api dev",
     "dev:web": "pnpm --filter @barber-saas/web dev",
-    "dev:ai": "services/ai/.venv/bin/uvicorn app.main:app --app-dir services/ai --reload --port 8000",
+    "dev:ai": "services/ai/.venv/bin/uvicorn app.main:app --app-dir services/ai --reload --reload-dir services/ai/app --host 127.0.0.1 --port 8000",
     "dev:ai-worker": "cd services/ai && sh scripts/run_worker.sh",
     "build": "pnpm -r build",
     "lint": "eslint . --ext .ts,.tsx",
@@ -29,6 +30,7 @@
     "db:migrate": "pnpm --filter @barber-saas/api db:migrate",
     "db:rollback": "pnpm --filter @barber-saas/api db:rollback",
     "db:seed": "pnpm --filter @barber-saas/api db:seed",
+    "cloudinary:backfill": "pnpm --filter @barber-saas/api storage:cloudinary:backfill",
     "db:connect": "psql ${DATABASE_URL:-postgresql://barber_user:barber_password@localhost:55433/barber_saas}"
   },
   "devDependencies": {

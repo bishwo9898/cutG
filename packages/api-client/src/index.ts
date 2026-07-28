@@ -162,6 +162,10 @@ export const clientApi = {
   designs: <T>(client: ApiClient): Promise<T> => client.get<T>('/clients/me/designs'),
   hairStudioConfig: <T>(client: ApiClient): Promise<T> =>
     client.get<T>('/clients/me/hair-studio/config'),
+  hairStudioConsent: <T>(client: ApiClient): Promise<T> =>
+    client.get<T>('/clients/me/hair-studio/consent'),
+  acceptHairStudioConsent: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.put<T>('/clients/me/hair-studio/consent', body),
   createHairScan: <T>(client: ApiClient, body: unknown): Promise<T> =>
     client.post<T>('/clients/me/hair-scans', body),
   hairScan: <T>(client: ApiClient, scanId: string): Promise<T> =>

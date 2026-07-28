@@ -16,6 +16,7 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
+import { BackButton } from '@/components/back-button';
 import { useUser } from '@/hooks/use-user';
 
 const navItems = [
@@ -98,6 +99,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }): Rea
           </Link>
           <span className="topbar-label">Barber workspace</span>
         </header>
+        {pathname !== '/barber/dashboard' && (
+          <div className="dashboard-backbar">
+            <BackButton fallbackHref="/barber/dashboard" />
+          </div>
+        )}
         {children}
       </div>
       <nav className="mobile-nav" aria-label="Mobile dashboard">

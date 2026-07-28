@@ -1,21 +1,10 @@
-import {
-  ArrowUpRight,
-  Calendar,
-  Check,
-  Compass,
-  MapPin,
-  Scissors,
-  Search,
-  Star,
-} from 'lucide-react';
+import { ArrowUpRight, Calendar, Check, Compass, MapPin, Scissors, Search } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { BarberCover } from '@/components/client/barber-cover';
 import { HairDesignSlider } from '@/components/landing/hair-design-slider';
 import { HeroFlipWord } from '@/components/landing/hero-flip-word';
 import { LandingNav } from '@/components/landing/landing-nav';
-import type { Pagination, PublicBarber } from '@/lib/contracts';
 
 export const metadata: Metadata = {
   title: 'cutG - Premium barber booking, mobile service, and AI preview',
@@ -27,19 +16,6 @@ export const metadata: Metadata = {
       'Book trusted barbers nearby, bring them to your door, and preview your next look before the appointment.',
     type: 'website',
   },
-};
-
-type SearchResponse = { barbers: PublicBarber[]; pagination: Pagination };
-type ShowcaseBarber = {
-  id: string;
-  businessName: string;
-  city: string;
-  state: string;
-  averageRating: number;
-  totalReviews: number;
-  lowestServicePrice: number;
-  profilePhotoUrl: string | null;
-  mobile: boolean;
 };
 
 const steps = [
@@ -82,71 +58,7 @@ const barberPlans = [
   },
 ];
 
-const fallbackBarbers: ShowcaseBarber[] = [
-  {
-    id: 'fallback-1',
-    businessName: 'The Classic Room',
-    city: 'Brooklyn',
-    state: 'NY',
-    averageRating: 5,
-    totalReviews: 42,
-    lowestServicePrice: 45,
-    profilePhotoUrl: '/images/barbers/barber-1.webp',
-    mobile: true,
-  },
-  {
-    id: 'fallback-2',
-    businessName: 'Upper Cut Studio',
-    city: 'Manhattan',
-    state: 'NY',
-    averageRating: 4.9,
-    totalReviews: 128,
-    lowestServicePrice: 35,
-    profilePhotoUrl: '/images/barbers/barber-2.webp',
-    mobile: false,
-  },
-  {
-    id: 'fallback-3',
-    businessName: 'The Fade Shop',
-    city: 'Queens',
-    state: 'NY',
-    averageRating: 4.8,
-    totalReviews: 96,
-    lowestServicePrice: 40,
-    profilePhotoUrl: '/images/barbers/barber-3.webp',
-    mobile: true,
-  },
-];
-
-const featuredBarbers = async (): Promise<PublicBarber[]> => {
-  const baseUrl = process.env.API_BASE_URL ?? 'http://localhost:4000';
-  try {
-    const response = await fetch(`${baseUrl}/barbers?limit=6&verified=true`, {
-      next: { revalidate: 60 },
-    });
-    if (!response.ok) return [];
-    return ((await response.json()) as SearchResponse).barbers;
-  } catch {
-    return [];
-  }
-};
-
-export default async function LandingPage(): Promise<React.ReactElement> {
-  const barbers = await featuredBarbers();
-  const featured = (barbers.length > 0
-    ? barbers.map((barber) => ({
-        id: barber.id,
-        businessName: barber.businessName,
-        city: barber.city ?? '',
-        state: barber.state ?? '',
-        averageRating: barber.averageRating,
-        totalReviews: barber.totalReviews,
-        lowestServicePrice: barber.lowestServicePrice ?? 0,
-        profilePhotoUrl: barber.profilePhotoUrl,
-        mobile: barber.mobileService?.isEnabled === true,
-      }))
-    : fallbackBarbers) satisfies ShowcaseBarber[];
-
+export default function LandingPage(): React.ReactElement {
   return (
     <main className="landing-cinematic-page">
       <LandingNav />
@@ -169,10 +81,16 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               before you ever sit in the chair.
             </p>
             <div className="landing-cinematic-hero-actions">
-              <Link className="landing-cinematic-button landing-cinematic-button-primary" href="/client/barbers">
+              <Link
+                className="landing-cinematic-button landing-cinematic-button-primary"
+                href="/client/barbers"
+              >
                 Find your barber <ArrowUpRight size={16} />
               </Link>
-              <Link className="landing-cinematic-button landing-cinematic-button-ghost" href="/barber/register">
+              <Link
+                className="landing-cinematic-button landing-cinematic-button-ghost"
+                href="/barber/register"
+              >
                 I&apos;m a barber
               </Link>
             </div>
@@ -195,7 +113,10 @@ export default async function LandingPage(): Promise<React.ReactElement> {
         </div>
       </section>
 
-      <section className="landing-cinematic-section landing-cinematic-section-surface" id="tracking">
+      <section
+        className="landing-cinematic-section landing-cinematic-section-surface"
+        id="tracking"
+      >
         <div className="landing-cinematic-shell landing-cinematic-tracking-grid">
           <div className="landing-cinematic-tracking-copy">
             <p className="landing-cinematic-eyebrow">Mobile appointments</p>
@@ -218,7 +139,10 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                 <span>Travel pricing and window shown upfront</span>
               </div>
             </div>
-            <Link className="landing-cinematic-button landing-cinematic-button-primary" href="/client/barbers?mobileOnly=true">
+            <Link
+              className="landing-cinematic-button landing-cinematic-button-primary"
+              href="/client/barbers?mobileOnly=true"
+            >
               Explore mobile barbers
             </Link>
           </div>
@@ -266,7 +190,10 @@ export default async function LandingPage(): Promise<React.ReactElement> {
                   ['En route', 'Headed to the location'],
                   ['At your door', 'Service begins on arrival'],
                 ].map(([label, copy, active]) => (
-                  <div className={`landing-cinematic-timeline-row${active ? ' is-active' : ''}`} key={String(label)}>
+                  <div
+                    className={`landing-cinematic-timeline-row${active ? ' is-active' : ''}`}
+                    key={String(label)}
+                  >
                     <span />
                     <div>
                       <strong>{label}</strong>
@@ -300,51 +227,10 @@ export default async function LandingPage(): Promise<React.ReactElement> {
         </div>
       </section>
 
-      <section className="landing-cinematic-section landing-cinematic-featured">
-        <div className="landing-cinematic-shell">
-          <div className="landing-cinematic-section-heading">
-            <div>
-              <p className="landing-cinematic-eyebrow">The collective</p>
-              <h2>Barbers clients already trust.</h2>
-            </div>
-            <Link className="landing-cinematic-text-link" href="/client/barbers">
-              Browse all barbers
-            </Link>
-          </div>
-          <div className="landing-cinematic-barber-grid">
-            {featured.map((barber) => (
-              <Link
-                className="landing-cinematic-barber-card"
-                href={`/client/barbers/${barber.id}`}
-                key={barber.id}
-              >
-                <div className="landing-cinematic-barber-card-image">
-                  <BarberCover alt={`${barber.businessName} portrait`} src={barber.profilePhotoUrl} />
-                </div>
-                <div className="landing-cinematic-barber-card-body">
-                  <div className="landing-cinematic-barber-card-topline">
-                    <div>
-                      <h3>{barber.businessName}</h3>
-                      <p>
-                        {[barber.city, barber.state].filter(Boolean).join(', ') || 'Location coming soon'}
-                      </p>
-                    </div>
-                    {barber.mobile && <span className="landing-cinematic-status-pill">Mobile</span>}
-                  </div>
-                  <div className="landing-cinematic-barber-card-meta">
-                    <span>
-                      <Star size={14} /> {barber.averageRating.toFixed(1)} ({barber.totalReviews})
-                    </span>
-                    <strong>From ${barber.lowestServicePrice.toFixed(0)}</strong>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-cinematic-section landing-cinematic-section-surface" id="for-barbers">
+      <section
+        className="landing-cinematic-section landing-cinematic-section-surface"
+        id="for-barbers"
+      >
         <div className="landing-cinematic-shell">
           <div className="landing-cinematic-section-heading">
             <div>
@@ -389,7 +275,9 @@ export default async function LandingPage(): Promise<React.ReactElement> {
           <div className="landing-cinematic-pricing">
             {barberPlans.map((plan) => (
               <article className={plan.featured ? 'is-featured' : ''} key={plan.name}>
-                {plan.featured && <span className="landing-cinematic-pricing-chip">Most popular</span>}
+                {plan.featured && (
+                  <span className="landing-cinematic-pricing-chip">Most popular</span>
+                )}
                 <small>{plan.name}</small>
                 <h3>{plan.subtitle}</h3>
                 <strong>{plan.price}</strong>
@@ -406,7 +294,10 @@ export default async function LandingPage(): Promise<React.ReactElement> {
 
           <div className="landing-cinematic-pricing-footer">
             <p>Clients always book free. No contracts. Cancel anytime.</p>
-            <Link className="landing-cinematic-button landing-cinematic-button-primary" href="/barber/register">
+            <Link
+              className="landing-cinematic-button landing-cinematic-button-primary"
+              href="/barber/register"
+            >
               Join as a barber
             </Link>
           </div>
@@ -427,7 +318,10 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               <small>For clients</small>
               <h3>Find a barber</h3>
               <p>Browse, book, and manage the visit in one place.</p>
-              <Link className="landing-cinematic-button landing-cinematic-button-primary" href="/client/barbers">
+              <Link
+                className="landing-cinematic-button landing-cinematic-button-primary"
+                href="/client/barbers"
+              >
                 Start browsing
               </Link>
             </article>
@@ -435,7 +329,10 @@ export default async function LandingPage(): Promise<React.ReactElement> {
               <small>For barbers</small>
               <h3>Grow your business</h3>
               <p>Your schedule. Your clients. Your terms.</p>
-              <Link className="landing-cinematic-button landing-cinematic-button-ghost" href="/barber/register">
+              <Link
+                className="landing-cinematic-button landing-cinematic-button-ghost"
+                href="/barber/register"
+              >
                 Join as a barber
               </Link>
             </article>

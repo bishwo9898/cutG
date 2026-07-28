@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import type {
+  AcceptHairStudioConsentRequest,
   CompleteHairCaptureRequest,
   CompleteHairScanRequest,
   CreateHairScanRequest,
@@ -13,10 +14,18 @@ import type {
   RetryHairDesignRequest,
   ValidateHairScanRequest,
 } from '@barber-saas/shared-types';
+import { AI_HAIR_CONSENT_VERSION } from '@barber-saas/shared-types';
 
 import { env } from '../../config/env';
 import { query, withTransaction, type DatabaseExecutor } from '../../db/queries/barber.queries';
 import { AppError } from '../../middleware/errorHandler';
+import {
+  createPrivateCloudinaryUrl,
+  deletePrivateCloudinaryImage,
+  isCloudinaryEnabled,
+  storePrivateCloudinaryImage,
+  type CloudinaryImage,
+} from '../storage/cloudinaryStorage';
 import {
   createPresignedDownloadUrl,
   createPresignedUploadUrl,
@@ -135,13 +144,33 @@ const signedAsset = async (key: unknown, legacyUrl?: unknown): Promise<string | 
   return typeof legacyUrl === 'string' ? legacyUrl : null;
 };
 
+const cloudinaryAsset = (row: Row, prefix: 'source' | 'generated'): string | null => {
+  const publicId = row[`${prefix}_cloudinary_public_id`];
+  const rawVersion = row[`${prefix}_cloudinary_version`];
+  const rawFormat = row[`${prefix}_cloudinary_format`];
+  if (!isCloudinaryEnabled() || typeof publicId !== 'string') return null;
+  return createPrivateCloudinaryUrl({
+    publicId,
+    version: typeof rawVersion === 'number' ? rawVersion : Number(rawVersion ?? 0) || null,
+    format: typeof rawFormat === 'string' ? rawFormat : null,
+  });
+};
+
 const mapDesign = async (row: Row) => ({
   id: row.id,
   styleName: row.style_name,
   styleCategory: row.style_category,
   description: row.description,
-  sourcePhotoUrl: await signedAsset(row.source_asset_key, row.source_photo_url),
-  generatedPreviewUrl: await signedAsset(row.generated_asset_key, row.generated_preview_url),
+  sourcePhotoUrl:
+    cloudinaryAsset(row, 'source') ??
+    (await signedAsset(row.source_asset_key, row.source_photo_url)),
+  generatedPreviewUrl:
+    cloudinaryAsset(row, 'generated') ??
+    (await signedAsset(row.generated_asset_key, row.generated_preview_url)),
+  imageStorage:
+    typeof row.generated_cloudinary_public_id === 'string'
+      ? 'cloudinary'
+      : 'private-object-storage',
   aiStatus: row.ai_status,
   generationStatus: row.generation_status ?? null,
   progress: Number(row.progress ?? (row.ai_status === 'completed' ? 100 : 0)),
@@ -225,17 +254,69 @@ const assertGenerationAllowance = async (
 export const getHairStudioConfig = () => ({
   enabled: env.ENABLE_AI_FEATURES,
   provider: env.AI_PROVIDER === 'mock' ? 'demo' : 'fal',
-  consentVersion: '2026-07-17',
+  consentVersion: AI_HAIR_CONSENT_VERSION,
   requiredAngles: REQUIRED_ANGLES,
   webRequiredAngles: REQUIRED_ANGLES,
   maxCaptureBytes: 4_000_000,
   retentionHours: env.AI_SCAN_RETENTION_HOURS,
   dailyGenerationLimit: env.AI_GENERATION_DAILY_LIMIT,
   isMock: env.AI_PROVIDER === 'mock',
+  imageStorage: isCloudinaryEnabled() ? 'cloudinary' : 'private-object-storage',
 });
+
+export const getHairStudioConsent = async (clientId: string) => {
+  const rows = await query<Row>(
+    `SELECT consent_version,age_confirmed,face_processing_consented,accepted_at,updated_at
+     FROM client_hair_studio_consents WHERE client_id=$1`,
+    [clientId],
+  );
+  const consent = rows[0];
+  const accepted =
+    consent !== undefined &&
+    consent.consent_version === AI_HAIR_CONSENT_VERSION &&
+    consent.age_confirmed === true &&
+    consent.face_processing_consented === true;
+  return {
+    accepted,
+    ageConfirmed: consent?.age_confirmed === true,
+    faceProcessingConsented: consent?.face_processing_consented === true,
+    consentVersion: AI_HAIR_CONSENT_VERSION,
+    acceptedAt:
+      consent?.accepted_at === undefined || consent.accepted_at === null
+        ? null
+        : iso(consent.accepted_at),
+  };
+};
+
+export const acceptHairStudioConsent = async (
+  clientId: string,
+  input: AcceptHairStudioConsentRequest,
+) => {
+  if (input.consentVersion !== AI_HAIR_CONSENT_VERSION) {
+    throw new AppError(
+      409,
+      'The Hair Studio privacy notice changed. Review the latest confirmation.',
+      'HAIR_CONSENT_OUTDATED',
+    );
+  }
+  await query(
+    `INSERT INTO client_hair_studio_consents
+       (client_id,consent_version,age_confirmed,face_processing_consented)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT (client_id) DO UPDATE SET
+       consent_version=EXCLUDED.consent_version,
+       age_confirmed=EXCLUDED.age_confirmed,
+       face_processing_consented=EXCLUDED.face_processing_consented,
+       accepted_at=CURRENT_TIMESTAMP,
+       updated_at=CURRENT_TIMESTAMP`,
+    [clientId, input.consentVersion, input.ageConfirmed, input.consentAccepted],
+  );
+  return getHairStudioConsent(clientId);
+};
 
 export const createHairScan = async (clientId: string, input: CreateHairScanRequest) => {
   requireAiEnabled();
+  await acceptHairStudioConsent(clientId, input);
   const expiresAt = new Date(Date.now() + env.AI_SCAN_RETENTION_HOURS * 60 * 60 * 1000);
   const rows = await query<Row>(
     `INSERT INTO hair_scan_sessions (client_id,consent_version,age_confirmed,expires_at)
@@ -652,6 +733,29 @@ export const completeAiGeneration = async (
   const providerImage = await downloadRemoteImage(input.outputUrl);
   const outputKey = `hair-designs/${String(generation.client_id)}/${String(generation.hair_design_id)}/${generationId}.${extensionFromContentType(providerImage.contentType)}`;
   const stored = await storeImageBuffer(outputKey, providerImage);
+  let sourceCloudinary: CloudinaryImage | null = null;
+  let generatedCloudinary: CloudinaryImage | null = null;
+  let cloudinarySyncError: string | null = null;
+  if (isCloudinaryEnabled() && typeof generation.source_asset_key === 'string') {
+    try {
+      const sourceImage = await downloadRemoteImage(
+        await createPresignedDownloadUrl(generation.source_asset_key),
+      );
+      [sourceCloudinary, generatedCloudinary] = await Promise.all([
+        storePrivateCloudinaryImage(
+          sourceImage,
+          `users/${String(generation.client_id)}/looks/${String(generation.hair_design_id)}/original`,
+        ),
+        storePrivateCloudinaryImage(
+          providerImage,
+          `users/${String(generation.client_id)}/looks/${String(generation.hair_design_id)}/preview`,
+        ),
+      ]);
+    } catch (error) {
+      cloudinarySyncError =
+        error instanceof Error ? error.message.slice(0, 500) : 'Cloudinary upload failed.';
+    }
+  }
   await saveDebugArtifacts({
     clientId: String(generation.client_id),
     designId: String(generation.hair_design_id),
@@ -680,8 +784,21 @@ export const completeAiGeneration = async (
     );
     await query(
       `UPDATE client_hair_designs SET ai_status='completed',generated_asset_key=$1,
-        ai_error_code=NULL,ai_error_message=NULL WHERE id=$2 AND current_generation_id=$3`,
-      [outputKey, generation.hair_design_id, generationId],
+        source_cloudinary_public_id=$2,source_cloudinary_version=$3,source_cloudinary_format=$4,
+        generated_cloudinary_public_id=$5,generated_cloudinary_version=$6,
+        generated_cloudinary_format=$7,ai_error_code=NULL,ai_error_message=NULL
+       WHERE id=$8 AND current_generation_id=$9`,
+      [
+        outputKey,
+        sourceCloudinary?.publicId ?? null,
+        sourceCloudinary?.version ?? null,
+        sourceCloudinary?.format ?? null,
+        generatedCloudinary?.publicId ?? null,
+        generatedCloudinary?.version ?? null,
+        generatedCloudinary?.format ?? null,
+        generation.hair_design_id,
+        generationId,
+      ],
       executor,
     );
     await query(
@@ -694,7 +811,12 @@ export const completeAiGeneration = async (
         generation.provider,
         generation.model,
         input.estimatedCostCents,
-        JSON.stringify({ durationMs: input.durationMs, sizeBytes: stored.sizeBytes }),
+        JSON.stringify({
+          durationMs: input.durationMs,
+          sizeBytes: stored.sizeBytes,
+          imageStorage: generatedCloudinary === null ? 'private-object-storage' : 'cloudinary',
+          cloudinarySyncError,
+        }),
       ],
       executor,
     );
@@ -769,6 +891,11 @@ export const deleteHairDesign = async (clientId: string, designId: string) => {
   if (typeof design.generated_asset_key === 'string') {
     await deleteStoredObject(design.generated_asset_key).catch(() => undefined);
   }
+  await Promise.all(
+    [design.source_cloudinary_public_id, design.generated_cloudinary_public_id]
+      .filter((publicId): publicId is string => typeof publicId === 'string')
+      .map((publicId) => deletePrivateCloudinaryImage(publicId).catch(() => undefined)),
+  );
   return { message: 'Hair design deleted.' };
 };
 

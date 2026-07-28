@@ -25,6 +25,9 @@ describe('dual portal proxy', () => {
     expect(proxy(request('/client/appointments')).headers.get('location')).toBe(
       'http://localhost:3000/client/login?next=%2Fclient%2Fappointments',
     );
+    expect(proxy(request('/client/design/look-id')).headers.get('location')).toBe(
+      'http://localhost:3000/client/login?next=%2Fclient%2Fdesign%2Flook-id',
+    );
   });
 
   it('redirects authenticated users away from the wrong portal', () => {
@@ -45,6 +48,9 @@ describe('dual portal proxy', () => {
     expect(
       proxy(request('/barber/dashboard/mobile-service', 'barber_access=token; cutg_role=BARBER'))
         .status,
+    ).toBe(200);
+    expect(
+      proxy(request('/client/design/look-id', 'barber_access=token; cutg_role=CLIENT')).status,
     ).toBe(200);
   });
 

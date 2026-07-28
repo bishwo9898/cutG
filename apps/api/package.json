@@ -14,7 +14,8 @@
     "db:migrate:compiled": "knex --knexfile dist/knexfile.js migrate:latest",
     "db:rollback": "knex --knexfile src/knexfile.ts migrate:rollback",
     "db:seed": "knex --knexfile src/knexfile.ts seed:run",
-    "db:seed:compiled": "knex --knexfile dist/knexfile.js seed:run"
+    "db:seed:compiled": "knex --knexfile dist/knexfile.js seed:run",
+    "storage:cloudinary:backfill": "tsx src/scripts/backfillCloudinary.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1089.0",
@@ -23,6 +24,7 @@
     "@barber-saas/shared-utils": "workspace:*",
     "@faker-js/faker": "^8.4.1",
     "bcrypt": "^6.0.0",
+    "cloudinary": "^2.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",

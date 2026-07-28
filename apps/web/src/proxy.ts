@@ -59,6 +59,8 @@ export function proxy(request: NextRequest): NextResponse {
   const clientProtected =
     pathname === '/client/appointments' ||
     pathname.startsWith('/client/appointments/') ||
+    pathname === '/client/design' ||
+    pathname.startsWith('/client/design/') ||
     pathname === '/client/saved' ||
     pathname.startsWith('/client/profile');
 

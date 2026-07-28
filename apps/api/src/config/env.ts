@@ -86,6 +86,8 @@ const EnvSchema = z
     S3_SECRET_ACCESS_KEY: z.string().min(8).default('cutg-local-secret'),
     S3_FORCE_PATH_STYLE: booleanFromEnvironment.default(true),
     S3_PRESIGNED_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(600),
+    CLOUDINARY_URL: z.string().default(''),
+    CLOUDINARY_FOLDER: z.string().trim().min(1).default('cutg'),
     AI_PROVIDER: z.enum(['mock', 'fal']).default('mock'),
     AI_SERVICE_URL: z.string().url().default('http://localhost:8000'),
     AI_INTERNAL_SECRET: z.string().min(32).default('cutg-local-ai-secret-change-before-production'),
@@ -102,6 +104,16 @@ const EnvSchema = z
     ENABLE_AI_FEATURES: booleanFromEnvironment.default(false),
   })
   .superRefine((value, context) => {
+    if (
+      value.CLOUDINARY_URL.length > 0 &&
+      !value.CLOUDINARY_URL.toLowerCase().startsWith('cloudinary://')
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CLOUDINARY_URL'],
+        message: 'CLOUDINARY_URL must begin with cloudinary://.',
+      });
+    }
     if (value.NODE_ENV !== 'production') return;
 
     const loopbackHosts = new Set(['localhost', '127.0.0.1', '::1']);

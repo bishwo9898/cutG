@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { BackButton } from '@/components/back-button';
 import { useUser } from '@/hooks/use-user';
 
 const clientLinks = [
@@ -125,6 +126,11 @@ export function ClientHeader(): React.ReactElement {
           )}
         </div>
       </header>
+      {pathname !== '/client' && (
+        <div className="client-backbar">
+          <BackButton fallbackHref="/client" />
+        </div>
+      )}
       <nav className="client-mobile-nav" aria-label="Client mobile navigation">
         {(client === null && !user.isLoading ? clientLinks.slice(0, 1) : clientLinks).map(
           (item) => {

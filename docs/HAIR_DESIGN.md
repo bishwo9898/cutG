@@ -8,18 +8,22 @@ describe a custom style, and attach the completed preview atomically while booki
 
 ## Privacy and storage
 
-- Clients consent to private headshot processing and confirm they are at least 18 before an upload
-  session is created.
+- Clients consent to private headshot processing and confirm they are at least 18 before their
+  first upload. The current consent version is stored once per client account and shown again only
+  when the notice version changes.
 - Images are resized and uploaded directly to private S3-compatible storage through short-lived
   presigned URLs. Image bytes never travel through Express JSON or navigation parameters.
 - The FastAPI service downloads only API-issued signed capture URLs, verifies image type and size,
   and uses MediaPipe Tasks to record capture-quality metrics. Unreadable and too-small images remain
   blocked. Other quality boundaries are advisory in permissive testing mode and enforced when strict
   validation is enabled.
-- Raw scan objects expire after `AI_SCAN_RETENTION_HOURS` (24 hours by default). Generated previews
-  remain private until the client deletes them.
-- fal.ai output is copied immediately into cutG-owned private storage. Browser and mobile clients
-  receive short-lived signed URLs only.
+- Raw scan objects expire after `AI_SCAN_RETENTION_HOURS` (24 hours by default). When Cloudinary is
+  configured, the original selected for a completed look and the generated preview are copied into
+  authenticated Cloudinary assets for the account gallery. The private S3 copy remains as a
+  fallback.
+- fal.ai output is saved byte-for-byte without a second image-compositing pass. Authenticated
+  clients receive signed Cloudinary delivery URLs when available and short-lived private S3 URLs as
+  a fallback.
 - `FAL_KEY` belongs only in the server environment. Never expose it through Express responses,
   Next.js public variables, or Expo variables.
 
@@ -33,7 +37,7 @@ Web live camera, native camera, or private single-headshot upload
   -> Redis RQ durable generation job
   -> Python worker: mock or GPT Image 2 Edit via fal.ai
   -> authenticated processing/completion/failure callback
-  -> Express copies output to private S3 and records usage
+  -> Express preserves the output in private S3 and authenticated Cloudinary assets
   -> web/mobile poll the owned design and can book with designId
 ```
 
@@ -54,12 +58,10 @@ expands into concrete barber geometry, length, texture, blending, region, identi
 photographic-realism constraints. Scalp masks include the complete original hair silhouette so
 short cuts can reconstruct the background instead of retaining old fringe or side tufts. Buzz-cut
 and perm prompts also require complete replacement of the old hairstyle rather than layering.
-Exactly one PNG result is required. The worker then composites
-only the feathered edit region over the normalized source before cutG copies it into private
-storage. This makes preservation of the face, skin, clothes, lighting, and background deterministic
-rather than relying on prompt compliance alone. Provider request ID, duration, and estimated cost
-are recorded. An uncertain paid submission is not automatically retried. A real smoke test is
-opt-in and requires funded `FAL_KEY` credentials.
+Exactly one PNG result is required. The worker returns the original provider asset, and Express
+stores those exact bytes without applying another mask or blend to the finished image. Provider
+request ID, duration, and estimated cost are recorded. An uncertain paid submission is not
+automatically retried. A real smoke test is opt-in and requires funded `FAL_KEY` credentials.
 
 `AI_GENERATION_QUALITY` defaults to `high`. `AI_USE_HAIR_MASK=true` is the production default and
 should only be disabled for provider diagnosis. The legacy FLUX Kontext adapter remains available
@@ -81,6 +83,8 @@ All public routes require an authenticated `CLIENT`:
 
 ```http
 GET    /clients/me/hair-studio/config
+GET    /clients/me/hair-studio/consent
+PUT    /clients/me/hair-studio/consent
 POST   /clients/me/hair-scans
 GET    /clients/me/hair-scans/:scanId
 POST   /clients/me/hair-scans/:scanId/captures/presign
@@ -140,8 +144,9 @@ If the provider or credentials are unavailable, the verifier exits at the named
 3. The RQ worker calls Express to move the generation to `PROCESSING`.
 4. In `mock` mode the worker returns the source portrait unchanged. In `fal` mode it submits the
    identity-preserving edit request to fal.ai and waits for one JPEG output.
-5. The worker calls Express with completion or failure. Express copies a successful output into
-   private cutG storage and only then marks the generation `COMPLETED`.
+5. The worker calls Express with completion or failure. Express preserves a successful output in
+   private cutG storage, synchronizes the original and preview to Cloudinary when configured, and
+   only then marks the generation `COMPLETED`.
 
 The browser never calls fal.ai and never receives `FAL_KEY`. A real hairstyle transformation only
 occurs when the server and worker are explicitly started with `AI_PROVIDER=fal` and a valid funded
@@ -168,7 +173,8 @@ curl http://localhost:8000/health
 ```
 
 Healthy generation requires `"worker_ready": true`. Start all four development processes with
-`pnpm dev`, or start the missing worker separately with `make ai-worker`. The worker launcher retries
-Redis connection failures instead of exiting permanently. FastAPI rejects new generation requests
-when no worker is available, and Express converts queued jobs that never start into retryable
+`pnpm dev`, or start the missing worker separately with `make ai-worker`. The development process
+manager restarts transient child-process failures and stops the whole stack after retries are
+exhausted, avoiding half-running duplicate stacks. FastAPI rejects new generation requests when no
+worker is available, and Express converts queued jobs that never start into retryable
 `AI_JOB_STALE` failures rather than leaving the UI spinning forever.

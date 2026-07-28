@@ -5,6 +5,7 @@ import { HAIR_STYLE_CATALOG } from '@barber-saas/shared-types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowRight,
+  ArrowUpRight,
   Check,
   RotateCcw,
   Share2,
@@ -21,7 +22,7 @@ import { HairPhotoUpload, type UploadedHairImage } from '@/components/client/hai
 import { ClientHeader } from '@/components/client-header';
 import { Notice } from '@/components/notice';
 import { browserApi } from '@/lib/browser-api';
-import type { HairDesign, HairScan, HairStudioConfig } from '@/lib/contracts';
+import type { HairDesign, HairScan, HairStudioConfig, HairStudioConsent } from '@/lib/contracts';
 import { errorMessage } from '@/lib/errors';
 
 type Phase = 'consent' | 'photo' | 'styles' | 'generating' | 'result';
@@ -60,6 +61,11 @@ export default function HairDesignPage(): React.ReactElement {
     queryFn: () => clientApi.hairStudioConfig<HairStudioConfig>(browserApi),
     retry: false,
   });
+  const consentStatus = useQuery({
+    queryKey: ['hair-studio-consent'],
+    queryFn: () => clientApi.hairStudioConsent<HairStudioConsent>(browserApi),
+    retry: false,
+  });
   const designs = useQuery({
     queryKey: ['hair-designs'],
     queryFn: () => clientApi.designs<DesignsResponse>(browserApi),
@@ -83,6 +89,13 @@ export default function HairDesignPage(): React.ReactElement {
     if (design.data?.generationStatus === 'COMPLETED') setPhase('result');
     if (design.data?.generationStatus === 'FAILED') setPhase('generating');
   }, [design.data?.generationStatus]);
+  useEffect(() => {
+    if (consentStatus.data?.accepted === true) {
+      setAdult(true);
+      setConsent(true);
+      setPhase((currentPhase) => (currentPhase === 'consent' ? 'photo' : currentPhase));
+    }
+  }, [consentStatus.data?.accepted]);
   useEffect((): (() => void) | undefined => {
     if (phase !== 'generating') return;
     const timer = window.setInterval(
@@ -138,6 +151,18 @@ export default function HairDesignPage(): React.ReactElement {
       setPhase('styles');
     },
   });
+  const acceptConsent = useMutation({
+    mutationFn: () =>
+      clientApi.acceptHairStudioConsent<HairStudioConsent>(browserApi, {
+        consentAccepted: true,
+        ageConfirmed: true,
+        consentVersion: config.data?.consentVersion ?? '2026-07-17',
+      }),
+    onSuccess: (accepted) => {
+      queryClient.setQueryData(['hair-studio-consent'], accepted);
+      setPhase('photo');
+    },
+  });
 
   const generate = useMutation({
     mutationFn: async (): Promise<HairDesign> => {
@@ -180,7 +205,13 @@ export default function HairDesignPage(): React.ReactElement {
     },
   });
 
-  const activeError = upload.error ?? generate.error ?? retry.error ?? remove.error;
+  const activeError =
+    consentStatus.error ??
+    acceptConsent.error ??
+    upload.error ??
+    generate.error ??
+    retry.error ??
+    remove.error;
   const current = design.data;
 
   return (
@@ -194,7 +225,9 @@ export default function HairDesignPage(): React.ReactElement {
         </div>
         <div className="hair-studio-trust">
           <ShieldCheck size={18} />
-          Raw portraits expire after {config.data?.retentionHours ?? 24} hours
+          {config.data?.imageStorage === 'cloudinary'
+            ? 'Saved looks stay private in your account'
+            : `Raw portraits expire after ${config.data?.retentionHours ?? 24} hours`}
         </div>
       </section>
 
@@ -223,24 +256,24 @@ export default function HairDesignPage(): React.ReactElement {
           <Notice>
             AI visualization is disabled. Your existing saved style briefs remain available.
           </Notice>
-        ) : phase === 'consent' ? (
+        ) : phase === 'consent' || consentStatus.isLoading ? (
           <section className="hair-upload-layout">
             <div className="hair-upload-copy">
-              <span className="hair-step-number">01</span>
-              <h2>Take or upload one clear headshot</h2>
+              <span className="hair-step-number">Before you begin</span>
+              <h2>Confirm once. Preview privately.</h2>
               <p>
-                A front-facing photo with even light gives the AI the most detail. Side profiles are
-                accepted for testing. Your image remains private and is used only for this preview.
+                These confirmations are saved to your account, so you will not be asked again unless
+                our privacy notice changes.
               </p>
               <ul>
                 <li>
-                  <Check size={15} /> One person in frame
+                  <Check size={15} /> Your original and generated look stay in your private gallery
                 </li>
                 <li>
-                  <Check size={15} /> No hats, filters, or dark shadows
+                  <Check size={15} /> Images are used only to create and compare your preview
                 </li>
                 <li>
-                  <Check size={15} /> Keep as much of your hair visible as possible
+                  <Check size={15} /> You can delete a saved look and its stored images at any time
                 </li>
               </ul>
               <label className="hair-consent-check">
@@ -262,14 +295,16 @@ export default function HairDesignPage(): React.ReactElement {
             </div>
             <button
               className="hair-dropzone"
-              disabled={!adult || !consent}
-              onClick={() => setPhase('photo')}
+              disabled={consentStatus.isLoading || !adult || !consent || acceptConsent.isPending}
+              onClick={() => acceptConsent.mutate()}
               type="button"
             >
               <Sparkles size={34} />
-              <strong>Take or choose a headshot</strong>
-              <span>Use your camera or photo library</span>
-              <small>JPEG, PNG, or WebP · up to 4 MB</small>
+              <strong>
+                {acceptConsent.isPending ? 'Saving your confirmation…' : 'Continue to photo upload'}
+              </strong>
+              <span>Saved once for this account</span>
+              <small>Private by default · removable anytime</small>
             </button>
           </section>
         ) : phase === 'photo' ? (
@@ -506,13 +541,10 @@ export default function HairDesignPage(): React.ReactElement {
           </div>
           <div className="saved-look-grid-v2">
             {(designs.data?.designs ?? []).map((saved) => (
-              <button
+              <Link
+                className="saved-look-card-v2"
+                href={`/client/design/${saved.id}`}
                 key={saved.id}
-                onClick={() => {
-                  setDesignId(saved.id);
-                  setPhase(saved.generationStatus === 'COMPLETED' ? 'result' : 'generating');
-                }}
-                type="button"
               >
                 <div>
                   {saved.generatedPreviewUrl ? (
@@ -527,9 +559,15 @@ export default function HairDesignPage(): React.ReactElement {
                     <Sparkles size={22} />
                   )}
                 </div>
-                <strong>{saved.styleName}</strong>
-                <span>{saved.generationStatus?.toLowerCase() ?? saved.aiStatus}</span>
-              </button>
+                <span className="saved-look-card-v2-copy">
+                  <strong>{saved.styleName}</strong>
+                  <small>
+                    {saved.generationStatus?.toLowerCase() ?? saved.aiStatus}
+                    {saved.imageStorage === 'cloudinary' ? ' · Cloudinary' : ''}
+                  </small>
+                </span>
+                <ArrowUpRight className="saved-look-card-v2-arrow" size={18} />
+              </Link>
             ))}
             {(designs.data?.designs.length ?? 0) === 0 && (
               <p className="muted">Generated looks will appear here.</p>

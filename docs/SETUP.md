@@ -111,6 +111,24 @@ S3_ACCESS_KEY_ID=cutg-local
 S3_SECRET_ACCESS_KEY=cutg-local-secret
 ```
 
+To render completed saved looks from Cloudinary, copy the server-side environment URL from
+Cloudinary's API Keys page:
+
+```env
+CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+CLOUDINARY_FOLDER=cutg
+```
+
+Do not expose `CLOUDINARY_URL` through a `NEXT_PUBLIC_` variable. Completed looks use authenticated
+Cloudinary assets; the API creates their signed delivery URLs only after client authentication.
+Without these values, the same flow remains functional through private S3/MinIO storage.
+After adding Cloudinary to an existing test database, migrate any completed looks that still have
+their source files available:
+
+```bash
+pnpm cloudinary:backfill
+```
+
 `make ai-install` creates `services/ai/.venv`, installs pinned dependencies, and downloads the
 official MediaPipe detector model. `pnpm dev` and `make dev` start API, web, FastAPI, and the Python
 RQ worker. Local development uses RQ's spawn worker so native image libraries run safely on macOS.
@@ -197,7 +215,8 @@ SELECT status, COUNT(*) FROM appointments GROUP BY status;
 - This project defaults Redis to host port `6380` because local Redis commonly uses `6379`.
 - If Redis port `6380` is already in use, set `REDIS_HOST_PORT` to another free port.
 - The web application uses port `3000`; the API uses port `4000`. Expo/Metro will choose its own development port and show a QR code.
-- If `pnpm dev` fails with `EADDRINUSE`, inspect the port with `lsof -nP -iTCP:3000 -sTCP:LISTEN` or `lsof -nP -iTCP:4000 -sTCP:LISTEN`, then stop the stale process.
+- `pnpm dev` now checks the web, API, and AI ports before startup. If it reports an existing partial
+  stack, return to the terminal that launched it, press `Ctrl+C` once, and then run `pnpm dev` again.
 - If Docker reports a port conflict, update the corresponding host port in `.env`; keep `DATABASE_URL` synchronized with `POSTGRES_HOST_PORT`.
 - If migrations fail because extensions cannot be created, verify the connected user owns the local database.
 - If `pnpm db:seed` fails, rerun it after `pnpm db:migrate`; the seed is designed to clear existing sample rows first.

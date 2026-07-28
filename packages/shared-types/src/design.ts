@@ -33,6 +33,12 @@ export const CreateHairScanSchema = z.object({
   consentVersion: z.string().trim().min(1).max(50),
 });
 
+export const AcceptHairStudioConsentSchema = z.object({
+  consentAccepted: z.literal(true),
+  ageConfirmed: z.literal(true),
+  consentVersion: z.string().trim().min(1).max(50),
+});
+
 export const HairScanParamsSchema = z.object({ scanId: z.string().uuid() });
 export const HairCaptureParamsSchema = z.object({
   scanId: z.string().uuid(),
@@ -76,6 +82,7 @@ export const CreateHairDesignSchema = z.object({
 });
 export type CreateHairDesignRequest = z.infer<typeof CreateHairDesignSchema>;
 export type CreateHairScanRequest = z.infer<typeof CreateHairScanSchema>;
+export type AcceptHairStudioConsentRequest = z.infer<typeof AcceptHairStudioConsentSchema>;
 export type PresignHairCaptureRequest = z.infer<typeof PresignHairCaptureSchema>;
 export type CompleteHairCaptureRequest = z.infer<typeof CompleteHairCaptureSchema>;
 export type CompleteHairScanRequest = z.infer<typeof CompleteHairScanSchema>;
