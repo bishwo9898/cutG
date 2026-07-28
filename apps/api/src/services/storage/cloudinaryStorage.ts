@@ -46,10 +46,17 @@ export const storePrivateCloudinaryImage = async (
   publicId: string,
 ): Promise<CloudinaryImage> => {
   ensureCloudinary();
+  const storageRoot = env.CLOUDINARY_FOLDER.replace(/^\/+|\/+$/g, '');
+  const resolvedPublicId = `${storageRoot}/${publicId.replace(/^\/+/, '')}`;
+  const assetFolder = resolvedPublicId.split('/').slice(0, -1).join('/');
   const result = await new Promise<UploadApiResponse>((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        public_id: `${env.CLOUDINARY_FOLDER}/${publicId}`,
+        public_id: resolvedPublicId,
+        // New Cloudinary accounts use dynamic folders. A public_id path does not place an asset
+        // in the corresponding Media Library folder in that mode, so set the physical folder too.
+        // Legacy fixed-folder accounts safely ignore this option and continue using public_id.
+        asset_folder: assetFolder,
         resource_type: 'image',
         type: 'authenticated',
         overwrite: true,

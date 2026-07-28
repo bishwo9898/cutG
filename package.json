@@ -34,6 +34,7 @@
     "db:rollback": "pnpm --filter @barber-saas/api db:rollback",
     "db:seed": "pnpm --filter @barber-saas/api db:seed",
     "cloudinary:backfill": "pnpm --filter @barber-saas/api storage:cloudinary:backfill",
+    "cloudinary:verify": "pnpm --filter @barber-saas/api storage:cloudinary:verify",
     "db:connect": "psql ${DATABASE_URL:-postgresql://barber_user:barber_password@localhost:55433/barber_saas}"
   },
   "devDependencies": {

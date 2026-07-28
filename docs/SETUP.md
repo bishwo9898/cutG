@@ -119,6 +119,15 @@ CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
 CLOUDINARY_FOLDER=cutg
 ```
 
+`CLOUDINARY_URL` is the complete API environment variable from Cloudinary, not the API key by
+itself. Keep `CLOUDINARY_FOLDER=cutg`: **Home** is the Cloudinary Media Library root shown in the
+Console and should not be included in the folder value. Verify the credential and a reversible
+authenticated upload before generating customer images:
+
+```bash
+pnpm cloudinary:verify
+```
+
 Do not expose `CLOUDINARY_URL` through a `NEXT_PUBLIC_` variable. Completed looks use authenticated
 Cloudinary assets; the API creates their signed delivery URLs only after client authentication.
 Without these values, the same flow remains functional through private S3/MinIO storage.

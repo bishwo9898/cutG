@@ -15,7 +15,8 @@
     "db:rollback": "knex --knexfile src/knexfile.ts migrate:rollback",
     "db:seed": "knex --knexfile src/knexfile.ts seed:run",
     "db:seed:compiled": "knex --knexfile dist/knexfile.js seed:run",
-    "storage:cloudinary:backfill": "tsx src/scripts/backfillCloudinary.ts"
+    "storage:cloudinary:backfill": "tsx src/scripts/backfillCloudinary.ts",
+    "storage:cloudinary:verify": "tsx src/scripts/verifyCloudinary.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1089.0",
