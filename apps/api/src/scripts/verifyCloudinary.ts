@@ -43,6 +43,18 @@ const run = async (): Promise<void> => {
 };
 
 void run().catch((error: unknown) => {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'http_code' in error &&
+    error.http_code === 403
+  ) {
+    console.error(
+      'Cloudinary accepted the credential but denied asset creation (HTTP 403). In Cloudinary Console, assign this product-environment API key a role that permits creating and deleting assets, then rerun this command.',
+    );
+    process.exitCode = 1;
+    return;
+  }
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
 });

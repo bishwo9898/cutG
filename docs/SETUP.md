@@ -128,6 +128,12 @@ authenticated upload before generating customer images:
 pnpm cloudinary:verify
 ```
 
+If verification returns HTTP 403, open **Console Settings → API Keys** and assign the selected
+product-environment key a role that permits asset creation and deletion. New Cloudinary keys can be
+created without default permissions. For a short-lived test environment, the product-environment
+**Master Admin** system role is the simplest option; replace it with a least-privilege role before
+production.
+
 Do not expose `CLOUDINARY_URL` through a `NEXT_PUBLIC_` variable. Completed looks use authenticated
 Cloudinary assets; the API creates their signed delivery URLs only after client authentication.
 Without these values, the same flow remains functional through private S3/MinIO storage.
