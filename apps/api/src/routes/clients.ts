@@ -185,6 +185,10 @@ clientRouter.post(
 clientRouter.get(
   '/me/designs',
   asyncHandler(async (request, response) => {
+    response.set({
+      'Cache-Control': 'private, no-store, max-age=0',
+      Vary: 'Authorization, Cookie',
+    });
     response.json(await listHairDesigns(userId(request)));
   }),
 );
@@ -297,6 +301,10 @@ clientRouter.get(
   '/me/designs/:designId',
   asyncHandler(async (request, response) => {
     const { designId } = HairDesignParamsSchema.parse(request.params);
+    response.set({
+      'Cache-Control': 'private, no-store, max-age=0',
+      Vary: 'Authorization, Cookie',
+    });
     response.json(await getHairDesign(userId(request), designId));
   }),
 );

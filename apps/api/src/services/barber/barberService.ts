@@ -529,7 +529,10 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
       hd.id AS style_design_id,hd.style_name,hd.description AS style_description,
       hd.generated_preview_url,hd.generated_asset_key,hd.source_photo_url,hd.source_asset_key
      FROM appointments a JOIN services s ON s.id=a.service_id JOIN users u ON u.id=a.client_id
-     LEFT JOIN client_hair_designs hd ON hd.id=a.style_reference_id
+     LEFT JOIN client_hair_designs hd
+       ON hd.id=a.style_reference_id
+      AND hd.client_id=a.client_id
+      AND hd.deleted_at IS NULL
      WHERE ${where.join(' AND ')} ORDER BY a.scheduled_at DESC
      LIMIT $${values.length - 1} OFFSET $${values.length}`,
     values,
@@ -563,6 +566,7 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
         clientPhone: row.phone,
         clientNotes: row.client_notes,
         barberNotes: row.barber_notes,
+        styleNotes: row.style_notes,
         isMobileService: row.is_mobile_service === true,
         serviceAddress:
           row.is_mobile_service === true

@@ -74,6 +74,7 @@ const mapAppointment = async (row: Row) => ({
   price: money(row.price_quoted),
   clientNotes: row.client_notes,
   barberNotes: row.barber_notes,
+  styleNotes: row.style_notes,
   isMobileService: row.is_mobile_service === true,
   serviceAddress:
     row.is_mobile_service === true
@@ -180,7 +181,10 @@ const appointmentSelect = `
   JOIN barber_profiles bp ON bp.id = a.barber_id
   LEFT JOIN availability_slots av ON av.id = a.availability_slot_id
   LEFT JOIN reviews r ON r.appointment_id = a.id
-  LEFT JOIN client_hair_designs hd ON hd.id = a.style_reference_id
+  LEFT JOIN client_hair_designs hd
+    ON hd.id = a.style_reference_id
+   AND hd.client_id = a.client_id
+   AND hd.deleted_at IS NULL
 `;
 
 export const getClientProfile = async (clientId: string) => {
@@ -459,7 +463,9 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
         mobile?.address.source ?? null,
         mobile?.address.isApproximateAddress ?? null,
         styleReference?.id ?? null,
-        styleReference?.description ?? null,
+        [styleReference?.description, input.styleNotes]
+          .filter((value): value is string => typeof value === 'string' && value.length > 0)
+          .join('\n\n') || null,
       ],
       trx,
     );

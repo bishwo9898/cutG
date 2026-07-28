@@ -272,6 +272,15 @@ export default function AppointmentDetailPage(): React.ReactElement {
                     </div>
                   </div>
                 )}
+                {data.styleReference == null && data.styleNotes != null && (
+                  <div className="style-reference-card">
+                    <Paperclip size={18} />
+                    <div>
+                      <strong>New style request</strong>
+                      <p>{data.styleNotes}</p>
+                    </div>
+                  </div>
+                )}
               </section>
             </div>
 

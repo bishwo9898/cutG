@@ -162,6 +162,7 @@ export type Appointment = {
   };
   clientNotes: string | null;
   barberNotes: string | null;
+  styleNotes?: string | null;
   isMobileService?: boolean;
   serviceAddress?: {
     addressLine1: string;
@@ -190,6 +191,7 @@ export type ClientAppointment = {
   priceQuoted: number;
   clientNotes: string | null;
   barberNotes: string | null;
+  styleNotes?: string | null;
   service: {
     id: string;
     name: string;

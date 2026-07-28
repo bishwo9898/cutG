@@ -16,6 +16,7 @@ let serviceId = '';
 let slotId = '';
 let clientId = '';
 let designId = '';
+let otherDesignId = '';
 
 type LoginBody = { accessToken: string };
 type SearchBody = { barbers: Array<{ id: string; serviceCategories: string[] }> };
@@ -25,8 +26,10 @@ type AppointmentBody = {
   id: string;
   status: string;
   paymentMethod: string;
+  styleNotes: string | null;
   styleReference: { id: string; styleName: string } | null;
 };
+type DesignsBody = { designs: Array<{ id: string }> };
 type AppointmentListBody = { appointments: unknown[] };
 type CancelBody = { slotFreed: boolean };
 type ErrorBody = { error: string };
@@ -35,6 +38,7 @@ beforeAll(async () => {
   await resetTestDatabase();
   const barber = await createVerifiedUser('BARBER', 'phase3.barber@example.com');
   const client = await createVerifiedUser('CLIENT', 'phase3.client@example.com');
+  const otherClient = await createVerifiedUser('CLIENT', 'phase3.other-client@example.com');
   clientId = client.id;
   barberId = await createBarberProfileFixture(barber.id);
 
@@ -71,6 +75,14 @@ beforeAll(async () => {
     [clientId, `hair-designs/${clientId}/preview.jpg`],
   );
   designId = design.rows[0]?.id ?? '';
+  const otherDesign = await pool.query<{ id: string }>(
+    `INSERT INTO client_hair_designs
+      (client_id,style_name,style_category,description,ai_status,generated_asset_key)
+     VALUES ($1,'Private Other Look','haircut','Must stay private.','completed',$2)
+     RETURNING id`,
+    [otherClient.id, `hair-designs/${otherClient.id}/private-preview.jpg`],
+  );
+  otherDesignId = otherDesign.rows[0]?.id ?? '';
 });
 
 afterAll(async () => closeDatabase());
@@ -112,6 +124,32 @@ describe('Phase 3 client discovery and booking API', () => {
     expect(removed.status).toBe(200);
   });
 
+  it('lists only the authenticated client’s saved looks without reusable response caching', async () => {
+    const response = await request(app)
+      .get('/clients/me/designs')
+      .set('Authorization', `Bearer ${clientToken}`);
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toContain('private');
+    expect(response.headers['cache-control']).toContain('no-store');
+    const ids = (response.body as DesignsBody).designs.map((design) => design.id);
+    expect(ids).toContain(designId);
+    expect(ids).not.toContain(otherDesignId);
+  });
+
+  it('rejects a saved look owned by another client before reserving the slot', async () => {
+    const response = await request(app)
+      .post('/clients/me/appointments')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({
+        barberId,
+        serviceId,
+        availabilitySlotId: slotId,
+        designId: otherDesignId,
+      });
+    expect(response.status).toBe(404);
+    expect((response.body as ErrorBody).error).toBe('DESIGN_NOT_AVAILABLE');
+  });
+
   it('books atomically, prevents duplicate booking, and frees the slot on cancel', async () => {
     const booked = await request(app)
       .post('/clients/me/appointments')
@@ -122,6 +160,7 @@ describe('Phase 3 client discovery and booking API', () => {
         availabilitySlotId: slotId,
         clientNotes: 'Clean neckline',
         designId,
+        styleNotes: 'Keep the temple blend soft.',
       });
     expect(booked.status).toBe(201);
     expect((booked.body as AppointmentBody).status).toBe('PENDING');
@@ -130,6 +169,7 @@ describe('Phase 3 client discovery and booking API', () => {
       id: designId,
       styleName: 'Textured Crop',
     });
+    expect((booked.body as AppointmentBody).styleNotes).toContain('Keep the temple blend soft.');
     const appointmentId = (booked.body as AppointmentBody).id;
 
     const duplicate = await request(app)
@@ -155,6 +195,26 @@ describe('Phase 3 client discovery and booking API', () => {
     expect((slots.body as SlotsBody).slots.find((slot) => slot.id === slotId)?.isAvailable).toBe(
       true,
     );
+  });
+
+  it('sends a new-style description without requiring a saved look', async () => {
+    const booked = await request(app)
+      .post('/clients/me/appointments')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({
+        barberId,
+        serviceId,
+        availabilitySlotId: slotId,
+        styleNotes: 'Try a fresh low taper with longer curls on top.',
+      });
+    expect(booked.status).toBe(201);
+    expect((booked.body as AppointmentBody).styleReference).toBeNull();
+    expect((booked.body as AppointmentBody).styleNotes).toBe(
+      'Try a fresh low taper with longer curls on top.',
+    );
+    await request(app)
+      .delete(`/clients/me/appointments/${String((booked.body as AppointmentBody).id)}`)
+      .set('Authorization', `Bearer ${clientToken}`);
   });
 
   it('rejects barber access to client booking routes', async () => {

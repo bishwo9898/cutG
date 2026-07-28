@@ -10,8 +10,11 @@ import {
   ChevronLeft,
   Clock3,
   CreditCard,
+  ImageIcon,
   MapPin,
   Navigation,
+  Sparkles,
+  WandSparkles,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -26,6 +29,7 @@ import { StripePaymentPanel } from '@/components/client/stripe-payment-panel';
 import { ClientHeader } from '@/components/client-header';
 import { SlotPicker, TravelEstimateCard } from '@/components/client-ui';
 import { Notice } from '@/components/notice';
+import { useSavedHairDesigns } from '@/hooks/use-saved-hair-designs';
 import { useUser } from '@/hooks/use-user';
 import {
   appointmentEndsAt,
@@ -39,7 +43,6 @@ import { browserApi } from '@/lib/browser-api';
 import type {
   ClientAddress,
   ClientAppointment,
-  HairDesign,
   PublicMobileConfig,
   PublicService,
   PublicSlot,
@@ -59,7 +62,7 @@ type Slots = { slots: PublicSlot[] };
 type AddressList = { addresses: ClientAddress[] };
 type AppointmentType = 'shop' | 'mobile';
 type PaymentMethod = 'CASH' | 'CARD';
-type Stage = 'service' | 'type' | 'location' | 'time' | 'review' | 'payment';
+type Stage = 'service' | 'style' | 'type' | 'location' | 'time' | 'review' | 'payment';
 type PaymentConfig = { onlinePaymentsEnabled: boolean; publishableKey: string | null };
 type PaymentIntent = { clientSecret: string; amount: number };
 
@@ -67,7 +70,8 @@ const danvilleCenter = { latitude: 37.6456, longitude: -84.7722 };
 
 export default function BookBarberPage(): React.ReactElement {
   const { barberId } = useParams<{ barberId: string }>();
-  const designId = useSearchParams().get('designId');
+  const searchParams = useSearchParams();
+  const requestedDesignId = searchParams.get('designId');
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: user } = useUser();
@@ -82,6 +86,8 @@ export default function BookBarberPage(): React.ReactElement {
   const [clientNotes, setClientNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [createdAppointment, setCreatedAppointment] = useState<ClientAppointment | null>(null);
+  const [selectedDesignId, setSelectedDesignId] = useState<string | null>(requestedDesignId);
+  const [styleNotes, setStyleNotes] = useState('');
 
   const profile = useQuery({
     queryKey: ['public-barber-book', barberId],
@@ -105,11 +111,7 @@ export default function BookBarberPage(): React.ReactElement {
     queryKey: ['client-payment-config'],
     queryFn: () => paymentApi.config<PaymentConfig>(browserApi),
   });
-  const design = useQuery({
-    enabled: user?.userType === 'CLIENT' && designId !== null,
-    queryKey: ['hair-design', designId],
-    queryFn: () => clientApi.design<HairDesign>(browserApi, designId as string),
-  });
+  const savedLooks = useSavedHairDesigns(user?.userType === 'CLIENT' ? user.id : null);
   const estimate = useMutation({
     mutationFn: (coordinates: { latitude: number; longitude: number }) =>
       browserApi.post<TravelEstimate>('/barbers/me/mobile/estimate', {
@@ -131,6 +133,16 @@ export default function BookBarberPage(): React.ReactElement {
     profile.data?.onlinePaymentsAvailable === true &&
     paymentConfig.data?.onlinePaymentsEnabled === true &&
     paymentConfig.data.publishableKey !== null;
+  const completedLooks = useMemo(
+    () =>
+      (savedLooks.data?.designs ?? []).filter(
+        (look) =>
+          (look.generationStatus === 'COMPLETED' || look.aiStatus === 'completed') &&
+          look.generatedPreviewUrl !== null,
+      ),
+    [savedLooks.data?.designs],
+  );
+  const selectedDesign = completedLooks.find((look) => look.id === selectedDesignId) ?? null;
 
   useEffect(() => {
     if (!isMobile || destination === null) return;
@@ -151,12 +163,20 @@ export default function BookBarberPage(): React.ReactElement {
     const requested = services.data.services.find((item) => item.id === requestedServiceId);
     if (requested === undefined) return;
     setService(requested);
-    if (mobileEnabled) setStage('type');
-    else {
-      setAppointmentType('shop');
-      setStage('time');
-    }
+    setAppointmentType(mobileEnabled ? null : 'shop');
+    setStage('style');
   }, [mobile.data, mobileEnabled, service, services.data]);
+
+  useEffect(() => {
+    if (
+      savedLooks.data === undefined ||
+      selectedDesignId === null ||
+      completedLooks.some((look) => look.id === selectedDesignId)
+    ) {
+      return;
+    }
+    setSelectedDesignId(null);
+  }, [completedLooks, savedLooks.data, selectedDesignId]);
 
   const slots = useQuery({
     enabled:
@@ -214,7 +234,8 @@ export default function BookBarberPage(): React.ReactElement {
         barberId,
         serviceId: service.id,
         availabilitySlotId: slot.id,
-        ...(designId === null ? {} : { designId }),
+        ...(selectedDesign === null ? {} : { designId: selectedDesign.id }),
+        ...(styleNotes.trim() === '' ? {} : { styleNotes: styleNotes.trim() }),
         clientNotes: clientNotes.trim() || undefined,
         paymentMethod,
         isMobileService: isMobile,
@@ -251,13 +272,29 @@ export default function BookBarberPage(): React.ReactElement {
     setService(item);
     setSlot(null);
     setCreatedAppointment(null);
+    setAppointmentType(mobileEnabled ? null : 'shop');
+    setStage('style');
+  };
+
+  const updateDesignSelection = (designId: string | null): void => {
+    setSelectedDesignId(designId);
+    const next = new URLSearchParams(searchParams.toString());
+    if (designId === null) next.delete('designId');
+    else next.set('designId', designId);
+    const query = next.toString();
+    router.replace(`/client/barbers/${barberId}/book${query.length > 0 ? `?${query}` : ''}`, {
+      scroll: false,
+    });
+  };
+
+  const continueFromStyle = (): void => {
     if (mobileEnabled) {
       setAppointmentType(null);
       setStage('type');
-    } else {
-      setAppointmentType('shop');
-      setStage('time');
+      return;
     }
+    setAppointmentType('shop');
+    setStage('time');
   };
 
   const chooseType = (type: AppointmentType): void => {
@@ -289,10 +326,12 @@ export default function BookBarberPage(): React.ReactElement {
   const fallbackCenter = mobile.data?.approximateOrigin ?? danvilleCenter;
   const visibleSteps: Stage[] = mobileEnabled
     ? appointmentType === 'shop'
-      ? ['service', 'type', 'time', 'review']
-      : ['service', 'type', 'location', 'time', 'review']
-    : ['service', 'time', 'review'];
+      ? ['service', 'style', 'type', 'time', 'review']
+      : ['service', 'style', 'type', 'location', 'time', 'review']
+    : ['service', 'style', 'time', 'review'];
   const currentStep = Math.max(0, visibleSteps.indexOf(stage));
+  const stepNumber = (value: Stage): string =>
+    String(Math.max(0, visibleSteps.indexOf(value)) + 1).padStart(2, '0');
 
   return (
     <main className="market-page client-booking-page">
@@ -355,10 +394,151 @@ export default function BookBarberPage(): React.ReactElement {
               </section>
             )}
 
+            {stage === 'style' && service !== null && (
+              <section className="booking-step-panel booking-style-step">
+                <div className="booking-step-heading">
+                  <span>{stepNumber('style')}</span>
+                  <div>
+                    <h2>What look are you going for?</h2>
+                    <p>
+                      Bring a saved AI look, describe something new, or decide with your barber.
+                    </p>
+                  </div>
+                </div>
+
+                {savedLooks.isLoading ? (
+                  <div className="booking-style-loading">
+                    <Sparkles size={18} />
+                    Checking your private saved looks…
+                  </div>
+                ) : completedLooks.length > 0 ? (
+                  <>
+                    <div className="booking-style-title">
+                      <div>
+                        <strong>Your saved looks</strong>
+                        <span>Only looks from this signed-in account appear here.</span>
+                      </div>
+                      {savedLooks.isFetching && <small>Refreshing…</small>}
+                    </div>
+                    <div className="booking-look-grid">
+                      {completedLooks.map((look, index) => (
+                        <button
+                          aria-pressed={selectedDesignId === look.id}
+                          className={selectedDesignId === look.id ? 'is-selected' : undefined}
+                          key={look.id}
+                          onClick={() => {
+                            updateDesignSelection(look.id);
+                            setStyleNotes('');
+                          }}
+                          type="button"
+                        >
+                          <span className="booking-look-image">
+                            <Image
+                              alt={`${look.styleName} saved look`}
+                              fill
+                              onError={() => void savedLooks.refetch()}
+                              priority={index < 4}
+                              sizes="180px"
+                              src={look.generatedPreviewUrl as string}
+                              unoptimized
+                            />
+                            {selectedDesignId === look.id && (
+                              <b>
+                                <Check size={14} />
+                              </b>
+                            )}
+                          </span>
+                          <strong>{look.styleName}</strong>
+                          <small>{look.styleCategory}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="booking-look-empty">
+                    <span>
+                      <WandSparkles size={24} />
+                    </span>
+                    <div>
+                      <strong>Turn your idea into a picture first.</strong>
+                      <p>
+                        AI Hair Studio creates a private style preview you can bring straight into a
+                        future booking.
+                      </p>
+                    </div>
+                    <Link className="button button-secondary" href="/client/design">
+                      Try AI Hair Studio
+                    </Link>
+                  </div>
+                )}
+
+                {requestedDesignId !== null &&
+                  savedLooks.data !== undefined &&
+                  !completedLooks.some((look) => look.id === requestedDesignId) && (
+                    <Notice>
+                      That saved look is not available in this account. Choose another or describe a
+                      new style.
+                    </Notice>
+                  )}
+
+                <button
+                  aria-pressed={selectedDesignId === null}
+                  className={`booking-new-style-option${selectedDesignId === null ? ' is-selected' : ''}`}
+                  onClick={() => updateDesignSelection(null)}
+                  type="button"
+                >
+                  <span>
+                    <ImageIcon size={20} />
+                  </span>
+                  <div>
+                    <strong>New style</strong>
+                    <small>Describe a fresh idea, or leave it blank and decide together.</small>
+                  </div>
+                  {selectedDesignId === null && <Check size={17} />}
+                </button>
+
+                {selectedDesignId === null && (
+                  <label className="field booking-style-notes">
+                    <span>Describe the new style (optional)</span>
+                    <textarea
+                      className="textarea"
+                      maxLength={1000}
+                      onChange={(event) => setStyleNotes(event.target.value)}
+                      placeholder="Example: Keep the curls longer on top with a low taper and a clean neckline…"
+                      value={styleNotes}
+                    />
+                    <small>This goes directly to your barber with the booking.</small>
+                  </label>
+                )}
+
+                <div className="booking-stage-actions">
+                  <button
+                    className="button button-ghost"
+                    onClick={() => setStage('service')}
+                    type="button"
+                  >
+                    <ChevronLeft size={16} /> Change service
+                  </button>
+                  <button
+                    className="button button-primary"
+                    disabled={savedLooks.isLoading}
+                    onClick={continueFromStyle}
+                    type="button"
+                  >
+                    {selectedDesign !== null
+                      ? 'Continue with saved look'
+                      : styleNotes.trim() === ''
+                        ? 'Continue without a reference'
+                        : 'Continue with new style'}
+                  </button>
+                </div>
+              </section>
+            )}
+
             {stage === 'type' && service !== null && (
               <section className="booking-step-panel">
                 <div className="booking-step-heading">
-                  <span>02</span>
+                  <span>{stepNumber('type')}</span>
                   <div>
                     <h2>Where should the appointment happen?</h2>
                     <p>Visit the shop or have this barber travel to you.</p>
@@ -387,10 +567,10 @@ export default function BookBarberPage(): React.ReactElement {
                 </div>
                 <button
                   className="button button-ghost"
-                  onClick={() => setStage('service')}
+                  onClick={() => setStage('style')}
                   type="button"
                 >
-                  <ChevronLeft size={16} /> Change service
+                  <ChevronLeft size={16} /> Back to style
                 </button>
               </section>
             )}
@@ -398,7 +578,7 @@ export default function BookBarberPage(): React.ReactElement {
             {stage === 'location' && isMobile && (
               <section className="booking-step-panel">
                 <div className="booking-step-heading">
-                  <span>03</span>
+                  <span>{stepNumber('location')}</span>
                   <div>
                     <h2>Pin the exact arrival point</h2>
                     <p>Your barber navigates to the pin. The nearest address provides context.</p>
@@ -495,7 +675,7 @@ export default function BookBarberPage(): React.ReactElement {
             {stage === 'time' && service !== null && appointmentType !== null && (
               <section className="booking-step-panel">
                 <div className="booking-step-heading">
-                  <span>{isMobile ? '04' : '03'}</span>
+                  <span>{stepNumber('time')}</span>
                   <div>
                     <h2>Choose an available time</h2>
                     <p>
@@ -530,6 +710,26 @@ export default function BookBarberPage(): React.ReactElement {
                     </div>
                   )}
                 </div>
+                {!isMobile && mobileEnabled && (
+                  <div className="booking-mobile-nudge">
+                    <span>
+                      <Car size={21} />
+                    </span>
+                    <div>
+                      <strong>Why make the trip?</strong>
+                      <p>
+                        This barber can come to your place instead. Add your pin and see the fee.
+                      </p>
+                    </div>
+                    <button
+                      className="button button-secondary"
+                      onClick={() => chooseType('mobile')}
+                      type="button"
+                    >
+                      Switch to mobile
+                    </button>
+                  </div>
+                )}
                 <SlotPicker
                   durationMinutes={service.durationMinutes}
                   onSelect={setSlot}
@@ -543,7 +743,7 @@ export default function BookBarberPage(): React.ReactElement {
                   <button
                     className="button button-ghost"
                     onClick={() =>
-                      setStage(isMobile ? 'location' : mobileEnabled ? 'type' : 'service')
+                      setStage(isMobile ? 'location' : mobileEnabled ? 'type' : 'style')
                     }
                     type="button"
                   >
@@ -564,27 +764,35 @@ export default function BookBarberPage(): React.ReactElement {
             {stage === 'review' && service !== null && slot !== null && (
               <section className="booking-step-panel">
                 <div className="booking-step-heading">
-                  <span>{isMobile ? '05' : '04'}</span>
+                  <span>{stepNumber('review')}</span>
                   <div>
                     <h2>Review and choose payment</h2>
                     <p>Your appointment is reserved after you confirm below.</p>
                   </div>
                 </div>
                 <div className="booking-review-grid">
-                  {design.data !== undefined && (
+                  {selectedDesign !== null && (
                     <div className="review-detail-card hair-booking-reference">
                       <span>Style reference</span>
-                      <strong>{design.data.styleName}</strong>
-                      {design.data.generatedPreviewUrl !== null && (
+                      <strong>{selectedDesign.styleName}</strong>
+                      {selectedDesign.generatedPreviewUrl !== null && (
                         <Image
-                          alt={`${design.data.styleName} AI preview`}
+                          alt={`${selectedDesign.styleName} AI preview`}
                           height={120}
-                          src={design.data.generatedPreviewUrl}
+                          onError={() => void savedLooks.refetch()}
+                          src={selectedDesign.generatedPreviewUrl}
                           unoptimized
                           width={96}
                         />
                       )}
                       <p>Your barber will receive this private preview.</p>
+                    </div>
+                  )}
+                  {selectedDesign === null && styleNotes.trim() !== '' && (
+                    <div className="review-detail-card">
+                      <span>New style</span>
+                      <strong>Your description</strong>
+                      <p>{styleNotes.trim()}</p>
                     </div>
                   )}
                   <div className="review-detail-card">
@@ -694,7 +902,7 @@ export default function BookBarberPage(): React.ReactElement {
             {stage === 'payment' && createdAppointment !== null && (
               <section className="booking-step-panel">
                 <div className="booking-step-heading">
-                  <span>06</span>
+                  <span>{String(visibleSteps.length + 1).padStart(2, '0')}</span>
                   <div>
                     <h2>Complete secure payment</h2>
                     <p>Your time is reserved. Finish payment or return to the appointment later.</p>
@@ -772,6 +980,13 @@ export default function BookBarberPage(): React.ReactElement {
                   </strong>
                 </p>
               )}
+              <p>
+                <span>Style</span>
+                <strong>
+                  {selectedDesign?.styleName ??
+                    (styleNotes.trim() === '' ? 'Decide with barber' : 'New style request')}
+                </strong>
+              </p>
               <p>
                 <span>Date and time</span>
                 <strong>

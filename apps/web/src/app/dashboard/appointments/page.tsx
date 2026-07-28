@@ -352,15 +352,26 @@ export default function AppointmentsPage(): React.ReactElement {
                               {appointment.styleReference.styleName ?? 'Style reference'}
                             </strong>
                             <span>{appointment.styleReference.description}</span>
-                            {appointment.styleReference.sourcePhotoUrl !== null && (
+                            {(appointment.styleReference.previewImageUrl ??
+                              appointment.styleReference.sourcePhotoUrl) !== null && (
                               <a
-                                href={appointment.styleReference.sourcePhotoUrl}
+                                href={
+                                  appointment.styleReference.previewImageUrl ??
+                                  appointment.styleReference.sourcePhotoUrl ??
+                                  undefined
+                                }
                                 rel="noreferrer"
                                 target="_blank"
                               >
-                                View reference photo
+                                View selected look
                               </a>
                             )}
+                          </div>
+                        )}
+                        {appointment.styleReference == null && appointment.styleNotes != null && (
+                          <div className="appointment-style-inline">
+                            <strong>New style request</strong>
+                            <span>{appointment.styleNotes}</span>
                           </div>
                         )}
                         {appointment.isMobileService === true && (

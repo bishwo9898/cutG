@@ -139,8 +139,16 @@ const getOwnedDesignRow = async (
   return design;
 };
 
-const signedAsset = async (key: unknown, legacyUrl?: unknown): Promise<string | null> => {
-  if (typeof key === 'string') return createPresignedDownloadUrl(key);
+const signedAsset = async (row: Row, prefix: 'source' | 'generated'): Promise<string | null> => {
+  const clientId = String(row.client_id ?? '');
+  const key = row[`${prefix}_asset_key`];
+  const legacyUrl = row[prefix === 'source' ? 'source_photo_url' : 'generated_preview_url'];
+  const isOwnedKey =
+    typeof key === 'string' &&
+    (prefix === 'source'
+      ? key.startsWith(`hair-scans/${clientId}/`)
+      : key.startsWith(`hair-designs/${clientId}/`));
+  if (isOwnedKey) return createPresignedDownloadUrl(key);
   return typeof legacyUrl === 'string' ? legacyUrl : null;
 };
 
@@ -148,7 +156,15 @@ const cloudinaryAsset = (row: Row, prefix: 'source' | 'generated'): string | nul
   const publicId = row[`${prefix}_cloudinary_public_id`];
   const rawVersion = row[`${prefix}_cloudinary_version`];
   const rawFormat = row[`${prefix}_cloudinary_format`];
-  if (!isCloudinaryEnabled() || typeof publicId !== 'string') return null;
+  const storageRoot = env.CLOUDINARY_FOLDER.replace(/^\/+|\/+$/g, '');
+  const expectedPrefix = `${storageRoot}/users/${String(row.client_id)}/looks/${String(row.id)}/`;
+  if (
+    !isCloudinaryEnabled() ||
+    typeof publicId !== 'string' ||
+    !publicId.startsWith(expectedPrefix)
+  ) {
+    return null;
+  }
   return createPrivateCloudinaryUrl({
     publicId,
     version: typeof rawVersion === 'number' ? rawVersion : Number(rawVersion ?? 0) || null,
@@ -156,31 +172,28 @@ const cloudinaryAsset = (row: Row, prefix: 'source' | 'generated'): string | nul
   });
 };
 
-const mapDesign = async (row: Row) => ({
-  id: row.id,
-  styleName: row.style_name,
-  styleCategory: row.style_category,
-  description: row.description,
-  sourcePhotoUrl:
-    cloudinaryAsset(row, 'source') ??
-    (await signedAsset(row.source_asset_key, row.source_photo_url)),
-  generatedPreviewUrl:
-    cloudinaryAsset(row, 'generated') ??
-    (await signedAsset(row.generated_asset_key, row.generated_preview_url)),
-  imageStorage:
-    typeof row.generated_cloudinary_public_id === 'string'
-      ? 'cloudinary'
-      : 'private-object-storage',
-  aiStatus: row.ai_status,
-  generationStatus: row.generation_status ?? null,
-  progress: Number(row.progress ?? (row.ai_status === 'completed' ? 100 : 0)),
-  provider: row.provider ?? null,
-  model: row.model ?? null,
-  errorCode: row.generation_error_code ?? row.ai_error_code ?? null,
-  errorMessage: row.generation_error_message ?? row.ai_error_message ?? null,
-  appointmentId: row.appointment_id,
-  createdAt: iso(row.created_at),
-});
+const mapDesign = async (row: Row) => {
+  const sourceCloudinaryUrl = cloudinaryAsset(row, 'source');
+  const generatedCloudinaryUrl = cloudinaryAsset(row, 'generated');
+  return {
+    id: row.id,
+    styleName: row.style_name,
+    styleCategory: row.style_category,
+    description: row.description,
+    sourcePhotoUrl: sourceCloudinaryUrl ?? (await signedAsset(row, 'source')),
+    generatedPreviewUrl: generatedCloudinaryUrl ?? (await signedAsset(row, 'generated')),
+    imageStorage: generatedCloudinaryUrl === null ? 'private-object-storage' : 'cloudinary',
+    aiStatus: row.ai_status,
+    generationStatus: row.generation_status ?? null,
+    progress: Number(row.progress ?? (row.ai_status === 'completed' ? 100 : 0)),
+    provider: row.provider ?? null,
+    model: row.model ?? null,
+    errorCode: row.generation_error_code ?? row.ai_error_code ?? null,
+    errorMessage: row.generation_error_message ?? row.ai_error_message ?? null,
+    appointmentId: row.appointment_id,
+    createdAt: iso(row.created_at),
+  };
+};
 
 const mapCapture = (row: Row) => ({
   id: row.id,

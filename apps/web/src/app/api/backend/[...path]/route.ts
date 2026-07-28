@@ -21,7 +21,17 @@ const handler = async (request: Request, context: RouteContext): Promise<NextRes
 
   const result = await apiRequest(`/${path.join('/')}${new URL(request.url).search}`, init);
 
-  return NextResponse.json(result.body, { status: result.response.status });
+  const response = NextResponse.json(result.body, { status: result.response.status });
+  if (
+    request.method === 'GET' &&
+    path[0] === 'clients' &&
+    path[1] === 'me' &&
+    path[2] === 'designs'
+  ) {
+    response.headers.set('Cache-Control', 'private, no-store, max-age=0');
+    response.headers.set('Vary', 'Cookie');
+  }
+  return response;
 };
 
 export const GET = handler;

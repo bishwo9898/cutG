@@ -22,6 +22,10 @@ export default function SavedLookDetailPage(): React.ReactElement {
   const design = useQuery({
     queryKey: ['hair-design', designId],
     queryFn: () => clientApi.design<HairDesign>(browserApi, designId),
+    refetchOnMount: 'always',
+    refetchOnReconnect: 'always',
+    refetchOnWindowFocus: 'always',
+    staleTime: 0,
   });
   const remove = useMutation({
     mutationFn: () => clientApi.deleteDesign(browserApi, designId),
@@ -78,6 +82,8 @@ export default function SavedLookDetailPage(): React.ReactElement {
                     <Image
                       alt={`${label} for ${design.data.styleName}`}
                       fill
+                      onError={() => void design.refetch()}
+                      priority
                       sizes="50vw"
                       src={source}
                       unoptimized
@@ -103,6 +109,7 @@ export default function SavedLookDetailPage(): React.ReactElement {
                   <Image
                     alt="Original portrait"
                     fill
+                    onError={() => void design.refetch()}
                     sizes="900px"
                     src={design.data.sourcePhotoUrl}
                     unoptimized
@@ -114,6 +121,7 @@ export default function SavedLookDetailPage(): React.ReactElement {
                     <Image
                       alt="Generated hairstyle"
                       fill
+                      onError={() => void design.refetch()}
                       sizes="900px"
                       src={design.data.generatedPreviewUrl}
                       unoptimized

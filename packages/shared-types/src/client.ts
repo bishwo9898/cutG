@@ -13,6 +13,7 @@ export const BookAppointmentSchema = z
     serviceId: z.string().uuid(),
     availabilitySlotId: z.string().uuid(),
     designId: z.string().uuid().optional(),
+    styleNotes: z.string().trim().max(1000).optional(),
     clientNotes: z.string().trim().max(1000).optional(),
     paymentMethod: AppointmentPaymentMethodEnum.default('CASH'),
   })

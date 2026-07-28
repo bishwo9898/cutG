@@ -21,13 +21,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { HairPhotoUpload, type HairPhotoSelection } from '@/components/client/hair-photo-upload';
 import { ClientHeader } from '@/components/client-header';
 import { Notice } from '@/components/notice';
+import { useSavedHairDesigns } from '@/hooks/use-saved-hair-designs';
+import { useUser } from '@/hooks/use-user';
 import { browserApi } from '@/lib/browser-api';
 import type { HairDesign, HairScan, HairStudioConfig, HairStudioConsent } from '@/lib/contracts';
 import { errorMessage } from '@/lib/errors';
 
 type Phase = 'consent' | 'photo' | 'styles' | 'generating' | 'result';
 type Category = (typeof HAIR_STYLE_CATALOG)[number]['category'];
-type DesignsResponse = { designs: HairDesign[] };
 
 const generationLabel = (status: HairDesign['generationStatus'], progress: number): string => {
   if (status === 'QUEUED') return 'Queued securely';
@@ -43,6 +44,7 @@ const sha256 = async (blob: Blob): Promise<string> => {
 
 export default function HairDesignPage(): React.ReactElement {
   const queryClient = useQueryClient();
+  const { data: user } = useUser();
   const [phase, setPhase] = useState<Phase>('consent');
   const [adult, setAdult] = useState(false);
   const [consent, setConsent] = useState(false);
@@ -64,17 +66,7 @@ export default function HairDesignPage(): React.ReactElement {
     queryFn: () => clientApi.hairStudioConsent<HairStudioConsent>(browserApi),
     retry: false,
   });
-  const designs = useQuery({
-    queryKey: ['hair-designs'],
-    queryFn: () => clientApi.designs<DesignsResponse>(browserApi),
-    retry: false,
-    refetchInterval: (query) =>
-      query.state.data?.designs.some((item) =>
-        ['QUEUED', 'PROCESSING'].includes(item.generationStatus ?? ''),
-      )
-        ? 2000
-        : false,
-  });
+  const designs = useSavedHairDesigns(user?.userType === 'CLIENT' ? user.id : null);
   const design = useQuery({
     queryKey: ['hair-design', designId],
     queryFn: () => clientApi.design<HairDesign>(browserApi, designId as string),
@@ -227,7 +219,7 @@ export default function HairDesignPage(): React.ReactElement {
         </div>
       </section>
 
-      <section className="market-section hair-studio-v2-shell">
+      <section className="market-section hair-studio-v2-shell" id="hair-studio-start">
         <nav className="hair-phase-nav" aria-label="Hair studio progress">
           {['Photo', 'Style', 'Preview'].map((label, index) => {
             const activeIndex =
@@ -563,9 +555,16 @@ export default function HairDesignPage(): React.ReactElement {
         )}
 
         <section className="saved-looks-v2">
-          <div>
-            <p className="eyebrow">Private gallery</p>
-            <h2>Saved looks</h2>
+          <div className="saved-looks-heading">
+            <div>
+              <p className="eyebrow">Private gallery</p>
+              <h2>Saved looks</h2>
+            </div>
+            {designs.isFetching && designs.data !== undefined && (
+              <span className="saved-looks-sync">
+                <Sparkles size={13} /> Checking your gallery…
+              </span>
+            )}
           </div>
           <div className="saved-look-grid-v2">
             {(designs.data?.designs ?? []).map((saved) => (
@@ -579,6 +578,7 @@ export default function HairDesignPage(): React.ReactElement {
                     <Image
                       alt={saved.styleName}
                       fill
+                      onError={() => void designs.refetch()}
                       sizes="240px"
                       src={saved.generatedPreviewUrl}
                       unoptimized
@@ -597,8 +597,31 @@ export default function HairDesignPage(): React.ReactElement {
                 <ArrowUpRight className="saved-look-card-v2-arrow" size={18} />
               </Link>
             ))}
-            {(designs.data?.designs.length ?? 0) === 0 && (
-              <p className="muted">Generated looks will appear here.</p>
+            {designs.isLoading && <p className="muted">Loading your private gallery…</p>}
+            {!designs.isLoading && (designs.data?.designs.length ?? 0) === 0 && (
+              <div className="saved-look-empty-v2">
+                <span>
+                  <Sparkles size={22} />
+                </span>
+                <div>
+                  <strong>You have not saved a look yet.</strong>
+                  <p>
+                    Try AI Hair Studio once, then bring the result directly into your next booking.
+                  </p>
+                </div>
+                <button
+                  className="button button-primary"
+                  onClick={() => {
+                    setPhase('photo');
+                    document
+                      .getElementById('hair-studio-start')
+                      ?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  type="button"
+                >
+                  Create my first look
+                </button>
+              </div>
             )}
           </div>
         </section>
