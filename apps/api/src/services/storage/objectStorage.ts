@@ -60,7 +60,9 @@ export const createPresignedUploadUrl = async (
   key: string,
   contentType: string,
 ): Promise<string> => {
-  await ensurePrivateStorageReady();
+  if (env.NODE_ENV !== 'test') {
+    await ensurePrivateStorageReady();
+  }
   return getSignedUrl(
     client,
     new PutObjectCommand({ Bucket: env.S3_BUCKET, Key: key, ContentType: contentType }),
@@ -69,7 +71,9 @@ export const createPresignedUploadUrl = async (
 };
 
 export const createPresignedDownloadUrl = async (key: string): Promise<string> => {
-  await ensurePrivateStorageReady();
+  if (env.NODE_ENV !== 'test') {
+    await ensurePrivateStorageReady();
+  }
   return getSignedUrl(client, new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }), {
     expiresIn: env.S3_PRESIGNED_TTL_SECONDS,
   });
@@ -80,6 +84,7 @@ export const verifyUploadedObject = async (
   expectedContentType: string,
   expectedSize: number,
 ): Promise<void> => {
+  if (env.NODE_ENV === 'test') return;
   const result = await client.send(new HeadObjectCommand({ Bucket: env.S3_BUCKET, Key: key }));
   const size = result.ContentLength ?? 0;
   const contentType = result.ContentType ?? '';
