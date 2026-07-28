@@ -44,6 +44,25 @@ const toErrorResponse = (
     };
   }
 
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'type' in error &&
+    error.type === 'entity.too.large'
+  ) {
+    return {
+      statusCode: 413,
+      body: {
+        status: 'error',
+        error: 'PAYLOAD_TOO_LARGE',
+        message: 'The uploaded file is too large.',
+        statusCode: 413,
+        code: 'PAYLOAD_TOO_LARGE',
+      },
+      shouldLog: false,
+    };
+  }
+
   const isZodError =
     error instanceof ZodError ||
     (error instanceof Error &&

@@ -66,6 +66,7 @@ export const ServiceSchema = z.object({
   barberId: z.string().uuid(),
   name: z.string().min(1),
   description: NullableStringSchema,
+  imageUrl: z.string().url().nullable(),
   price: z.number().positive(),
   durationMinutes: z.number().int().positive(),
   category: z.string().min(1),

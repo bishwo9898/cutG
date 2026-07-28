@@ -71,6 +71,7 @@ export type BarberService = {
   barberId: string;
   name: string;
   description: string | null;
+  imageUrl: string | null;
   price: number;
   durationMinutes: 15 | 30 | 45 | 60 | 90 | 120;
   category: 'haircut' | 'beard' | 'shave' | 'color' | 'combo' | 'kids' | 'other';
@@ -79,7 +80,7 @@ export type BarberService = {
 
 export type PublicService = Pick<
   BarberService,
-  'id' | 'name' | 'description' | 'price' | 'durationMinutes' | 'category'
+  'id' | 'name' | 'description' | 'imageUrl' | 'price' | 'durationMinutes' | 'category'
 >;
 
 export type PublicSlot = {

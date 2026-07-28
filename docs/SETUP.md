@@ -136,7 +136,10 @@ production.
 
 Do not expose `CLOUDINARY_URL` through a `NEXT_PUBLIC_` variable. Completed looks use authenticated
 Cloudinary assets; the API creates their signed delivery URLs only after client authentication.
-Without these values, the same flow remains functional through private S3/MinIO storage.
+Optional barber service photos use public delivery assets under
+`<CLOUDINARY_FOLDER>/services/<service-id>` so they can appear on public barber profiles.
+Without these values, Hair Studio remains functional through private S3/MinIO storage, while
+service-photo uploads remain unavailable until Cloudinary is configured.
 After adding Cloudinary to an existing test database, migrate any completed looks that still have
 their source files available:
 

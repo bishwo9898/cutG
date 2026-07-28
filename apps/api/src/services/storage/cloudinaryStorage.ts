@@ -89,6 +89,70 @@ export const storePrivateCloudinaryImage = async (
   };
 };
 
+export const storePublicCloudinaryImage = async (
+  image: DownloadedImage,
+  publicId: string,
+): Promise<CloudinaryImage> => {
+  ensureCloudinary();
+  const storageRoot = env.CLOUDINARY_FOLDER.replace(/^\/+|\/+$/g, '');
+  const resolvedPublicId = `${storageRoot}/${publicId.replace(/^\/+/, '')}`;
+  const assetFolder = resolvedPublicId.split('/').slice(0, -1).join('/');
+  const result = await new Promise<UploadApiResponse>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        public_id: resolvedPublicId,
+        asset_folder: assetFolder,
+        resource_type: 'image',
+        type: 'upload',
+        overwrite: true,
+        invalidate: true,
+        unique_filename: false,
+        use_filename: false,
+      },
+      (error, uploaded) => {
+        if (error !== undefined) {
+          reject(error);
+          return;
+        }
+        if (uploaded === undefined) {
+          reject(new Error('Cloudinary did not return an uploaded image.'));
+          return;
+        }
+        resolve(uploaded);
+      },
+    );
+    stream.end(image.body);
+  });
+
+  return {
+    publicId: result.public_id,
+    version: result.version,
+    format: result.format,
+    width: result.width,
+    height: result.height,
+    bytes: result.bytes,
+  };
+};
+
+export const createPublicCloudinaryUrl = (asset: {
+  publicId: string;
+  version?: number | null;
+  format?: string | null;
+}): string => {
+  ensureCloudinary();
+  return cloudinary.url(asset.publicId, {
+    secure: true,
+    resource_type: 'image',
+    type: 'upload',
+    quality: 'auto',
+    fetch_format: 'auto',
+    crop: 'limit',
+    width: 1200,
+    ...(asset.version === undefined || asset.version === null ? {} : { version: asset.version }),
+    ...(asset.format === undefined || asset.format === null ? {} : { format: asset.format }),
+  });
+};
+
 export const createPrivateCloudinaryUrl = (asset: {
   publicId: string;
   version?: number | null;
@@ -110,6 +174,15 @@ export const deletePrivateCloudinaryImage = async (publicId: string): Promise<vo
   await cloudinary.uploader.destroy(publicId, {
     resource_type: 'image',
     type: 'authenticated',
+    invalidate: true,
+  });
+};
+
+export const deletePublicCloudinaryImage = async (publicId: string): Promise<void> => {
+  if (!isCloudinaryEnabled()) return;
+  await cloudinary.uploader.destroy(publicId, {
+    resource_type: 'image',
+    type: 'upload',
     invalidate: true,
   });
 };

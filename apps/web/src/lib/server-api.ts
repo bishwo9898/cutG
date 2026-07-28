@@ -40,7 +40,7 @@ export const apiRequest = async (
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
 
-  if (init.body !== undefined) {
+  if (init.body !== undefined && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 

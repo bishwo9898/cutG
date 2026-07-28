@@ -15,6 +15,7 @@ let barberId = '';
 type LoginBody = { accessToken: string };
 type ProfileBody = { id: string; businessName: string };
 type GenerateBody = { generated: number };
+type ServiceBody = { id: string; imageUrl: string | null };
 
 beforeAll(async () => {
   await resetTestDatabase();
@@ -87,5 +88,41 @@ describe('Phase 2 barber API', () => {
     expect(response.body).not.toHaveProperty('latitude');
     expect(response.body).not.toHaveProperty('address');
     expect(response.body).not.toHaveProperty('stripeAccountId');
+  });
+
+  it('keeps service images optional and rejects unsupported uploads', async () => {
+    const created = await request(app)
+      .post('/barbers/me/services')
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({
+        name: 'Shape up',
+        description: 'Clean edges and neckline.',
+        price: 22,
+        durationMinutes: 30,
+        category: 'haircut',
+      });
+    expect(created.status).toBe(201);
+    const service = created.body as ServiceBody;
+    expect(service.imageUrl).toBeNull();
+
+    const unsupported = await request(app)
+      .post(`/barbers/me/services/${service.id}/image`)
+      .set('Authorization', `Bearer ${barberToken}`)
+      .set('Content-Type', 'image/gif')
+      .send(Buffer.from('not-a-supported-image'));
+    expect(unsupported.status).toBe(415);
+    expect(unsupported.body).toMatchObject({ code: 'UNSUPPORTED_SERVICE_IMAGE' });
+
+    const removed = await request(app)
+      .delete(`/barbers/me/services/${service.id}/image`)
+      .set('Authorization', `Bearer ${barberToken}`);
+    expect(removed.status).toBe(200);
+    expect((removed.body as ServiceBody).imageUrl).toBeNull();
+
+    const publicServices = await request(app).get(`/barbers/${barberId}/services`);
+    expect(publicServices.status).toBe(200);
+    expect(publicServices.body).toMatchObject({
+      services: [expect.objectContaining({ id: service.id, imageUrl: null })],
+    });
   });
 });

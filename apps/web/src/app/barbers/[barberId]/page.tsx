@@ -229,9 +229,16 @@ export default function BarberProfilePage(): React.ReactElement {
             </div>
             <div className="list-stack">
               {(services.data?.services ?? []).map((service) => (
-                <article className="list-row" key={service.id}>
-                  <div>
+                <article
+                  className={`list-row client-service-row${service.imageUrl !== null ? ' has-image' : ''}`}
+                  key={service.id}
+                >
+                  {service.imageUrl !== null && (
+                    <img alt={`${service.name} service`} src={service.imageUrl} />
+                  )}
+                  <div className="client-service-copy">
                     <h3>{service.name}</h3>
+                    {service.description !== null && <p>{service.description}</p>}
                     <p className="muted">
                       {service.durationMinutes} min - {service.category}
                     </p>

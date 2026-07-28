@@ -3,7 +3,19 @@
 import { CreateServiceSchema } from '@barber-saas/shared-types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, Pencil, Plus, Scissors, Trash2, X } from 'lucide-react';
+import {
+  Archive,
+  Camera,
+  Check,
+  ChevronDown,
+  Clock3,
+  ImagePlus,
+  Pencil,
+  Plus,
+  Scissors,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
@@ -26,6 +38,29 @@ const categories: Array<{ value: ServiceCategory; label: string }> = [
   { value: 'kids', label: 'Kids' },
   { value: 'other', label: 'Other' },
 ];
+const supportedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
+const maxImageSizeBytes = 5 * 1024 * 1024;
+
+const serviceImageRequest = async (
+  serviceId: string,
+  method: 'POST' | 'DELETE',
+  file?: File,
+): Promise<BarberService> => {
+  const response = await fetch(`/api/backend/barbers/me/services/${serviceId}/image`, {
+    method,
+    ...(file === undefined
+      ? {}
+      : {
+          body: file,
+          headers: { 'Content-Type': file.type },
+        }),
+  });
+  const body = (await response.json()) as BarberService & { message?: string };
+  if (!response.ok) {
+    throw new Error(body.message ?? 'The service image could not be updated.');
+  }
+  return body;
+};
 
 export default function ServicesPage(): React.ReactElement {
   const queryClient = useQueryClient();
@@ -33,6 +68,11 @@ export default function ServicesPage(): React.ReactElement {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createCategory, setCreateCategory] = useState<ServiceCategory>('haircut');
   const [visibleCategory, setVisibleCategory] = useState<ServiceCategory | 'all'>('all');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [serviceActive, setServiceActive] = useState(true);
   const services = useQuery({
     queryKey: ['services'],
     queryFn: () => browserApi.get<ServiceResponse>('/barbers/me/services'),
@@ -56,38 +96,113 @@ export default function ServicesPage(): React.ReactElement {
         durationMinutes: editing.durationMinutes,
         category: editing.category,
       });
+      setServiceActive(editing.isActive);
     } else {
       reset({ name: '', description: '', price: 0, durationMinutes: 30, category: createCategory });
+      setServiceActive(true);
     }
   }, [createCategory, editing, reset]);
 
+  useEffect(() => {
+    if (imageFile === null) {
+      setImagePreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(imageFile);
+    setImagePreviewUrl(objectUrl);
+    return (): void => URL.revokeObjectURL(objectUrl);
+  }, [imageFile]);
+
   const save = useMutation({
-    mutationFn: (values: FormValues) =>
-      editing === null
-        ? browserApi.post<BarberService>('/barbers/me/services', values)
-        : browserApi.patch<BarberService>(`/barbers/me/services/${editing.id}`, values),
+    mutationFn: async (values: FormValues) => {
+      let service =
+        editing === null
+          ? await browserApi.post<BarberService>('/barbers/me/services', values)
+          : await browserApi.patch<BarberService>(`/barbers/me/services/${editing.id}`, {
+              ...values,
+              isActive: serviceActive,
+            });
+
+      try {
+        if (editing !== null && removeImage && imageFile === null && editing.imageUrl !== null) {
+          service = await serviceImageRequest(service.id, 'DELETE');
+        }
+        if (imageFile !== null) {
+          service = await serviceImageRequest(service.id, 'POST', imageFile);
+        }
+      } catch (error) {
+        if (editing === null) {
+          setEditing(service);
+          await queryClient.invalidateQueries({ queryKey: ['services'] });
+        }
+        throw error;
+      }
+      return service;
+    },
     onSuccess: async () => {
       setDrawerOpen(false);
       setEditing(null);
-      await queryClient.invalidateQueries({ queryKey: ['services'] });
+      setImageFile(null);
+      setRemoveImage(false);
+      setImageError(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['services'] }),
+        queryClient.invalidateQueries({ queryKey: ['public-services'] }),
+        queryClient.invalidateQueries({ queryKey: ['public-barber-services'] }),
+      ]);
     },
   });
 
   const deactivate = useMutation({
     mutationFn: (id: string) => browserApi.delete(`/barbers/me/services/${id}`),
-    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ['services'] }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['services'] }),
+        queryClient.invalidateQueries({ queryKey: ['public-services'] }),
+        queryClient.invalidateQueries({ queryKey: ['public-barber-services'] }),
+      ]);
+    },
   });
 
   const openCreate = (category: ServiceCategory = 'haircut'): void => {
     setCreateCategory(category);
     setEditing(null);
+    setImageFile(null);
+    setRemoveImage(false);
+    setImageError(null);
     setDrawerOpen(true);
   };
 
   const openEdit = (service: BarberService): void => {
     setEditing(service);
+    setImageFile(null);
+    setRemoveImage(false);
+    setImageError(null);
     setDrawerOpen(true);
   };
+
+  const selectImage = (file: File | undefined): void => {
+    if (file === undefined) return;
+    if (!supportedImageTypes.includes(file.type)) {
+      setImageError('Choose a JPEG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > maxImageSizeBytes) {
+      setImageError('Choose an image smaller than 5 MB.');
+      return;
+    }
+    setImageError(null);
+    setRemoveImage(false);
+    setImageFile(file);
+  };
+
+  const allServices = services.data?.services ?? [];
+  const activeServices = allServices.filter((service) => service.isActive);
+  const inactiveServices = allServices.filter((service) => !service.isActive);
+  const visibleServices = activeServices.filter(
+    (service) => visibleCategory === 'all' || service.category === visibleCategory,
+  );
+  const displayedImageUrl = imagePreviewUrl ?? (removeImage ? null : (editing?.imageUrl ?? null));
 
   return (
     <main className="page">
@@ -123,114 +238,125 @@ export default function ServicesPage(): React.ReactElement {
         </section>
       ) : (
         <>
-          <nav className="service-category-pills" aria-label="Service categories">
-            <button
-              className={visibleCategory === 'all' ? 'is-active' : ''}
-              onClick={() => setVisibleCategory('all')}
-              type="button"
-            >
-              All {services.data.services.filter((service) => service.isActive).length}
-            </button>
-            {categories.map((category) => (
-              <button
-                className={visibleCategory === category.value ? 'is-active' : ''}
-                key={category.value}
-                onClick={() => setVisibleCategory(category.value)}
-                type="button"
-              >
-                {category.label}{' '}
-                {
-                  services.data.services.filter(
-                    (service) => service.isActive && service.category === category.value,
-                  ).length
-                }
-              </button>
-            ))}
-          </nav>
-          <div className="categorized-services">
-            {categories
-              .filter((category) => visibleCategory === 'all' || visibleCategory === category.value)
-              .map((category) => {
-                const items = services.data.services.filter(
-                  (service) => service.isActive && service.category === category.value,
-                );
-                return (
-                  <section
-                    className="service-category-section"
-                    id={`services-${category.value}`}
-                    key={category.value}
-                  >
-                    <div className="service-category-heading">
-                      <div>
-                        <h2>{category.label}</h2>
-                        <span>{items.length} active</span>
-                      </div>
-                      <button
-                        className="button button-ghost"
-                        onClick={() => openCreate(category.value)}
-                        type="button"
-                      >
-                        <Plus size={15} /> Add {category.label.toLowerCase()}
-                      </button>
-                    </div>
-                    {items.length === 0 ? (
-                      <p className="empty-category-copy">
-                        No {category.label.toLowerCase()} services yet.
-                      </p>
-                    ) : (
-                      items.map((service) => (
-                        <article className="service-menu-row" key={service.id}>
-                          <div>
-                            <strong>{service.name}</strong>
-                            <span>{service.description ?? 'No description added yet.'}</span>
-                          </div>
-                          <span>{service.durationMinutes} min</span>
-                          <strong>${service.price.toFixed(2)}</strong>
-                          <span className="badge badge-success">Active</span>
-                          <div className="service-row-actions">
-                            <button
-                              className="icon-button"
-                              aria-label={`Edit ${service.name}`}
-                              onClick={() => openEdit(service)}
-                              type="button"
-                            >
-                              <Pencil size={15} />
-                            </button>
-                            <button
-                              className="icon-button danger"
-                              aria-label={`Deactivate ${service.name}`}
-                              disabled={deactivate.isPending}
-                              onClick={() => deactivate.mutate(service.id)}
-                              type="button"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </article>
-                      ))
-                    )}
-                  </section>
-                );
-              })}
-            {services.data.services.some((service) => !service.isActive) && (
-              <details className="inactive-services">
-                <summary>
-                  <ChevronDown size={16} /> Inactive services (
-                  {services.data.services.filter((service) => !service.isActive).length})
-                </summary>
-                {services.data.services
-                  .filter((service) => !service.isActive)
-                  .map((service) => (
-                    <button key={service.id} onClick={() => openEdit(service)} type="button">
-                      <span>{service.name}</span>
-                      <small>
-                        {service.category} · ${service.price.toFixed(2)}
-                      </small>
+          <section className="service-manager">
+            <div className="service-manager-toolbar">
+              <div>
+                <strong>{activeServices.length} active services</strong>
+                <span>Changes appear on your public profile immediately.</span>
+              </div>
+              <nav className="service-category-pills" aria-label="Filter services by category">
+                <button
+                  className={visibleCategory === 'all' ? 'is-active' : ''}
+                  onClick={() => setVisibleCategory('all')}
+                  type="button"
+                >
+                  All {activeServices.length}
+                </button>
+                {categories
+                  .map((category) => ({
+                    ...category,
+                    count: activeServices.filter((service) => service.category === category.value)
+                      .length,
+                  }))
+                  .filter((category) => category.count > 0 || category.value === visibleCategory)
+                  .map((category) => (
+                    <button
+                      className={visibleCategory === category.value ? 'is-active' : ''}
+                      key={category.value}
+                      onClick={() => setVisibleCategory(category.value)}
+                      type="button"
+                    >
+                      {category.label} {category.count}
                     </button>
                   ))}
+              </nav>
+            </div>
+
+            {visibleServices.length === 0 ? (
+              <div className="service-filter-empty">
+                <Scissors size={22} />
+                <strong>No active services in this category</strong>
+                <button
+                  className="button button-secondary"
+                  onClick={() =>
+                    openCreate(visibleCategory === 'all' ? 'haircut' : visibleCategory)
+                  }
+                  type="button"
+                >
+                  <Plus size={15} /> Add service
+                </button>
+              </div>
+            ) : (
+              <div className="service-manager-grid">
+                {visibleServices.map((service) => (
+                  <article className="service-manager-card" key={service.id}>
+                    {service.imageUrl !== null && (
+                      <img alt={`${service.name} service`} src={service.imageUrl} />
+                    )}
+                    <div className="service-manager-card-body">
+                      <div className="service-manager-card-heading">
+                        <span>
+                          {categories.find((item) => item.value === service.category)?.label}
+                        </span>
+                        <span className="badge badge-success">
+                          <Check size={12} /> Active
+                        </span>
+                      </div>
+                      <h2>{service.name}</h2>
+                      {service.description !== null && <p>{service.description}</p>}
+                      <div className="service-manager-meta">
+                        <strong>${service.price.toFixed(2)}</strong>
+                        <span>
+                          <Clock3 size={14} /> {service.durationMinutes} min
+                        </span>
+                      </div>
+                    </div>
+                    <div className="service-manager-actions">
+                      <button
+                        className="button button-secondary"
+                        onClick={() => openEdit(service)}
+                        type="button"
+                      >
+                        <Pencil size={15} /> Edit
+                      </button>
+                      <button
+                        className="button button-ghost service-archive-button"
+                        disabled={deactivate.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Archive ${service.name}? Clients will no longer be able to book it.`,
+                            )
+                          ) {
+                            deactivate.mutate(service.id);
+                          }
+                        }}
+                        type="button"
+                      >
+                        <Archive size={15} /> Archive
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {inactiveServices.length > 0 && (
+              <details className="inactive-services">
+                <summary>
+                  <ChevronDown size={16} /> Inactive services ({inactiveServices.length})
+                </summary>
+                {inactiveServices.map((service) => (
+                  <button key={service.id} onClick={() => openEdit(service)} type="button">
+                    <span>{service.name}</span>
+                    <small>
+                      {service.category} · ${service.price.toFixed(2)} · Edit to reactivate
+                    </small>
+                  </button>
+                ))}
               </details>
             )}
-          </div>
+          </section>
         </>
       )}
       {drawerOpen && (
@@ -249,6 +375,50 @@ export default function ServicesPage(): React.ReactElement {
             </div>
             <form className="form-stack" onSubmit={handleSubmit((values) => save.mutate(values))}>
               {save.isError && <Notice>{errorMessage(save.error)}</Notice>}
+              <div className="service-image-field">
+                <div className="field-label-row">
+                  <label>Service photo</label>
+                  <span>Optional · JPEG, PNG, or WebP · 5 MB max</span>
+                </div>
+                {displayedImageUrl === null ? (
+                  <label className="service-image-picker">
+                    <ImagePlus size={24} />
+                    <strong>Add a service photo</strong>
+                    <span>Help clients understand the result at a glance.</span>
+                    <input
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(event) => selectImage(event.target.files?.[0])}
+                      type="file"
+                    />
+                  </label>
+                ) : (
+                  <div className="service-image-preview">
+                    <img alt="Service preview" src={displayedImageUrl} />
+                    <div>
+                      <label className="button button-secondary">
+                        <Camera size={15} /> Replace
+                        <input
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={(event) => selectImage(event.target.files?.[0])}
+                          type="file"
+                        />
+                      </label>
+                      <button
+                        className="button button-ghost"
+                        onClick={() => {
+                          setImageFile(null);
+                          setRemoveImage(true);
+                          setImageError(null);
+                        }}
+                        type="button"
+                      >
+                        <Trash2 size={15} /> Remove
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {imageError !== null && <span className="field-error">{imageError}</span>}
+              </div>
               <div className="field">
                 <label htmlFor="name">Service name</label>
                 <input id="name" className="input" {...register('name')} />
@@ -302,9 +472,26 @@ export default function ServicesPage(): React.ReactElement {
                   <option value="other">Other</option>
                 </select>
               </div>
+              {editing !== null && (
+                <label className="service-active-toggle">
+                  <input
+                    checked={serviceActive}
+                    onChange={(event) => setServiceActive(event.target.checked)}
+                    type="checkbox"
+                  />
+                  <span>
+                    <strong>Active and bookable</strong>
+                    <small>Turn this on to show the service to clients.</small>
+                  </span>
+                </label>
+              )}
               <button className="button button-primary" disabled={save.isPending} type="submit">
                 <Scissors size={17} />
-                {save.isPending ? 'Saving...' : 'Save service'}
+                {save.isPending
+                  ? imageFile === null
+                    ? 'Saving...'
+                    : 'Uploading image...'
+                  : 'Save service'}
               </button>
             </form>
           </aside>

@@ -27,6 +27,7 @@ import {
 } from '@barber-saas/shared-types';
 import {
   Router,
+  raw,
   type NextFunction,
   type Request,
   type RequestHandler,
@@ -35,6 +36,7 @@ import {
 } from 'express';
 
 import { requireAuth, requireRoles } from '../middleware/auth';
+import { AppError } from '../middleware/errorHandler';
 import { requireSubscriptionTier } from '../middleware/subscriptionGate';
 import {
   blockDate,
@@ -51,11 +53,13 @@ import {
   listAppointments,
   listBlockedDates,
   listOfferings,
+  removeOfferingImage,
   listSlots,
   setSchedule,
   unblockDate,
   updateAppointmentStatus,
   updateOffering,
+  uploadOfferingImage,
   updatePhoto,
   updateProfile,
 } from '../services/barber/barberService';
@@ -192,6 +196,35 @@ barberRouter.patch(
     response.json(
       await updateOffering(userId(request), serviceId, UpdateServiceSchema.parse(request.body)),
     );
+  }),
+);
+barberRouter.post(
+  '/me/services/:serviceId/image',
+  raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '5mb' }),
+  asyncHandler(async (request, response) => {
+    const { serviceId } = ServiceParamsSchema.parse(request.params);
+    if (!Buffer.isBuffer(request.body) || request.body.length === 0) {
+      throw new AppError(
+        415,
+        'A JPEG, PNG, or WebP service image is required.',
+        'UNSUPPORTED_SERVICE_IMAGE',
+      );
+    }
+    const contentType = request.headers['content-type']?.split(';')[0] ?? '';
+    response.json(
+      await uploadOfferingImage(userId(request), serviceId, {
+        body: request.body,
+        contentType,
+        sizeBytes: request.body.length,
+      }),
+    );
+  }),
+);
+barberRouter.delete(
+  '/me/services/:serviceId/image',
+  asyncHandler(async (request, response) => {
+    const { serviceId } = ServiceParamsSchema.parse(request.params);
+    response.json(await removeOfferingImage(userId(request), serviceId));
   }),
 );
 barberRouter.delete(

@@ -2,7 +2,7 @@
 
 import { ApiError } from '@barber-saas/api-client';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarCheck, CircleDollarSign, Scissors, Star, UserRoundPlus } from 'lucide-react';
+import { CalendarCheck, Scissors, Star, UserRoundPlus } from 'lucide-react';
 import Link from 'next/link';
 
 import { EmptyState, ErrorState, LoadingState } from '@/components/query-states';
@@ -74,11 +74,6 @@ export default function DashboardPage(): React.ReactElement {
 
   const nextAppointments = appointments.data?.appointments ?? [];
   const activeServices = services.data?.services.filter((service) => service.isActive).length ?? 0;
-  const projectedRevenue = nextAppointments.reduce(
-    (total, appointment) => total + appointment.priceQuoted,
-    0,
-  );
-
   return (
     <main className="page">
       <div className="page-header">
@@ -90,7 +85,7 @@ export default function DashboardPage(): React.ReactElement {
           View public profile
         </Link>
       </div>
-      <section className="stats-grid" aria-label="Business summary">
+      <section className="stats-grid dashboard-summary-grid" aria-label="Business summary">
         <div className="stat">
           <div className="stat-icon">
             <CalendarCheck size={18} />
@@ -104,13 +99,6 @@ export default function DashboardPage(): React.ReactElement {
           </div>
           <div className="stat-value">{activeServices}</div>
           <div className="stat-label">Active services</div>
-        </div>
-        <div className="stat">
-          <div className="stat-icon">
-            <CircleDollarSign size={18} />
-          </div>
-          <div className="stat-value">${projectedRevenue.toFixed(0)}</div>
-          <div className="stat-label">Value of upcoming list</div>
         </div>
         <div className="stat">
           <div className="stat-icon">

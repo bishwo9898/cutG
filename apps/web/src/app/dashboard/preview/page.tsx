@@ -77,16 +77,24 @@ export default function PreviewPage(): React.ReactElement {
           ) : (
             <div className="service-grid">
               {services.data?.services.map((service) => (
-                <article className="service-card" key={service.id}>
-                  <Scissors size={19} />
-                  <h3>{service.name}</h3>
-                  <p>{service.description ?? 'A precise service, tailored to you.'}</p>
-                  <div className="service-meta">
-                    <span>${service.price.toFixed(2)}</span>
-                    <span>
-                      <Clock3 size={14} style={{ display: 'inline', marginRight: 4 }} />
-                      {service.durationMinutes} min
-                    </span>
+                <article
+                  className={`service-card${service.imageUrl !== null ? ' has-image' : ''}`}
+                  key={service.id}
+                >
+                  {service.imageUrl !== null && (
+                    <img alt={`${service.name} service`} src={service.imageUrl} />
+                  )}
+                  <div className="service-card-content">
+                    <Scissors size={19} />
+                    <h3>{service.name}</h3>
+                    <p>{service.description ?? 'A precise service, tailored to you.'}</p>
+                    <div className="service-meta">
+                      <span>${service.price.toFixed(2)}</span>
+                      <span>
+                        <Clock3 size={14} style={{ display: 'inline', marginRight: 4 }} />
+                        {service.durationMinutes} min
+                      </span>
+                    </div>
                   </div>
                 </article>
               ))}

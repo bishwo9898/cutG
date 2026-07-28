@@ -19,7 +19,14 @@ import {
   getTravelBufferSlotTimes,
 } from '../../utils/travelBuffer';
 import { releaseTravelBufferSlots } from '../mobile/bufferSlotService';
+import {
+  createPublicCloudinaryUrl,
+  deletePublicCloudinaryImage,
+  isCloudinaryEnabled,
+  storePublicCloudinaryImage,
+} from '../storage/cloudinaryStorage';
 import { createPresignedDownloadUrl } from '../storage/objectStorage';
+import type { DownloadedImage } from '../storage/objectStorage';
 
 type Row = Record<string, unknown>;
 type AppointmentFilters = z.infer<typeof AppointmentFilterSchema>;
@@ -70,6 +77,7 @@ const mapService = (row: Row) => ({
   barberId: row.barber_id,
   name: row.name,
   description: row.description,
+  imageUrl: row.image_url,
   price: Number(row.price),
   durationMinutes: row.duration_minutes,
   category: row.category,
@@ -253,6 +261,53 @@ export const deactivateOffering = async (userId: string, serviceId: string) => {
   await requireOffering(userId, serviceId);
   await query('UPDATE services SET is_active = false WHERE id = $1', [serviceId]);
   return { message: 'Service deactivated successfully.', serviceId };
+};
+
+export const uploadOfferingImage = async (
+  userId: string,
+  serviceId: string,
+  image: DownloadedImage,
+) => {
+  await requireOffering(userId, serviceId);
+  if (!isCloudinaryEnabled()) {
+    throw new AppError(
+      503,
+      'Service image uploads are temporarily unavailable.',
+      'CLOUDINARY_NOT_CONFIGURED',
+    );
+  }
+
+  const uploaded = await storePublicCloudinaryImage(image, `services/${serviceId}`);
+  const imageUrl = createPublicCloudinaryUrl(uploaded);
+  const rows = await query<Row>(
+    `UPDATE services
+     SET image_url=$1,image_cloudinary_public_id=$2,image_cloudinary_version=$3,
+         image_cloudinary_format=$4
+     WHERE id=$5
+     RETURNING *`,
+    [imageUrl, uploaded.publicId, uploaded.version, uploaded.format, serviceId],
+  );
+  return mapService(rows[0] as Row);
+};
+
+export const removeOfferingImage = async (userId: string, serviceId: string) => {
+  const service = await requireOffering(userId, serviceId);
+  const publicId =
+    typeof service.image_cloudinary_public_id === 'string'
+      ? service.image_cloudinary_public_id
+      : null;
+
+  await query(
+    `UPDATE services
+     SET image_url=NULL,image_cloudinary_public_id=NULL,image_cloudinary_version=NULL,
+         image_cloudinary_format=NULL
+     WHERE id=$1`,
+    [serviceId],
+  );
+  if (publicId !== null) {
+    await deletePublicCloudinaryImage(publicId);
+  }
+  return mapService(await requireOffering(userId, serviceId));
 };
 
 const mapSchedule = (row: Row) => ({
@@ -692,6 +747,7 @@ export const getPublicOfferings = async (barberId: string) => {
         id: service.id,
         name: service.name,
         description: service.description,
+        imageUrl: service.imageUrl,
         price: service.price,
         durationMinutes: service.durationMinutes,
         category: service.category,

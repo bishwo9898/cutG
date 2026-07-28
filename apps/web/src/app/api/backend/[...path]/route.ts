@@ -9,10 +9,13 @@ type RouteContext = {
 const handler = async (request: Request, context: RouteContext): Promise<NextResponse> => {
   const { path } = await context.params;
   const body =
-    request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.text();
+    request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.arrayBuffer();
   const init: RequestInit = { method: request.method };
 
   if (body !== undefined) {
+    init.headers = {
+      'Content-Type': request.headers.get('content-type') ?? 'application/json',
+    };
     init.body = body;
   }
 
