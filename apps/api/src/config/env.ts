@@ -51,6 +51,20 @@ const booleanFromEnvironment = z.preprocess((value) => {
   return value;
 }, z.boolean());
 
+export const isCompleteCloudinaryUrl = (value: string): boolean => {
+  try {
+    const parsed = new URL(value.trim());
+    return (
+      parsed.protocol.toLowerCase() === 'cloudinary:' &&
+      parsed.username.length > 0 &&
+      parsed.password.length > 0 &&
+      parsed.hostname.length > 0
+    );
+  } catch {
+    return false;
+  }
+};
+
 const EnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -86,7 +100,7 @@ const EnvSchema = z
     S3_SECRET_ACCESS_KEY: z.string().min(8).default('cutg-local-secret'),
     S3_FORCE_PATH_STYLE: booleanFromEnvironment.default(true),
     S3_PRESIGNED_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(600),
-    CLOUDINARY_URL: z.string().default(''),
+    CLOUDINARY_URL: z.string().trim().default(''),
     CLOUDINARY_FOLDER: z.string().trim().min(1).default('cutg'),
     AI_PROVIDER: z.enum(['mock', 'fal']).default('mock'),
     AI_SERVICE_URL: z.string().url().default('http://localhost:8000'),
@@ -104,16 +118,6 @@ const EnvSchema = z
     ENABLE_AI_FEATURES: booleanFromEnvironment.default(false),
   })
   .superRefine((value, context) => {
-    if (
-      value.CLOUDINARY_URL.length > 0 &&
-      !value.CLOUDINARY_URL.toLowerCase().startsWith('cloudinary://')
-    ) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['CLOUDINARY_URL'],
-        message: 'CLOUDINARY_URL must begin with cloudinary://.',
-      });
-    }
     if (value.NODE_ENV !== 'production') return;
 
     const loopbackHosts = new Set(['localhost', '127.0.0.1', '::1']);
@@ -140,6 +144,14 @@ const EnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ['WEB_APP_URL'],
         message: 'WEB_APP_URL must use HTTPS in production.',
+      });
+    }
+    if (value.CLOUDINARY_URL.length > 0 && !isCompleteCloudinaryUrl(value.CLOUDINARY_URL)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CLOUDINARY_URL'],
+        message:
+          'CLOUDINARY_URL must be the complete cloudinary://API_KEY:API_SECRET@CLOUD_NAME value.',
       });
     }
     if (value.EMAIL_PROVIDER === 'sendgrid') {
@@ -184,3 +196,11 @@ const EnvSchema = z
 export type Env = z.infer<typeof EnvSchema>;
 
 export const env: Env = EnvSchema.parse(process.env);
+
+// The Cloudinary SDK eagerly parses CLOUDINARY_URL when it is imported. Keep the original value in
+// our typed environment so development can report a useful warning, but remove an incomplete value
+// from the process environment before the optional SDK is loaded. Production has already rejected
+// the same value above.
+if (!isCompleteCloudinaryUrl(env.CLOUDINARY_URL)) {
+  delete process.env.CLOUDINARY_URL;
+}

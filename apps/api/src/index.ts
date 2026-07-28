@@ -5,7 +5,15 @@ import { APP_NAME, SHUTDOWN_GRACE_PERIOD_MS } from './config/constants';
 import { closeDatabase } from './config/database';
 import { env } from './config/env';
 import { maintainHairStudio } from './services/design/hairStudioService';
+import { isCloudinaryEnabled } from './services/storage/cloudinaryStorage';
 import { logger } from './utils/logger';
+
+if (env.CLOUDINARY_URL.length > 0 && !isCloudinaryEnabled()) {
+  logger.warn('Cloudinary is disabled because CLOUDINARY_URL is incomplete', {
+    action:
+      'Copy the complete cloudinary://API_KEY:API_SECRET@CLOUD_NAME value from Cloudinary, or leave CLOUDINARY_URL empty to use local MinIO.',
+  });
+}
 
 const server: Server = app.listen(env.PORT, env.HOST, (): void => {
   logger.info(`${APP_NAME} started`, {

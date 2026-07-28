@@ -2,7 +2,7 @@ SHELL := /bin/sh
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup up down restart status logs migrate seed dev test reset wait-for-postgres ai-install ai-dev ai-worker ai-test
+.PHONY: help setup up down restart status logs migrate seed dev field-test-prepare field-test field-test-smoke test reset wait-for-postgres ai-install ai-dev ai-worker ai-test
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -39,6 +39,15 @@ seed: ## Recreate development seed data
 
 dev: ## Start the API, web, and AI worker development servers
 	pnpm dev
+
+field-test-prepare: ## Reset the two temporary test accounts and mobile appointment
+	pnpm field-test:prepare
+
+field-test: ## Run the mobile-operations test stack through a temporary HTTPS tunnel
+	pnpm field-test
+
+field-test-smoke: ## Exercise the two-role status and GPS workflow against the running API
+	pnpm field-test:smoke
 
 ai-install: ## Create the Python environment and install AI service dependencies
 	python3 -m venv services/ai/.venv

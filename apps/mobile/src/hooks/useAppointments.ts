@@ -31,7 +31,7 @@ export const useBarberLocation = (
     queryKey: ['appointments', 'barber-location', appointmentId],
     queryFn: () => mobileApi.client.barberLocation(appointmentId),
     enabled: active && appointmentId.length > 0,
-    refetchInterval: active ? 15_000 : false,
+    refetchInterval: active ? 5_000 : false,
   });
 
 export const useBookAppointment = (): UseMutationResult<

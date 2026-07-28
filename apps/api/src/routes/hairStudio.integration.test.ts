@@ -229,11 +229,23 @@ describe('AI Hair Studio API', () => {
       .set('X-CutG-AI-Secret', env.AI_INTERNAL_SECRET)
       .send({});
     expect(started.status).toBe(200);
+    const progressed = await request(app)
+      .post(`/internal/ai/generations/${generationId}/progress`)
+      .set('X-CutG-AI-Secret', env.AI_INTERNAL_SECRET)
+      .send({ progress: 45 });
+    expect(progressed.status).toBe(200);
+    expect(progressed.body).toMatchObject({ accepted: true, progress: 45 });
+    const staleProgress = await request(app)
+      .post(`/internal/ai/generations/${generationId}/progress`)
+      .set('X-CutG-AI-Secret', env.AI_INTERNAL_SECRET)
+      .send({ progress: 30 });
+    expect(staleProgress.status).toBe(200);
+    expect(staleProgress.body).toMatchObject({ accepted: true, progress: 45 });
     const row = await pool.query<{ status: string; progress: number }>(
       'SELECT status,progress FROM hair_design_generations WHERE id=$1',
       [generationId],
     );
-    expect(row.rows[0]).toMatchObject({ status: 'PROCESSING', progress: 15 });
+    expect(row.rows[0]).toMatchObject({ status: 'PROCESSING', progress: 45 });
   });
 
   it('retries a failed generation on the same saved design', async () => {

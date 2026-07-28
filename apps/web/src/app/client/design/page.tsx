@@ -29,13 +29,12 @@ type Phase = 'consent' | 'photo' | 'styles' | 'generating' | 'result';
 type Category = (typeof HAIR_STYLE_CATALOG)[number]['category'];
 type DesignsResponse = { designs: HairDesign[] };
 
-const loadingMessages = [
-  'Analyzing your face shape…',
-  'Understanding your features…',
-  'Applying your selected style…',
-  'Blending the edges…',
-  'Adding final touches…',
-];
+const generationLabel = (status: HairDesign['generationStatus'], progress: number): string => {
+  if (status === 'QUEUED') return 'Queued securely';
+  if (progress >= 85) return 'Saving your preview';
+  if (progress >= 45) return 'Generating your preview';
+  return 'Preparing your requested edit';
+};
 
 const sha256 = async (blob: Blob): Promise<string> => {
   const hash = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
@@ -54,7 +53,6 @@ export default function HairDesignPage(): React.ReactElement {
   const [designId, setDesignId] = useState<string | null>(null);
   const [comparison, setComparison] = useState(50);
   const [message, setMessage] = useState<string | null>(null);
-  const [loadingMessage, setLoadingMessage] = useState(0);
 
   const config = useQuery({
     queryKey: ['hair-studio-config'],
@@ -96,15 +94,6 @@ export default function HairDesignPage(): React.ReactElement {
       setPhase((currentPhase) => (currentPhase === 'consent' ? 'photo' : currentPhase));
     }
   }, [consentStatus.data?.accepted]);
-  useEffect((): (() => void) | undefined => {
-    if (phase !== 'generating') return;
-    const timer = window.setInterval(
-      () => setLoadingMessage((currentMessage) => (currentMessage + 1) % loadingMessages.length),
-      1800,
-    );
-    return (): void => window.clearInterval(timer);
-  }, [phase]);
-
   const selectedStyle = useMemo(
     () => HAIR_STYLE_CATALOG.find((style) => style.id === selectedStyleId),
     [selectedStyleId],
@@ -213,6 +202,7 @@ export default function HairDesignPage(): React.ReactElement {
     retry.error ??
     remove.error;
   const current = design.data;
+  const generationProgress = Math.min(100, Math.max(0, current?.progress ?? 0));
 
   return (
     <main className="market-page hair-studio-page hair-studio-v2">
@@ -421,14 +411,22 @@ export default function HairDesignPage(): React.ReactElement {
               <>
                 <Sparkles size={34} />
                 <p className="eyebrow">AI visualization in progress</p>
-                <h2>{loadingMessages[loadingMessage]}</h2>
+                <h2>{generationLabel(current?.generationStatus ?? null, generationProgress)}</h2>
                 <p>
-                  Keeping your identity. Reworking only the requested details. This page updates
-                  automatically.
+                  This bar advances only when the generation service completes a real processing
+                  milestone.
                 </p>
-                <div className="hair-progress">
-                  <span style={{ width: `${Math.max(8, current?.progress ?? 8)}%` }} />
+                <div
+                  aria-label="AI generation progress"
+                  aria-valuemax={100}
+                  aria-valuemin={0}
+                  aria-valuenow={generationProgress}
+                  className="hair-progress"
+                  role="progressbar"
+                >
+                  <span style={{ width: `${generationProgress}%` }} />
                 </div>
+                <strong className="hair-progress-value">{generationProgress}%</strong>
               </>
             )}
           </section>

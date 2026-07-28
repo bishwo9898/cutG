@@ -25,7 +25,7 @@ import { colors, spacing, typography } from '@/theme';
 export default function ClientAppointmentDetailScreen(): React.ReactElement {
   const { appointmentId = '' } = useLocalSearchParams<{ appointmentId?: string }>();
   const appointment = useClientAppointment(appointmentId);
-  const statusUpdates = useAppointmentStatus(appointmentId, appointment.data?.scheduledDate);
+  const statusUpdates = useAppointmentStatus(appointmentId);
   const payment = usePaymentStatus(appointmentId);
   const cancelAppointment = useCancelAppointment();
   const review = useCreateReview();
@@ -34,6 +34,7 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
   const [comment, setComment] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const pulse = useRef(new Animated.Value(0.35)).current;
+  const map = useRef<MapView | null>(null);
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -68,6 +69,42 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
   const item = appointment.data;
   const timeline = statusUpdates.data;
   const barberLocation = useBarberLocation(appointmentId, timeline?.currentStatus === 'ON_THE_WAY');
+
+  useEffect(() => {
+    if (
+      timeline?.currentStatus !== undefined &&
+      item?.status !== undefined &&
+      timeline.currentStatus !== item.status
+    ) {
+      void appointment.refetch();
+    }
+  }, [appointment, item?.status, timeline?.currentStatus]);
+
+  useEffect(() => {
+    if (
+      barberLocation.data?.isTracking !== true ||
+      item?.serviceAddress?.latitude == null ||
+      item.serviceAddress.longitude == null
+    ) {
+      return;
+    }
+    map.current?.fitToCoordinates(
+      [
+        {
+          latitude: barberLocation.data.lastPing.latitude,
+          longitude: barberLocation.data.lastPing.longitude,
+        },
+        {
+          latitude: item.serviceAddress.latitude,
+          longitude: item.serviceAddress.longitude,
+        },
+      ],
+      {
+        animated: true,
+        edgePadding: { top: 56, right: 56, bottom: 56, left: 56 },
+      },
+    );
+  }, [barberLocation.data, item?.serviceAddress?.latitude, item?.serviceAddress?.longitude]);
 
   return (
     <Screen
@@ -147,6 +184,7 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
               </View>
               {item.serviceAddress?.latitude != null && item.serviceAddress.longitude != null ? (
                 <MapView
+                  ref={map}
                   style={styles.map}
                   initialRegion={{
                     latitude: item.serviceAddress.latitude,

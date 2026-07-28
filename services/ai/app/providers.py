@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import os
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from io import BytesIO
 
@@ -22,6 +23,14 @@ class ProviderResult:
     estimated_cost_cents: float
 
 
+ProgressCallback = Callable[[int], None]
+
+
+def _report_progress(callback: ProgressCallback | None, progress: int) -> None:
+    if callback is not None:
+        callback(progress)
+
+
 def _data_url(image: Image.Image, image_format: str = "PNG") -> str:
     output = BytesIO()
     image.save(output, format=image_format, optimize=True)
@@ -37,7 +46,12 @@ def _estimated_cost_cents(model: str, quality: str) -> float:
     return 4.0
 
 
-def _fal_generate(input_url: str, prompt: str, edit_region: str) -> ProviderResult:
+def _fal_generate(
+    input_url: str,
+    prompt: str,
+    edit_region: str,
+    progress_callback: ProgressCallback | None,
+) -> ProviderResult:
     started = time.monotonic()
     os.environ["FAL_KEY"] = settings.fal_key
     with httpx.Client(timeout=settings.request_timeout_seconds) as client:
@@ -45,6 +59,7 @@ def _fal_generate(input_url: str, prompt: str, edit_region: str) -> ProviderResu
         source.raise_for_status()
         if len(source.content) > 4_000_000:
             raise RuntimeError("Source portrait exceeds the provider input limit")
+    _report_progress(progress_callback, 25)
     image = ImageOps.exif_transpose(Image.open(BytesIO(source.content))).convert("RGB")
     image.thumbnail((1536, 1536), Image.Resampling.LANCZOS)
     source_data_url = _data_url(image)
@@ -81,11 +96,14 @@ def _fal_generate(input_url: str, prompt: str, edit_region: str) -> ProviderResu
             "enhance_prompt": False,
         }
 
+    _report_progress(progress_callback, 35)
     handler = fal_client.submit(
         settings.model,
         arguments=arguments,
     )
+    _report_progress(progress_callback, 45)
     result = handler.get()
+    _report_progress(progress_callback, 80)
     request_id = str(handler.request_id)
     images = result.get("images") or []
     if len(images) != 1 or not images[0].get("url"):
@@ -96,9 +114,7 @@ def _fal_generate(input_url: str, prompt: str, edit_region: str) -> ProviderResu
         output_url=output_url,
         request_id=request_id,
         duration_ms=int((time.monotonic() - started) * 1000),
-        estimated_cost_cents=_estimated_cost_cents(
-            settings.model, settings.generation_quality
-        ),
+        estimated_cost_cents=_estimated_cost_cents(settings.model, settings.generation_quality),
     )
 
 
@@ -107,12 +123,14 @@ def generate(
     prompt: str,
     generation_id: str,
     edit_region: str = "scalp",
+    progress_callback: ProgressCallback | None = None,
 ) -> ProviderResult:
     if settings.provider == "mock":
+        _report_progress(progress_callback, 80)
         return ProviderResult(
             output_url=input_url,
             request_id=f"mock-{generation_id}",
             duration_ms=25,
             estimated_cost_cents=0,
         )
-    return _fal_generate(input_url, prompt, edit_region)
+    return _fal_generate(input_url, prompt, edit_region, progress_callback)

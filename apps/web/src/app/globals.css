@@ -352,6 +352,12 @@
   background: #d5b960;
 }
 
+.hair-progress-value {
+  margin-top: 10px;
+  color: #d5b960;
+  font-variant-numeric: tabular-nums;
+}
+
 .hair-result-v2 {
   display: grid;
   gap: 20px;

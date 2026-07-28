@@ -196,9 +196,9 @@ export default function AppointmentsPage(): React.ReactElement {
         setTrackingState({
           appointmentId: appointment.id,
           lastPingAt: null,
-          warning: 'Live location unavailable. Your browser does not support location sharing.',
+          warning:
+            'Journey not started. This browser does not support the live location required for the test.',
         });
-        updateStatus.mutate({ id: appointment.id, nextStatus });
         return;
       }
       setStartingTrackingId(appointment.id);
@@ -216,12 +216,10 @@ export default function AppointmentsPage(): React.ReactElement {
           setTrackingState({
             appointmentId: appointment.id,
             lastPingAt: null,
-            warning: 'Live location unavailable. Status was updated without GPS tracking.',
+            warning:
+              'Journey not started. Allow precise location in your browser, then press Start journey again.',
           });
-          updateStatus.mutate(
-            { id: appointment.id, nextStatus },
-            { onSettled: () => setStartingTrackingId(null) },
-          );
+          setStartingTrackingId(null);
         },
         { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 },
       );

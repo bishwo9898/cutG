@@ -1,6 +1,7 @@
+import * as Location from 'expo-location';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import { Screen } from '@/components/layout/Screen';
@@ -11,8 +12,9 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useBarberAppointments, useUpdateAppointmentStatus } from '@/hooks/useBarberDashboard';
 import { useLocationBroadcast } from '@/hooks/useLocationBroadcast';
-import { colors, spacing, typography } from '@/theme';
+import { errorMessage } from '@/lib/errors';
 import { openNavigation } from '@/lib/maps';
+import { colors, spacing, typography } from '@/theme';
 
 const nextStatus = (status?: string, mobile = false): { status: string; label: string } | null => {
   if (status === 'PENDING') return { status: 'CONFIRMED', label: 'Confirm appointment' };
@@ -31,6 +33,7 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
   const appointments = useBarberAppointments({});
   const updateStatus = useUpdateAppointmentStatus();
   const [notes, setNotes] = useState('');
+  const [journeyError, setJourneyError] = useState<string | null>(null);
   const appointment =
     appointments.data === undefined
       ? undefined
@@ -38,7 +41,31 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
           (item) => item.id === appointmentId,
         );
   const status = nextStatus(appointment?.status, appointment?.isMobileService === true);
-  useLocationBroadcast(appointmentId, appointment?.status);
+  const locationBroadcast = useLocationBroadcast(appointmentId, appointment?.status);
+
+  const applyNextStatus = async (): Promise<void> => {
+    if (appointment === undefined || status === null) return;
+    setJourneyError(null);
+    try {
+      if (status.status === 'ON_THE_WAY') {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (!permission.granted) {
+          setJourneyError(
+            'Journey not started. Allow precise location so the client can see the live trip.',
+          );
+          return;
+        }
+        await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      }
+      await updateStatus.mutateAsync({
+        id: appointment.id,
+        status: status.status,
+        notes: notes || undefined,
+      });
+    } catch (error) {
+      setJourneyError(errorMessage(error));
+    }
+  };
 
   return (
     <Screen
@@ -87,6 +114,35 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
               />
             </Card>
           ) : null}
+          {appointment.status === 'ON_THE_WAY' ? (
+            <Card>
+              <View style={styles.trackingRow}>
+                <View
+                  style={[
+                    styles.trackingDot,
+                    locationBroadcast.state === 'active'
+                      ? styles.trackingDotActive
+                      : styles.trackingDotWarning,
+                  ]}
+                />
+                <Text style={styles.title}>
+                  {locationBroadcast.state === 'active'
+                    ? 'Live trip connected'
+                    : 'Connecting live trip'}
+                </Text>
+              </View>
+              <Text style={styles.meta}>{locationBroadcast.message}</Text>
+              {locationBroadcast.lastPingAt !== null ? (
+                <Text style={styles.meta}>
+                  Last sent {new Date(locationBroadcast.lastPingAt).toLocaleTimeString()}
+                </Text>
+              ) : null}
+              <Text style={styles.trackingHelp}>
+                Keep cutG open during this foreground test so the client continues receiving your
+                position.
+              </Text>
+            </Card>
+          ) : null}
           <Card>
             <Text style={styles.title}>{appointment.serviceName}</Text>
             <Text style={styles.meta}>
@@ -114,16 +170,14 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
           ) : null}
           {status !== null ? (
             <Button
+              disabled={updateStatus.isPending}
               title={status.label}
               onPress={() => {
-                void updateStatus.mutateAsync({
-                  id: appointment.id,
-                  status: status.status,
-                  notes: notes || undefined,
-                });
+                void applyNextStatus();
               }}
             />
           ) : null}
+          {journeyError !== null ? <Text style={styles.error}>{journeyError}</Text> : null}
           {appointment.isMobileService === true && appointment.serviceAddress !== null ? (
             <MapView
               style={styles.map}
@@ -153,6 +207,10 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
+  error: {
+    ...typography.bodySmall,
+    color: colors.error,
+  },
   map: {
     borderRadius: 8,
     height: 180,
@@ -166,5 +224,26 @@ const styles = StyleSheet.create({
   title: {
     ...typography.h3,
     color: colors.textPrimary,
+  },
+  trackingDot: {
+    borderRadius: 999,
+    height: 10,
+    width: 10,
+  },
+  trackingDotActive: {
+    backgroundColor: colors.success,
+  },
+  trackingDotWarning: {
+    backgroundColor: colors.warning,
+  },
+  trackingHelp: {
+    ...typography.caption,
+    color: colors.warning,
+    marginTop: spacing.md,
+  },
+  trackingRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
 });

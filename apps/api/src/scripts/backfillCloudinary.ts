@@ -15,7 +15,9 @@ type Row = {
 
 const run = async (): Promise<void> => {
   if (!isCloudinaryEnabled()) {
-    throw new Error('Set CLOUDINARY_URL before running the Cloudinary backfill.');
+    throw new Error(
+      'Set CLOUDINARY_URL to the complete cloudinary://API_KEY:API_SECRET@CLOUD_NAME value before running the Cloudinary backfill.',
+    );
   }
   const designs = await query<Row>(
     `SELECT id,client_id,source_asset_key,generated_asset_key

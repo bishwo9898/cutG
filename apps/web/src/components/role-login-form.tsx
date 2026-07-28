@@ -22,12 +22,17 @@ type FormValues = z.infer<typeof schema>;
 export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement {
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  const isBarber = role === 'BARBER';
+  const fieldTestMode = process.env.NEXT_PUBLIC_FIELD_TEST_MODE === 'true';
+  const testEmail = isBarber ? 'barber.test@example.com' : 'client.test@example.com';
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
-  const isBarber = role === 'BARBER';
+  } = useForm<FormValues>({
+    ...(fieldTestMode ? { defaultValues: { email: testEmail, password: 'password123' } } : {}),
+    resolver: zodResolver(schema),
+  });
 
   const submit = async (values: FormValues): Promise<void> => {
     setError(null);
@@ -68,6 +73,11 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
           {isBarber ? 'Manage your schedule and business.' : 'Find and manage your appointments.'}
         </p>
         <form className="form-stack" onSubmit={handleSubmit(submit)}>
+          {fieldTestMode && (
+            <Notice tone="success">
+              Temporary field-test account loaded. No email verification is required.
+            </Notice>
+          )}
           {error !== null && <Notice>{error}</Notice>}
           <div className="field">
             <label htmlFor={`${role}-email`}>Email address</label>

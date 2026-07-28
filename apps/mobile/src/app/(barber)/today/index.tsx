@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -100,7 +101,7 @@ export default function TodayScreen(): React.ReactElement {
                   status === 'CONFIRMED'
                     ? 'Confirm'
                     : status === 'ON_THE_WAY'
-                      ? 'Start journey'
+                      ? 'Open journey'
                       : status === 'ARRIVED'
                         ? "I've arrived"
                         : status === 'IN_PROGRESS'
@@ -108,6 +109,10 @@ export default function TodayScreen(): React.ReactElement {
                           : 'Complete'
                 }
                 onPress={() => {
+                  if (status === 'ON_THE_WAY') {
+                    router.push('/(barber)/appointments/' + appointment.id);
+                    return;
+                  }
                   void updateStatus.mutateAsync({ id: appointment.id, status });
                 }}
               />

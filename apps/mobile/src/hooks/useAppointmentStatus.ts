@@ -4,23 +4,18 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { mobileApi } from '@/lib/apiClient';
 import type { AppointmentTimeline } from '@/lib/types';
 
-const activeTravelStatuses = ['CONFIRMED', 'ON_THE_WAY', 'ARRIVED'];
+const activeTravelStatuses = ['CONFIRMED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'];
 
-export const useAppointmentStatus = (
-  appointmentId: string,
-  scheduledDate?: string,
-): UseQueryResult<AppointmentTimeline> =>
+export const useAppointmentStatus = (appointmentId: string): UseQueryResult<AppointmentTimeline> =>
   useQuery({
     queryKey: ['appointments', 'status-updates', appointmentId],
     queryFn: () => mobileApi.client.appointmentStatusUpdates(appointmentId),
     enabled: appointmentId.length > 0,
     refetchInterval: (query) => {
       const timeline = query.state.data;
-      const today = new Date().toISOString().slice(0, 10);
-      return timeline !== undefined &&
-        scheduledDate === today &&
-        activeTravelStatuses.includes(timeline.currentStatus)
-        ? 30_000
-        : false;
+      if (timeline === undefined || !activeTravelStatuses.includes(timeline.currentStatus)) {
+        return false;
+      }
+      return timeline.currentStatus === 'ON_THE_WAY' ? 5_000 : 10_000;
     },
   });

@@ -15,6 +15,7 @@ import {
   completeAiGeneration,
   failAiGeneration,
   startAiGeneration,
+  updateAiGenerationProgress,
 } from '../services/design/hairStudioService';
 
 export const internalAiRouter: ExpressRouter = Router();
@@ -49,12 +50,24 @@ const FailSchema = z.object({
   errorCode: z.string().min(1).max(80),
   errorMessage: z.string().min(1).max(1000),
 });
+const ProgressSchema = z.object({
+  progress: z.number().int().min(16).max(95),
+});
 
 internalAiRouter.post(
   '/generations/:generationId/processing',
   asyncHandler(async (request, response) => {
     const { generationId } = ParamsSchema.parse(request.params);
     response.json(await startAiGeneration(generationId));
+  }),
+);
+
+internalAiRouter.post(
+  '/generations/:generationId/progress',
+  asyncHandler(async (request, response) => {
+    const { generationId } = ParamsSchema.parse(request.params);
+    const { progress } = ProgressSchema.parse(request.body);
+    response.json(await updateAiGenerationProgress(generationId, progress));
   }),
 );
 

@@ -13,6 +13,15 @@ def _callback(path: str, payload: dict[str, object]) -> None:
         response.raise_for_status()
 
 
+def _report_progress(generation_id: str, progress: int) -> None:
+    try:
+        _callback(f"/generations/{generation_id}/progress", {"progress": progress})
+    except Exception:
+        # A progress update is observational. Never discard a paid provider result because a
+        # transient callback failed; completion/failure callbacks remain authoritative.
+        return
+
+
 def generate_design(payload: dict[str, str]) -> None:
     generation_id = payload["generation_id"]
     try:
@@ -22,6 +31,7 @@ def generate_design(payload: dict[str, str]) -> None:
             payload["prompt"],
             generation_id,
             payload.get("edit_region", "scalp"),
+            lambda progress: _report_progress(generation_id, progress),
         )
         _callback(
             f"/generations/{generation_id}/complete",

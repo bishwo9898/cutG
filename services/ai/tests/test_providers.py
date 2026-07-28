@@ -66,6 +66,7 @@ def test_mock_returns_the_source_without_calling_a_paid_provider(monkeypatch) ->
 
 def test_fal_requests_one_image_with_prompt_enhancement_disabled(monkeypatch) -> None:
     captured: dict[str, object] = {}
+    progress: list[int] = []
 
     def submit(model: str, *, arguments: dict[str, object]) -> FakeHandler:
         captured.update({"model": model, "arguments": arguments})
@@ -74,7 +75,12 @@ def test_fal_requests_one_image_with_prompt_enhancement_disabled(monkeypatch) ->
     monkeypatch.setattr(providers, "settings", fal_settings())
     monkeypatch.setattr(providers.httpx, "Client", FakeClient)
     monkeypatch.setattr(providers.fal_client, "submit", submit)
-    result = providers.generate("https://private.test/source.jpg", "strict prompt", "generation")
+    result = providers.generate(
+        "https://private.test/source.jpg",
+        "strict prompt",
+        "generation",
+        progress_callback=progress.append,
+    )
     arguments = captured["arguments"]
     assert isinstance(arguments, dict)
     assert arguments["num_images"] == 1
@@ -82,6 +88,7 @@ def test_fal_requests_one_image_with_prompt_enhancement_disabled(monkeypatch) ->
     assert arguments["guidance_scale"] == 3.5
     assert arguments["prompt"] == "strict prompt"
     assert result.output_url == "https://provider.test/result.jpg"
+    assert progress == [25, 35, 45, 80]
 
 
 def test_fal_rejects_alternate_versions(monkeypatch) -> None:

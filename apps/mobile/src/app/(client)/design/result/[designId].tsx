@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Crypto from 'expo-crypto';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Image, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 import { Screen } from '@/components/layout/Screen';
@@ -12,18 +12,16 @@ import { mobileApi } from '@/lib/apiClient';
 import { errorMessage } from '@/lib/errors';
 import { colors, spacing, typography } from '@/theme';
 
-const messages = [
-  'Analyzing your face shape…',
-  'Understanding your features…',
-  'Applying the selected style…',
-  'Blending the edges…',
-  'Adding final touches…',
-];
+const generationLabel = (status: string | null | undefined, progress: number): string => {
+  if (status === 'QUEUED') return 'Queued securely';
+  if (progress >= 85) return 'Saving your preview';
+  if (progress >= 45) return 'Generating your preview';
+  return 'Preparing your requested edit';
+};
 
 export default function HairDesignResultScreen(): React.ReactElement {
   const { designId = '' } = useLocalSearchParams<{ designId?: string }>();
   const queryClient = useQueryClient();
-  const [messageIndex, setMessageIndex] = useState(0);
   const [showAfter, setShowAfter] = useState(true);
   const design = useQuery({
     queryKey: ['hair-design', designId],
@@ -46,31 +44,25 @@ export default function HairDesignResultScreen(): React.ReactElement {
   });
 
   const active = ['QUEUED', 'PROCESSING'].includes(design.data?.generationStatus ?? '');
-  useEffect(() => {
-    if (!active) return;
-    const timer = setInterval(
-      () => setMessageIndex((current) => (current + 1) % messages.length),
-      1800,
-    );
-    return (): void => clearInterval(timer);
-  }, [active]);
-
   const current = design.data;
+  const progress = Math.min(100, Math.max(0, current?.progress ?? 0));
   if (active || design.isLoading) {
     return (
       <Screen scroll={false}>
         <View style={styles.loader}>
           <Text style={styles.sparkle}>✦</Text>
           <Text style={styles.eyebrow}>AI VISUALIZATION IN PROGRESS</Text>
-          <Text style={styles.loaderTitle}>{messages[messageIndex]}</Text>
+          <Text style={styles.loaderTitle}>
+            {generationLabel(current?.generationStatus, progress)}
+          </Text>
           <Text style={styles.meta}>
-            Keeping your identity. Reworking only the requested details.
+            This bar advances only when the generation service completes a real processing
+            milestone.
           </Text>
           <View style={styles.progressTrack}>
-            <View
-              style={[styles.progressFill, { width: `${Math.max(8, current?.progress ?? 8)}%` }]}
-            />
+            <View style={[styles.progressFill, { width: `${progress}%` }]} />
           </View>
+          <Text style={styles.progressValue}>{progress}%</Text>
         </View>
       </Screen>
     );
@@ -191,6 +183,7 @@ const styles = StyleSheet.create({
   loaderTitle: { ...typography.h2, color: colors.textPrimary, textAlign: 'center' },
   meta: { ...typography.bodySmall, color: colors.textSecondary, textAlign: 'center' },
   progressFill: { backgroundColor: colors.accent, borderRadius: 4, height: 6 },
+  progressValue: { ...typography.label, color: colors.accentLight },
   progressTrack: {
     backgroundColor: colors.surfaceRaised,
     borderRadius: 4,

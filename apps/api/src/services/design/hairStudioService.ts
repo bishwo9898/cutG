@@ -730,9 +730,20 @@ export const completeAiGeneration = async (
     throw new AppError(404, 'Generation not found.', 'AI_JOB_NOT_FOUND');
   if (generation.status === 'COMPLETED') return { accepted: true, duplicate: true };
   if (!['QUEUED', 'PROCESSING'].includes(String(generation.status))) return { accepted: false };
+  await query(
+    `UPDATE hair_design_generations
+     SET status='PROCESSING',progress=GREATEST(progress,85)
+     WHERE id=$1 AND status IN ('QUEUED','PROCESSING')`,
+    [generationId],
+  );
   const providerImage = await downloadRemoteImage(input.outputUrl);
   const outputKey = `hair-designs/${String(generation.client_id)}/${String(generation.hair_design_id)}/${generationId}.${extensionFromContentType(providerImage.contentType)}`;
   const stored = await storeImageBuffer(outputKey, providerImage);
+  await query(
+    `UPDATE hair_design_generations SET progress=GREATEST(progress,92)
+     WHERE id=$1 AND status='PROCESSING'`,
+    [generationId],
+  );
   let sourceCloudinary: CloudinaryImage | null = null;
   let generatedCloudinary: CloudinaryImage | null = null;
   let cloudinarySyncError: string | null = null;
@@ -766,6 +777,11 @@ export const completeAiGeneration = async (
     providerImage,
     storedOutputKey: outputKey,
   }).catch(() => undefined);
+  await query(
+    `UPDATE hair_design_generations SET progress=GREATEST(progress,97)
+     WHERE id=$1 AND status='PROCESSING'`,
+    [generationId],
+  );
   await withTransaction(async (executor) => {
     await query(
       `UPDATE hair_design_generations SET status='COMPLETED',progress=100,provider_request_id=$1,
@@ -846,6 +862,30 @@ export const startAiGeneration = async (generationId: string) => {
   if (existing[0] === undefined)
     throw new AppError(404, 'Generation not found.', 'AI_JOB_NOT_FOUND');
   return { accepted: existing[0].status === 'PROCESSING', duplicate: true };
+};
+
+export const updateAiGenerationProgress = async (generationId: string, progress: number) => {
+  const rows = await query<Row>(
+    `UPDATE hair_design_generations
+     SET progress=GREATEST(progress,$1)
+     WHERE id=$2 AND status='PROCESSING'
+     RETURNING progress`,
+    [progress, generationId],
+  );
+  if (rows[0] !== undefined) {
+    return { accepted: true, progress: Number(rows[0].progress) };
+  }
+  const existing = await query<Row>(
+    'SELECT status,progress FROM hair_design_generations WHERE id=$1',
+    [generationId],
+  );
+  if (existing[0] === undefined) {
+    throw new AppError(404, 'Generation not found.', 'AI_JOB_NOT_FOUND');
+  }
+  return {
+    accepted: existing[0].status === 'COMPLETED',
+    progress: Number(existing[0].progress),
+  };
 };
 
 export const failAiGeneration = async (

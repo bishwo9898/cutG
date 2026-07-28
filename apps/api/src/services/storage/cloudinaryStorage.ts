@@ -1,8 +1,15 @@
-import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
+import { createRequire } from 'node:module';
 
-import { env } from '../../config/env';
+import type { UploadApiResponse, v2 as CloudinaryV2 } from 'cloudinary';
+
+import { env, isCompleteCloudinaryUrl } from '../../config/env';
 
 import type { DownloadedImage } from './objectStorage';
+
+// Cloudinary reads CLOUDINARY_URL as soon as its runtime module loads. Loading it after our
+// environment module lets local development safely disable an incomplete optional value.
+const requireFromHere = createRequire(__filename);
+const { v2: cloudinary } = requireFromHere('cloudinary') as { v2: typeof CloudinaryV2 };
 
 export type CloudinaryImage = {
   publicId: string;
@@ -13,15 +20,23 @@ export type CloudinaryImage = {
   bytes: number;
 };
 
-export const isCloudinaryEnabled = (): boolean => env.CLOUDINARY_URL.trim().length > 0;
+export const isCloudinaryEnabled = (): boolean => isCompleteCloudinaryUrl(env.CLOUDINARY_URL);
 
 let cloudinaryConfigured = false;
 const ensureCloudinary = (): void => {
   if (!isCloudinaryEnabled()) {
-    throw new Error('Cloudinary is not configured. Add CLOUDINARY_URL to the API environment.');
+    throw new Error(
+      'Cloudinary is not configured. Set CLOUDINARY_URL to the complete cloudinary://API_KEY:API_SECRET@CLOUD_NAME value.',
+    );
   }
   if (!cloudinaryConfigured) {
-    cloudinary.config(true);
+    const parsed = new URL(env.CLOUDINARY_URL);
+    cloudinary.config({
+      cloud_name: decodeURIComponent(parsed.hostname),
+      api_key: decodeURIComponent(parsed.username),
+      api_secret: decodeURIComponent(parsed.password),
+      secure: true,
+    });
     cloudinaryConfigured = true;
   }
 };
