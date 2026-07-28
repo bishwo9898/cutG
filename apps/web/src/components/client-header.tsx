@@ -9,6 +9,7 @@ import {
   MapPin,
   Scissors,
   Search,
+  Sparkles,
   UserRound,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -20,6 +21,7 @@ import { useUser } from '@/hooks/use-user';
 
 const clientLinks = [
   { href: '/client/barbers', label: 'Find barbers', icon: Search },
+  { href: '/client/design', label: 'AI Design', icon: Sparkles },
   { href: '/client/appointments', label: 'Appointments', icon: CalendarDays },
   { href: '/client/saved', label: 'Saved', icon: Heart },
   { href: '/client/profile', label: 'Profile', icon: UserRound },
@@ -76,7 +78,7 @@ export function ClientHeader(): React.ReactElement {
           />
         </form>
         <nav className="client-primary-nav" aria-label="Client portal">
-          {clientLinks.slice(0, 3).map((item) => (
+          {clientLinks.slice(0, 4).map((item) => (
             <Link
               className={active(pathname, item.href) ? 'client-nav-active' : ''}
               href={item.href}
@@ -132,7 +134,7 @@ export function ClientHeader(): React.ReactElement {
         </div>
       )}
       <nav className="client-mobile-nav" aria-label="Client mobile navigation">
-        {(client === null && !user.isLoading ? clientLinks.slice(0, 1) : clientLinks).map(
+        {(client === null && !user.isLoading ? clientLinks.slice(0, 2) : clientLinks).map(
           (item) => {
             const Icon = item.icon;
             return (

@@ -69,10 +69,12 @@ export function StarRating({
 
 export function BarberCard({
   barber,
+  compact = false,
   showSave = false,
   query = '',
 }: {
   barber: PublicBarber;
+  compact?: boolean;
   showSave?: boolean;
   query?: string;
 }): React.ReactElement {
@@ -97,7 +99,7 @@ export function BarberCard({
   })();
 
   return (
-    <article className="market-card">
+    <article className={`market-card${compact ? ' market-card-compact' : ''}`}>
       <Link href={`/client/barbers/${barber.id}${query}`}>
         <BarberCover alt={`${barber.businessName} barbershop`} src={barber.profilePhotoUrl} />
         <div className="card-body">
@@ -125,7 +127,7 @@ export function BarberCard({
               ? 'Services being added'
               : `From $${barber.lowestServicePrice.toFixed(2)}`}
           </p>
-          {barber.serviceCategories.length > 0 && (
+          {!compact && barber.serviceCategories.length > 0 && (
             <p className="muted small barber-categories">
               {barber.serviceCategories.slice(0, 3).join(' · ')}
             </p>

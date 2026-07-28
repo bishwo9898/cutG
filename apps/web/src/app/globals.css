@@ -8519,6 +8519,266 @@ input:checked + .toggle-track::after,
   background: #151512;
 }
 
+/* Compact client-home discovery flow */
+.market-page .market-home-hero {
+  min-height: auto;
+  align-items: center;
+  border-bottom: 1px solid var(--client-line);
+  padding-block: 34px;
+  background: #10100e;
+}
+
+.market-page .market-home-hero::after {
+  display: none;
+}
+
+.market-home-hero-inner {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.72fr) minmax(420px, 1.28fr);
+  align-items: center;
+  gap: clamp(34px, 6vw, 80px);
+}
+
+.market-page .market-home-hero h1 {
+  max-width: 440px;
+  margin: 5px 0 9px;
+  font-size: clamp(34px, 4vw, 48px);
+  line-height: 1;
+}
+
+.market-page .market-home-hero > div > p:not(.eyebrow),
+.market-page .market-home-hero-copy > p:not(.eyebrow) {
+  max-width: 430px;
+  margin: 0;
+  color: var(--client-cream-muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.market-home-search-panel {
+  min-width: 0;
+}
+
+.market-page .market-home-search-panel .hero-search {
+  width: 100%;
+  max-width: none;
+  min-height: 54px;
+  margin-top: 0;
+  padding: 6px;
+}
+
+.market-page .market-home-search-panel .hero-search .button {
+  min-height: 40px;
+  padding-inline: 17px;
+}
+
+.market-page .market-home-search-panel .quick-filter-row {
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.market-page .market-home-search-panel .quick-filter-row a {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.design-home-band.design-home-band-featured {
+  grid-template-columns: minmax(0, 0.95fr) minmax(300px, 1.05fr);
+  gap: 36px;
+  margin-top: 28px;
+  border-radius: 20px;
+  padding: 28px;
+}
+
+.design-home-band-featured::before {
+  width: 180px;
+  height: 180px;
+}
+
+.design-home-copy h2 {
+  max-width: 430px;
+  margin: 4px 0 0;
+  font-size: clamp(32px, 3.8vw, 46px);
+  line-height: 1;
+}
+
+.design-home-copy > p:not(.eyebrow) {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.design-home-copy > .button {
+  min-height: 42px;
+  margin-top: 18px;
+}
+
+.design-home-proof {
+  margin-top: 14px;
+}
+
+.design-home-proof span {
+  padding: 6px 9px;
+  font-size: 11px;
+}
+
+.design-home-visual {
+  min-height: 270px;
+  border-radius: 16px;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.28);
+}
+
+.nearby-barbers-section {
+  padding-block: 58px 54px;
+}
+
+.nearby-barbers-section .section-title {
+  margin-bottom: 18px;
+}
+
+.nearby-barbers-section .section-title h2 {
+  max-width: 600px;
+  font-size: clamp(32px, 3.6vw, 46px);
+}
+
+.nearby-barbers-intro {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.nearby-barbers-panel {
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.nearby-barbers-panel-topline {
+  padding: 2px 2px 12px;
+}
+
+.nearby-barbers-panel .nearby-barbers-gallery {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.nearby-barbers-gallery .market-card-compact {
+  min-width: 0;
+}
+
+.nearby-barbers-gallery .market-card-compact .barber-cover {
+  aspect-ratio: 16 / 9;
+}
+
+.nearby-barbers-gallery .market-card-compact .card-body {
+  min-height: 172px;
+  padding: 14px;
+}
+
+.nearby-barbers-gallery .market-card-compact .card-body h3 {
+  font-size: 17px;
+}
+
+.nearby-barbers-gallery .market-card-compact .rating-row {
+  margin-top: 9px;
+}
+
+.nearby-barbers-gallery .market-card-compact .card-meta {
+  margin: 8px 0 5px;
+}
+
+.nearby-barbers-gallery .market-card-compact .market-card-actions {
+  min-height: 56px;
+  padding: 9px 12px;
+}
+
+.nearby-barbers-gallery .market-card-compact .market-card-actions .button {
+  min-height: 36px;
+  padding-inline: 11px;
+  font-size: 12px;
+}
+
+@media (max-width: 980px) {
+  .market-home-hero-inner {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .market-page .market-home-hero h1 {
+    max-width: none;
+  }
+
+  .design-home-band.design-home-band-featured {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .market-page .client-primary-nav {
+    gap: 10px;
+  }
+
+  .market-page .client-primary-nav a {
+    font-size: 12px;
+  }
+
+  .nearby-barbers-panel .nearby-barbers-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .market-page .market-home-hero {
+    padding-block: 28px;
+  }
+
+  .market-page .market-home-hero h1 {
+    font-size: 36px;
+  }
+
+  .market-page .market-home-search-panel .hero-search {
+    min-height: 50px;
+  }
+
+  .market-page .market-home-search-panel .hero-search .button {
+    width: auto;
+  }
+
+  .design-home-band.design-home-band-featured {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-top: 18px;
+    padding: 20px;
+  }
+
+  .design-home-visual {
+    min-height: 220px;
+  }
+
+  .nearby-barbers-section {
+    padding-block: 44px 40px;
+  }
+
+  .nearby-barbers-section .section-title {
+    align-items: start;
+  }
+
+  .nearby-barbers-panel-topline {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .nearby-barbers-panel .nearby-barbers-gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .client-mobile-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .client-mobile-nav a {
+    font-size: 9px;
+  }
+}
+
 .saved-look-grid-v2 .saved-look-card-v2 {
   position: relative;
   display: grid;
@@ -8746,8 +9006,8 @@ input:checked + .toggle-track::after,
   }
 
   .design-home-band.design-home-band-featured {
-    gap: 32px;
-    padding: 30px;
+    gap: 24px;
+    padding: 22px;
   }
 
   .saved-look-detail-header {
@@ -8768,13 +9028,13 @@ input:checked + .toggle-track::after,
 
   .design-home-band.design-home-band-featured {
     width: calc(100% - 24px);
-    margin-top: 22px;
+    margin-top: 18px;
     border-radius: 20px;
-    padding: 24px 18px;
+    padding: 20px 18px;
   }
 
   .design-home-visual {
-    min-height: 330px;
+    min-height: 220px;
   }
 
   .nearby-barbers-section .section-title,
@@ -8785,7 +9045,7 @@ input:checked + .toggle-track::after,
   }
 
   .nearby-barbers-section {
-    padding-top: 58px;
+    padding-top: 44px;
   }
 
   .saved-look-detail-image,
@@ -8804,8 +9064,17 @@ input:checked + .toggle-track::after,
     padding-block: 48px 34px;
   }
 
+  .market-page .market-home-hero {
+    min-height: auto;
+    padding-block: 28px;
+  }
+
   .market-page .market-hero h1 {
     font-size: 40px;
+  }
+
+  .market-page .market-home-hero h1 {
+    font-size: 36px;
   }
 
   .market-page .profile-hero {
