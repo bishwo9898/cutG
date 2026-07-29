@@ -49,17 +49,25 @@ const date = (value: unknown): string =>
   value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
 const dateTime = (value: unknown): string =>
   value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
+const stringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 
 const mapProfile = (row: Row) => ({
   id: row.id,
   userId: row.user_id,
   businessName: row.business_name,
+  headline: row.headline,
+  businessType: row.business_type,
   bio: row.bio,
   yearsOfExperience: row.years_of_experience,
+  languages: stringArray(row.languages),
+  specialties: stringArray(row.specialties),
   averageRating: Number(row.average_rating),
   totalReviews: row.total_reviews,
   totalClients: row.total_clients,
   profilePhotoUrl: row.profile_photo_url,
+  bannerUrl: row.banner_url,
+  bannerAssetType: row.banner_asset_type,
   address: row.address,
   city: row.city,
   state: row.state,
@@ -68,6 +76,8 @@ const mapProfile = (row: Row) => ({
   longitude: numberOrNull(row.longitude),
   subscriptionTier: row.subscription_tier,
   isVerified: row.is_verified,
+  portfolioCompletedAt:
+    row.portfolio_completed_at === null ? null : dateTime(row.portfolio_completed_at),
   createdAt: dateTime(row.created_at),
   updatedAt: dateTime(row.updated_at),
 });
@@ -116,8 +126,12 @@ export const createProfile = async (userId: string, input: CreateBarberProfileRe
   }
   const fields = {
     business_name: input.businessName,
+    headline: input.headline ?? null,
+    business_type: input.businessType ?? 'INDEPENDENT',
     bio: input.bio ?? null,
     years_of_experience: input.yearsOfExperience ?? null,
+    languages: JSON.stringify(input.languages ?? []),
+    specialties: JSON.stringify(input.specialties ?? []),
     address: input.address ?? null,
     city: input.city ?? null,
     state: input.state ?? null,
@@ -127,8 +141,9 @@ export const createProfile = async (userId: string, input: CreateBarberProfileRe
   };
   const rows = await query<Row>(
     `INSERT INTO barber_profiles
-      (user_id, business_name, bio, years_of_experience, address, city, state, zip_code, latitude, longitude)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      (user_id, business_name, headline, business_type, bio, years_of_experience, languages,
+       specialties, address, city, state, zip_code, latitude, longitude)
+     VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9,$10,$11,$12,$13,$14) RETURNING *`,
     [userId, ...Object.values(fields)],
   );
   return mapProfile(rows[0] as Row);
@@ -138,8 +153,18 @@ export const updateProfile = async (userId: string, input: UpdateBarberProfileRe
   const profile = await requireProfile(userId);
   const columns: Record<string, unknown> = {
     businessName: ['business_name', input.businessName],
+    headline: ['headline', input.headline],
+    businessType: ['business_type', input.businessType],
     bio: ['bio', input.bio],
     yearsOfExperience: ['years_of_experience', input.yearsOfExperience],
+    languages: [
+      'languages',
+      input.languages === undefined ? undefined : JSON.stringify(input.languages),
+    ],
+    specialties: [
+      'specialties',
+      input.specialties === undefined ? undefined : JSON.stringify(input.specialties),
+    ],
     address: ['address', input.address],
     city: ['city', input.city],
     state: ['state', input.state],
@@ -722,11 +747,18 @@ export const getPublicProfile = async (barberId: string) => {
   return {
     id: row.id,
     businessName: row.business_name,
+    headline: row.headline,
+    businessType: row.business_type,
     bio: row.bio,
     yearsOfExperience: row.years_of_experience,
+    languages: stringArray(row.languages),
+    specialties: stringArray(row.specialties),
     averageRating: Number(row.average_rating),
     totalReviews: row.total_reviews,
+    totalClients: row.total_clients,
     profilePhotoUrl: row.profile_photo_url,
+    bannerUrl: row.banner_url,
+    bannerAssetType: row.banner_asset_type,
     city: row.city,
     state: row.state,
     subscriptionTier: row.subscription_tier,

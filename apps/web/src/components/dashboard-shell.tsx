@@ -1,17 +1,16 @@
 'use client';
 
 import {
+  BadgeCheck,
   CalendarDays,
   CreditCard,
   DollarSign,
-  ExternalLink,
+  Images,
   LayoutDashboard,
   MapPinned,
   LogOut,
   Scissors,
   Store,
-  BadgeCheck,
-  UserRound,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -21,6 +20,7 @@ import { useUser } from '@/hooks/use-user';
 
 const navItems = [
   { href: '/barber/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { href: '/barber/dashboard/portfolio', label: 'Portfolio', icon: Images },
   { href: '/barber/dashboard/services', label: 'Services', icon: Scissors },
   { href: '/barber/dashboard/availability', label: 'Availability', icon: CalendarDays },
   { href: '/barber/dashboard/mobile-service', label: 'Mobile service', icon: MapPinned },
@@ -28,8 +28,6 @@ const navItems = [
   { href: '/barber/dashboard/payments', label: 'Payments', icon: CreditCard },
   { href: '/barber/dashboard/earnings', label: 'Earnings', icon: DollarSign },
   { href: '/barber/dashboard/subscription', label: 'Subscription', icon: BadgeCheck },
-  { href: '/barber/dashboard/profile', label: 'Profile', icon: UserRound },
-  { href: '/barber/dashboard/preview', label: 'Public preview', icon: ExternalLink },
 ];
 
 const isActive = (pathname: string, href: string): boolean =>

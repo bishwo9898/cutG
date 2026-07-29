@@ -42,8 +42,12 @@ const nonEmptyPatch = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) =>
 
 const BarberProfileFieldsSchema = z.object({
   businessName: z.string().trim().min(1).max(255),
+  headline: z.string().trim().max(160).optional(),
+  businessType: z.enum(['INDEPENDENT', 'SHOP']).optional(),
   bio: z.string().trim().max(1000).optional(),
   yearsOfExperience: z.number().int().min(0).max(60).optional(),
+  languages: z.array(z.string().trim().min(1).max(50)).max(12).optional(),
+  specialties: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
   address: z.string().trim().max(500).optional(),
   city: z.string().trim().max(100).optional(),
   state: z.string().trim().max(50).optional(),
@@ -66,6 +70,104 @@ export const UpdateBarberProfileSchema = nonEmptyPatch(BarberProfileFieldsSchema
 export type UpdateBarberProfileRequest = z.infer<typeof UpdateBarberProfileSchema>;
 
 export const UpdateBarberPhotoSchema = z.object({ photoUrl: z.string().url().max(500) });
+
+export const PortfolioCategoryEnum = z.enum([
+  'BURST_FADE',
+  'MID_FADE',
+  'LOW_FADE',
+  'HIGH_FADE',
+  'TAPER',
+  'CURLY',
+  'AFRO',
+  'BEARD',
+  'SCISSOR_CUTS',
+  'KIDS',
+  'LONG_HAIR',
+  'DESIGNS',
+]);
+export const PortfolioHairTypeEnum = z.enum(['STRAIGHT', 'WAVY', 'CURLY', 'COILY']);
+export const PortfolioHairDensityEnum = z.enum(['THIN', 'MEDIUM', 'THICK']);
+export const PortfolioFaceShapeEnum = z.enum(['OVAL', 'ROUND', 'SQUARE']);
+export const PortfolioDifficultyEnum = z.enum(['FOUNDATIONAL', 'INTERMEDIATE', 'ADVANCED']);
+
+const PortfolioItemFieldsSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(1000).optional(),
+  category: PortfolioCategoryEnum,
+  hairType: PortfolioHairTypeEnum,
+  hairDensity: PortfolioHairDensityEnum,
+  hairLengthBefore: z.string().trim().min(1).max(80),
+  hairLengthAfter: z.string().trim().min(1).max(80),
+  faceShape: PortfolioFaceShapeEnum,
+  cutStyle: z.string().trim().min(1).max(120),
+  timeTakenMinutes: z.number().int().min(5).max(480),
+  productsUsed: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+  difficulty: PortfolioDifficultyEnum,
+  isFeatured: z.boolean().optional(),
+});
+export const CreatePortfolioItemSchema = PortfolioItemFieldsSchema;
+export type CreatePortfolioItemRequest = z.infer<typeof CreatePortfolioItemSchema>;
+export const UpdatePortfolioItemSchema = nonEmptyPatch(PortfolioItemFieldsSchema.partial());
+export type UpdatePortfolioItemRequest = z.infer<typeof UpdatePortfolioItemSchema>;
+export const PortfolioItemParamsSchema = z.object({ itemId: z.string().uuid() });
+export const PortfolioAssetParamsSchema = PortfolioItemParamsSchema.extend({
+  side: z.enum(['before', 'after']),
+});
+
+const WorkExperienceFieldsSchema = z
+  .object({
+    shopName: z.string().trim().min(1).max(160),
+    title: z.string().trim().min(1).max(120),
+    location: z.string().trim().max(160).optional(),
+    startDate: DateStringSchema,
+    endDate: DateStringSchema.optional(),
+    isCurrent: z.boolean().default(false),
+    description: z.string().trim().max(1000).optional(),
+  })
+  .refine((value) => value.isCurrent || value.endDate !== undefined, {
+    message: 'End date is required unless this is your current role',
+    path: ['endDate'],
+  })
+  .refine((value) => value.endDate === undefined || value.endDate >= value.startDate, {
+    message: 'End date must be after start date',
+    path: ['endDate'],
+  });
+export const CreateWorkExperienceSchema = WorkExperienceFieldsSchema;
+export type CreateWorkExperienceRequest = z.infer<typeof CreateWorkExperienceSchema>;
+export const UpdateWorkExperienceSchema = nonEmptyPatch(
+  WorkExperienceFieldsSchema.innerType().innerType().partial(),
+);
+export type UpdateWorkExperienceRequest = z.infer<typeof UpdateWorkExperienceSchema>;
+export const WorkExperienceParamsSchema = z.object({ experienceId: z.string().uuid() });
+
+const CertificationFieldsSchema = z
+  .object({
+    name: z.string().trim().min(1).max(160),
+    issuer: z.string().trim().min(1).max(160),
+    issueDate: DateStringSchema.optional(),
+    expirationDate: DateStringSchema.optional(),
+    credentialId: z.string().trim().max(120).optional(),
+    credentialUrl: z
+      .string()
+      .url()
+      .max(1000)
+      .refine((value) => /^https?:\/\//i.test(value), 'Credential link must use HTTP or HTTPS')
+      .optional(),
+  })
+  .refine(
+    (value) =>
+      value.issueDate === undefined ||
+      value.expirationDate === undefined ||
+      value.expirationDate >= value.issueDate,
+    { message: 'Expiration date must be after issue date', path: ['expirationDate'] },
+  );
+export const CreateCertificationSchema = CertificationFieldsSchema;
+export type CreateCertificationRequest = z.infer<typeof CreateCertificationSchema>;
+export const UpdateCertificationSchema = nonEmptyPatch(
+  CertificationFieldsSchema.innerType().partial(),
+);
+export type UpdateCertificationRequest = z.infer<typeof UpdateCertificationSchema>;
+export const CertificationParamsSchema = z.object({ certificationId: z.string().uuid() });
 
 export const ShopLocationSearchSchema = z
   .object({

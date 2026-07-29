@@ -106,6 +106,8 @@ export const barberDiscoveryApi = {
     client.get<T>(`/barbers${toQueryString(params)}`),
   getProfile: <T>(client: ApiClient, barberId: string): Promise<T> =>
     client.get<T>(`/barbers/${barberId}`),
+  getPortfolio: <T>(client: ApiClient, barberId: string): Promise<T> =>
+    client.get<T>(`/barbers/${barberId}/portfolio`),
   getMobileConfig: <T>(client: ApiClient, barberId: string): Promise<T> =>
     client.get<T>(`/barbers/${barberId}/mobile`),
   getServices: <T>(client: ApiClient, barberId: string): Promise<T> =>

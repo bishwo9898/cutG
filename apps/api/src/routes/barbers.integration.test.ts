@@ -16,6 +16,16 @@ type LoginBody = { accessToken: string };
 type ProfileBody = { id: string; businessName: string };
 type GenerateBody = { generated: number };
 type ServiceBody = { id: string; imageUrl: string | null };
+type PortfolioItemBody = { id: string; isPublished: boolean };
+type PrivatePortfolioBody = {
+  items: Array<{ id: string; title: string }>;
+  trust: {
+    totalClients: number;
+    repeatClientPercentage: number | null;
+    monthlyRepeatClients: unknown[];
+  };
+};
+type CompletedPortfolioBody = { portfolioCompletedAt: string };
 
 beforeAll(async () => {
   await resetTestDatabase();
@@ -164,5 +174,101 @@ describe('Phase 2 barber API', () => {
     expect(publicServices.body).toMatchObject({
       services: [expect.objectContaining({ id: service.id, imageUrl: null })],
     });
+  });
+
+  it('keeps portfolio drafts private and publishes only safe structured career data', async () => {
+    const createdWork = await request(app)
+      .post('/barbers/me/portfolio/items')
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({
+        title: 'Textured taper',
+        description: 'Curl definition with a clean taper.',
+        category: 'TAPER',
+        hairType: 'CURLY',
+        hairDensity: 'THICK',
+        hairLengthBefore: '3 inches',
+        hairLengthAfter: '2 inches',
+        faceShape: 'OVAL',
+        cutStyle: 'Low taper',
+        timeTakenMinutes: 50,
+        productsUsed: ['Curl cream'],
+        difficulty: 'ADVANCED',
+        isFeatured: true,
+      });
+    expect(createdWork.status).toBe(201);
+    const work = createdWork.body as PortfolioItemBody;
+    expect(work.isPublished).toBe(false);
+
+    const privatePortfolio = await request(app)
+      .get('/barbers/me/portfolio')
+      .set('Authorization', `Bearer ${barberToken}`);
+    expect(privatePortfolio.status).toBe(200);
+    const privateBody = privatePortfolio.body as PrivatePortfolioBody;
+    expect(privateBody).toMatchObject({
+      items: [expect.objectContaining({ id: work.id, title: 'Textured taper' })],
+      trust: {
+        totalClients: 0,
+        repeatClientPercentage: null,
+      },
+    });
+    expect(Array.isArray(privateBody.trust.monthlyRepeatClients)).toBe(true);
+
+    const clientCannotManage = await request(app)
+      .get('/barbers/me/portfolio')
+      .set('Authorization', `Bearer ${clientToken}`);
+    expect(clientCannotManage.status).toBe(403);
+
+    const experience = await request(app)
+      .post('/barbers/me/portfolio/experience')
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({
+        shopName: 'Elite Cuts',
+        title: 'Senior barber',
+        startDate: '2022-01-01',
+        isCurrent: true,
+      });
+    expect(experience.status).toBe(201);
+
+    const certification = await request(app)
+      .post('/barbers/me/portfolio/certifications')
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({
+        name: 'Barber License',
+        issuer: 'Massachusetts Board',
+        issueDate: '2023-01-01',
+      });
+    expect(certification.status).toBe(201);
+
+    const publicPortfolio = await request(app).get(`/barbers/${barberId}/portfolio`);
+    expect(publicPortfolio.status).toBe(200);
+    expect(publicPortfolio.body).toMatchObject({
+      items: [],
+      experiences: [expect.objectContaining({ shopName: 'Elite Cuts' })],
+      certifications: [expect.objectContaining({ name: 'Barber License' })],
+      trust: { totalClients: 0 },
+    });
+    expect(JSON.stringify(publicPortfolio.body)).not.toContain('cloudinary_public_id');
+
+    const incomplete = await request(app)
+      .post('/barbers/me/portfolio/complete')
+      .set('Authorization', `Bearer ${barberToken}`);
+    expect(incomplete.status).toBe(422);
+    expect(incomplete.body).toMatchObject({ code: 'PORTFOLIO_INCOMPLETE' });
+
+    await request(app)
+      .patch('/barbers/me/profile')
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({
+        headline: 'Precision fades and textured hair',
+        bio: 'A detail-focused barber for modern cuts.',
+        yearsOfExperience: 7,
+        languages: ['English'],
+      });
+    const completed = await request(app)
+      .post('/barbers/me/portfolio/complete')
+      .set('Authorization', `Bearer ${barberToken}`);
+    expect(completed.status).toBe(200);
+    const completedBody = completed.body as CompletedPortfolioBody;
+    expect(typeof completedBody.portfolioCompletedAt).toBe('string');
   });
 });

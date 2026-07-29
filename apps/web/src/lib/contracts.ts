@@ -12,12 +12,18 @@ export type BarberProfile = {
   id: string;
   userId: string;
   businessName: string;
+  headline: string | null;
+  businessType: 'INDEPENDENT' | 'SHOP';
   bio: string | null;
   yearsOfExperience: number | null;
+  languages: string[];
+  specialties: string[];
   averageRating: number;
   totalReviews: number;
   totalClients: number;
   profilePhotoUrl: string | null;
+  bannerUrl: string | null;
+  bannerAssetType: 'image' | 'video' | null;
   address: string | null;
   city: string | null;
   state: string | null;
@@ -26,6 +32,82 @@ export type BarberProfile = {
   longitude: number | null;
   subscriptionTier: 'FREE' | 'BASIC' | 'PREMIUM';
   isVerified: boolean;
+  portfolioCompletedAt: string | null;
+};
+
+export type PortfolioCategory =
+  | 'BURST_FADE'
+  | 'MID_FADE'
+  | 'LOW_FADE'
+  | 'HIGH_FADE'
+  | 'TAPER'
+  | 'CURLY'
+  | 'AFRO'
+  | 'BEARD'
+  | 'SCISSOR_CUTS'
+  | 'KIDS'
+  | 'LONG_HAIR'
+  | 'DESIGNS';
+
+export type PortfolioItem = {
+  id: string;
+  barberId: string;
+  title: string;
+  description: string | null;
+  category: PortfolioCategory;
+  hairType: 'STRAIGHT' | 'WAVY' | 'CURLY' | 'COILY';
+  hairDensity: 'THIN' | 'MEDIUM' | 'THICK';
+  hairLengthBefore: string;
+  hairLengthAfter: string;
+  faceShape: 'OVAL' | 'ROUND' | 'SQUARE';
+  cutStyle: string;
+  timeTakenMinutes: number;
+  productsUsed: string[];
+  difficulty: 'FOUNDATIONAL' | 'INTERMEDIATE' | 'ADVANCED';
+  beforeImageUrl: string | null;
+  afterImageUrl: string | null;
+  isPublished: boolean;
+  isFeatured: boolean;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkExperience = {
+  id: string;
+  shopName: string;
+  title: string;
+  location: string | null;
+  startDate: string;
+  endDate: string | null;
+  isCurrent: boolean;
+  description: string | null;
+};
+
+export type BarberCertification = {
+  id: string;
+  name: string;
+  issuer: string;
+  issueDate: string | null;
+  expirationDate: string | null;
+  credentialId: string | null;
+  credentialUrl: string | null;
+};
+
+export type PortfolioTrust = {
+  totalClients: number;
+  repeatClients: number;
+  repeatClientPercentage: number | null;
+  windowDays: number;
+  monthlyRepeatClients: Array<{ month: string; repeatClients: number }>;
+};
+
+export type BarberPortfolio = {
+  items: PortfolioItem[];
+  experiences: WorkExperience[];
+  certifications: BarberCertification[];
+  trust: PortfolioTrust;
+  nextAvailableAppointment?: { date: string; startTime: string } | null;
 };
 
 export type PublicBarber = {

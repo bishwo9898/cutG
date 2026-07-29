@@ -20,6 +20,10 @@ export type CloudinaryImage = {
   bytes: number;
 };
 
+export type CloudinaryPublicAsset = CloudinaryImage & {
+  resourceType: 'image' | 'video';
+};
+
 export const isCloudinaryEnabled = (): boolean => isCompleteCloudinaryUrl(env.CLOUDINARY_URL);
 
 let cloudinaryConfigured = false;
@@ -93,6 +97,15 @@ export const storePublicCloudinaryImage = async (
   image: DownloadedImage,
   publicId: string,
 ): Promise<CloudinaryImage> => {
+  const asset = await storePublicCloudinaryAsset(image, publicId, 'image');
+  return asset;
+};
+
+export const storePublicCloudinaryAsset = async (
+  asset: DownloadedImage,
+  publicId: string,
+  resourceType: 'image' | 'video',
+): Promise<CloudinaryPublicAsset> => {
   ensureCloudinary();
   const storageRoot = env.CLOUDINARY_FOLDER.replace(/^\/+|\/+$/g, '');
   const resolvedPublicId = `${storageRoot}/${publicId.replace(/^\/+/, '')}`;
@@ -102,7 +115,7 @@ export const storePublicCloudinaryImage = async (
       {
         public_id: resolvedPublicId,
         asset_folder: assetFolder,
-        resource_type: 'image',
+        resource_type: resourceType,
         type: 'upload',
         overwrite: true,
         invalidate: true,
@@ -121,7 +134,7 @@ export const storePublicCloudinaryImage = async (
         resolve(uploaded);
       },
     );
-    stream.end(image.body);
+    stream.end(asset.body);
   });
 
   return {
@@ -131,6 +144,7 @@ export const storePublicCloudinaryImage = async (
     width: result.width,
     height: result.height,
     bytes: result.bytes,
+    resourceType,
   };
 };
 
@@ -148,6 +162,25 @@ export const createPublicCloudinaryUrl = (asset: {
     fetch_format: 'auto',
     crop: 'limit',
     width: 1200,
+    ...(asset.version === undefined || asset.version === null ? {} : { version: asset.version }),
+    ...(asset.format === undefined || asset.format === null ? {} : { format: asset.format }),
+  });
+};
+
+export const createPublicCloudinaryAssetUrl = (asset: {
+  publicId: string;
+  resourceType: 'image' | 'video';
+  version?: number | null;
+  format?: string | null;
+}): string => {
+  ensureCloudinary();
+  return cloudinary.url(asset.publicId, {
+    secure: true,
+    resource_type: asset.resourceType,
+    type: 'upload',
+    ...(asset.resourceType === 'image'
+      ? { quality: 'auto', fetch_format: 'auto', crop: 'limit', width: 1600 }
+      : {}),
     ...(asset.version === undefined || asset.version === null ? {} : { version: asset.version }),
     ...(asset.format === undefined || asset.format === null ? {} : { format: asset.format }),
   });
@@ -179,9 +212,16 @@ export const deletePrivateCloudinaryImage = async (publicId: string): Promise<vo
 };
 
 export const deletePublicCloudinaryImage = async (publicId: string): Promise<void> => {
+  await deletePublicCloudinaryAsset(publicId, 'image');
+};
+
+export const deletePublicCloudinaryAsset = async (
+  publicId: string,
+  resourceType: 'image' | 'video',
+): Promise<void> => {
   if (!isCloudinaryEnabled()) return;
   await cloudinary.uploader.destroy(publicId, {
-    resource_type: 'image',
+    resource_type: resourceType,
     type: 'upload',
     invalidate: true,
   });

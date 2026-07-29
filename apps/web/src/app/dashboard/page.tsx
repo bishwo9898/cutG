@@ -51,9 +51,9 @@ export default function DashboardPage(): React.ReactElement {
             title="Your barber profile is ready to be shaped"
             detail="Add your business name, location, experience, and a short introduction."
             action={
-              <Link className="button button-primary" href="/barber/dashboard/profile">
+              <Link className="button button-primary" href="/barber/dashboard/portfolio">
                 <UserRoundPlus size={17} />
-                Create profile
+                Build portfolio
               </Link>
             }
           />
@@ -81,7 +81,7 @@ export default function DashboardPage(): React.ReactElement {
           <h1>{profile.data.businessName}</h1>
           <p>Here is the shape of your business today.</p>
         </div>
-        <Link className="button button-secondary" href="/barber/dashboard/preview">
+        <Link className="button button-secondary" href="/barber/dashboard/portfolio?view=preview">
           View public profile
         </Link>
       </div>

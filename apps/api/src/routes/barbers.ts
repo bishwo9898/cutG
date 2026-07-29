@@ -4,12 +4,18 @@ import {
   BarberSearchQuerySchema,
   BlockDateSchema,
   BlockedDateParamsSchema,
+  CertificationParamsSchema,
+  CreateCertificationSchema,
   CreateBarberProfileSchema,
+  CreatePortfolioItemSchema,
   CreateServiceSchema,
+  CreateWorkExperienceSchema,
   DateRangeSchema,
   EarningsQuerySchema,
   GenerateSlotsSchema,
   PublicSlotsQuerySchema,
+  PortfolioAssetParamsSchema,
+  PortfolioItemParamsSchema,
   ReviewQuerySchema,
   SetMobileConfigSchema,
   LocationPingSchema,
@@ -23,7 +29,11 @@ import {
   UpdateAppointmentStatusSchema,
   UpdateBarberPhotoSchema,
   UpdateBarberProfileSchema,
+  UpdateCertificationSchema,
+  UpdatePortfolioItemSchema,
   UpdateServiceSchema,
+  UpdateWorkExperienceSchema,
+  WorkExperienceParamsSchema,
   TrackingAppointmentParamsSchema,
   UuidParamsSchema,
 } from '@barber-saas/shared-types';
@@ -65,6 +75,24 @@ import {
   updatePhoto,
   updateProfile,
 } from '../services/barber/barberService';
+import {
+  completePortfolioOnboarding,
+  createCertification,
+  createPortfolioItem,
+  createWorkExperience,
+  deleteCertification,
+  deletePortfolioItem,
+  deleteWorkExperience,
+  getMyPortfolio,
+  getPublicPortfolio,
+  removeProfileBanner,
+  updateCertification,
+  updatePortfolioItem,
+  updateWorkExperience,
+  uploadPortfolioImage,
+  uploadProfileBanner,
+  uploadProfilePhoto,
+} from '../services/barber/portfolioService';
 import { listPublicReviews, searchBarbers } from '../services/discovery/barberSearchService';
 import { recordBarberLocation } from '../services/location/locationTrackingService';
 import {
@@ -187,6 +215,183 @@ barberRouter.post(
   asyncHandler(async (request, response) => {
     const { photoUrl } = UpdateBarberPhotoSchema.parse(request.body);
     response.json(await updatePhoto(userId(request), photoUrl));
+  }),
+);
+
+barberRouter.get(
+  '/me/portfolio',
+  asyncHandler(async (request, response) => {
+    response.json(await getMyPortfolio(userId(request)));
+  }),
+);
+barberRouter.post(
+  '/me/portfolio/complete',
+  asyncHandler(async (request, response) => {
+    response.json(await completePortfolioOnboarding(userId(request)));
+  }),
+);
+barberRouter.post(
+  '/me/portfolio/photo',
+  raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '8mb' }),
+  asyncHandler(async (request, response) => {
+    if (!Buffer.isBuffer(request.body) || request.body.length === 0) {
+      throw new AppError(
+        415,
+        'A JPEG, PNG, or WebP profile image is required.',
+        'UNSUPPORTED_PROFILE_IMAGE',
+      );
+    }
+    const contentType = request.headers['content-type']?.split(';')[0] ?? '';
+    response.json(
+      await uploadProfilePhoto(userId(request), {
+        body: request.body,
+        contentType,
+        sizeBytes: request.body.length,
+      }),
+    );
+  }),
+);
+barberRouter.post(
+  '/me/portfolio/banner',
+  raw({
+    type: ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'],
+    limit: '40mb',
+  }),
+  asyncHandler(async (request, response) => {
+    if (!Buffer.isBuffer(request.body) || request.body.length === 0) {
+      throw new AppError(
+        415,
+        'A JPEG, PNG, WebP, MP4, or WebM banner is required.',
+        'UNSUPPORTED_PORTFOLIO_BANNER',
+      );
+    }
+    const contentType = request.headers['content-type']?.split(';')[0] ?? '';
+    const resourceType = contentType.startsWith('video/') ? 'video' : 'image';
+    response.json(
+      await uploadProfileBanner(
+        userId(request),
+        { body: request.body, contentType, sizeBytes: request.body.length },
+        resourceType,
+      ),
+    );
+  }),
+);
+barberRouter.delete(
+  '/me/portfolio/banner',
+  asyncHandler(async (request, response) => {
+    response.json(await removeProfileBanner(userId(request)));
+  }),
+);
+barberRouter.post(
+  '/me/portfolio/items',
+  asyncHandler(async (request, response) => {
+    response
+      .status(201)
+      .json(
+        await createPortfolioItem(userId(request), CreatePortfolioItemSchema.parse(request.body)),
+      );
+  }),
+);
+barberRouter.patch(
+  '/me/portfolio/items/:itemId',
+  asyncHandler(async (request, response) => {
+    const { itemId } = PortfolioItemParamsSchema.parse(request.params);
+    response.json(
+      await updatePortfolioItem(
+        userId(request),
+        itemId,
+        UpdatePortfolioItemSchema.parse(request.body),
+      ),
+    );
+  }),
+);
+barberRouter.post(
+  '/me/portfolio/items/:itemId/images/:side',
+  raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '8mb' }),
+  asyncHandler(async (request, response) => {
+    const { itemId, side } = PortfolioAssetParamsSchema.parse(request.params);
+    if (!Buffer.isBuffer(request.body) || request.body.length === 0) {
+      throw new AppError(
+        415,
+        'A JPEG, PNG, or WebP haircut image is required.',
+        'UNSUPPORTED_PORTFOLIO_IMAGE',
+      );
+    }
+    const contentType = request.headers['content-type']?.split(';')[0] ?? '';
+    response.json(
+      await uploadPortfolioImage(userId(request), itemId, side, {
+        body: request.body,
+        contentType,
+        sizeBytes: request.body.length,
+      }),
+    );
+  }),
+);
+barberRouter.delete(
+  '/me/portfolio/items/:itemId',
+  asyncHandler(async (request, response) => {
+    const { itemId } = PortfolioItemParamsSchema.parse(request.params);
+    response.json(await deletePortfolioItem(userId(request), itemId));
+  }),
+);
+barberRouter.post(
+  '/me/portfolio/experience',
+  asyncHandler(async (request, response) => {
+    response
+      .status(201)
+      .json(
+        await createWorkExperience(userId(request), CreateWorkExperienceSchema.parse(request.body)),
+      );
+  }),
+);
+barberRouter.patch(
+  '/me/portfolio/experience/:experienceId',
+  asyncHandler(async (request, response) => {
+    const { experienceId } = WorkExperienceParamsSchema.parse(request.params);
+    response.json(
+      await updateWorkExperience(
+        userId(request),
+        experienceId,
+        UpdateWorkExperienceSchema.parse(request.body),
+      ),
+    );
+  }),
+);
+barberRouter.delete(
+  '/me/portfolio/experience/:experienceId',
+  asyncHandler(async (request, response) => {
+    const { experienceId } = WorkExperienceParamsSchema.parse(request.params);
+    response.json(await deleteWorkExperience(userId(request), experienceId));
+  }),
+);
+barberRouter.post(
+  '/me/portfolio/certifications',
+  asyncHandler(async (request, response) => {
+    response
+      .status(201)
+      .json(
+        await createCertification(userId(request), CreateCertificationSchema.parse(request.body)),
+      );
+  }),
+);
+barberRouter.patch(
+  '/me/portfolio/certifications/:certificationId',
+  asyncHandler(async (request, response) => {
+    const { certificationId } = CertificationParamsSchema.parse(request.params);
+    response.json(
+      await updateCertification(
+        userId(request),
+        certificationId,
+        UpdateCertificationSchema.parse(request.body),
+      ),
+    );
+  }),
+);
+barberRouter.delete(
+  '/me/portfolio/certifications/:certificationId',
+  asyncHandler(async (request, response) => {
+    const { certificationId } = CertificationParamsSchema.parse(request.params);
+    response.json(await deleteCertification(userId(request), certificationId));
   }),
 );
 
@@ -403,6 +608,13 @@ barberRouter.get(
   asyncHandler(async (request, response) => {
     const { barberId } = UuidParamsSchema.parse(request.params);
     response.json(await getPublicMobileConfig(barberId));
+  }),
+);
+barberRouter.get(
+  '/:barberId/portfolio',
+  asyncHandler(async (request, response) => {
+    const { barberId } = UuidParamsSchema.parse(request.params);
+    response.json(await getPublicPortfolio(barberId));
   }),
 );
 barberRouter.get(
