@@ -16,6 +16,8 @@ import {
   ServiceFilterSchema,
   ServiceParamsSchema,
   SetScheduleSchema,
+  ShopLocationReverseGeocodeSchema,
+  ShopLocationSearchSchema,
   SubscriptionCheckoutSchema,
   TravelEstimateSchema,
   UpdateAppointmentStatusSchema,
@@ -65,6 +67,10 @@ import {
 } from '../services/barber/barberService';
 import { listPublicReviews, searchBarbers } from '../services/discovery/barberSearchService';
 import { recordBarberLocation } from '../services/location/locationTrackingService';
+import {
+  reverseGeocodeShopCoordinates,
+  searchShopLocations,
+} from '../services/mobile/geocodingService';
 import {
   disableMobileConfig,
   estimateTravel,
@@ -119,6 +125,23 @@ barberRouter.get(
   '/me',
   asyncHandler(async (request, response) => {
     response.json(await getMyProfile(userId(request)));
+  }),
+);
+barberRouter.post(
+  '/me/shop-location/search',
+  asyncHandler(async (request, response) => {
+    response.json(
+      await searchShopLocations(userId(request), ShopLocationSearchSchema.parse(request.body)),
+    );
+  }),
+);
+barberRouter.post(
+  '/me/shop-location/reverse-geocode',
+  asyncHandler(async (request, response) => {
+    const input = ShopLocationReverseGeocodeSchema.parse(request.body);
+    response.json(
+      await reverseGeocodeShopCoordinates(userId(request), input.latitude, input.longitude),
+    );
   }),
 );
 barberRouter.post(

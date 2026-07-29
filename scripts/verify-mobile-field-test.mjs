@@ -32,6 +32,40 @@ if (client.user?.userType !== 'CLIENT' || barber.user?.userType !== 'BARBER') {
   throw new Error('The seeded accounts returned the wrong roles.');
 }
 
+const barberProfile = await request('/barbers/me', { token: barber.accessToken });
+if (
+  typeof barberProfile.id !== 'string' ||
+  typeof barberProfile.address !== 'string' ||
+  typeof barberProfile.latitude !== 'number' ||
+  typeof barberProfile.longitude !== 'number'
+) {
+  throw new Error('The seeded barber does not have a complete shop location.');
+}
+const shopSearch = await request('/barbers/me/shop-location/search', {
+  token: barber.accessToken,
+  method: 'POST',
+  body: {
+    query: `${barberProfile.businessName}, ${barberProfile.address}`,
+    latitude: barberProfile.latitude,
+    longitude: barberProfile.longitude,
+  },
+});
+if (
+  !Array.isArray(shopSearch.suggestions) ||
+  shopSearch.suggestions.length === 0 ||
+  typeof shopSearch.suggestions[0]?.formattedAddress !== 'string'
+) {
+  throw new Error('Shop name/address search did not return a usable map suggestion.');
+}
+const publicBarber = await request(`/barbers/${barberProfile.id}`);
+if (
+  publicBarber.shopLocation?.address !== barberProfile.address ||
+  publicBarber.shopLocation?.latitude !== barberProfile.latitude ||
+  publicBarber.shopLocation?.longitude !== barberProfile.longitude
+) {
+  throw new Error('The saved shop location was not exposed on the public barber profile.');
+}
+
 const appointments = await request('/barbers/me/appointments?limit=50', {
   token: barber.accessToken,
 });
@@ -124,6 +158,6 @@ console.log(
     'Mobile barber field-test smoke check passed.',
     `Appointment: ${appointment.id}`,
     `Client received: ${liveLocation.distanceRemainingMiles.toFixed(2)} miles / ${liveLocation.estimatedArrivalMinutes} minutes`,
-    'Verified: login, journey, GPS ping, client tracking, arrival, service, completion, tracking stop.',
+    'Verified: shop search, public shop map data, journey, GPS ping, client tracking, arrival, service, completion, tracking stop.',
   ].join('\n'),
 );

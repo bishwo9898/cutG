@@ -9,6 +9,10 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 
+import {
+  ShopLocationEditor,
+  type ShopLocationValue,
+} from '@/components/barber/shop-location-editor';
 import { Notice } from '@/components/notice';
 import { LoadingState } from '@/components/query-states';
 import { browserApi } from '@/lib/browser-api';
@@ -18,9 +22,36 @@ import { errorMessage } from '@/lib/errors';
 const schema = CreateBarberProfileSchema;
 type FormValues = z.infer<typeof schema>;
 
+const shopLocationFor = (profile: BarberProfile | undefined): ShopLocationValue | null => {
+  if (
+    profile?.address === null ||
+    profile?.address === undefined ||
+    profile.latitude === null ||
+    profile.longitude === null
+  ) {
+    return null;
+  }
+  const city = profile.city ?? '';
+  const state = profile.state ?? '';
+  const zipCode = profile.zipCode ?? '';
+  return {
+    name: profile.businessName,
+    address: profile.address,
+    city,
+    state,
+    zipCode,
+    country: 'US',
+    latitude: profile.latitude,
+    longitude: profile.longitude,
+    formattedAddress: [profile.address, city, state, zipCode].filter(Boolean).join(', '),
+    source: 'saved',
+  };
+};
+
 export default function ProfilePage(): React.ReactElement {
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
+  const [shopLocation, setShopLocation] = useState<ShopLocationValue | null>(null);
   const profile = useQuery({
     queryKey: ['barber-profile'],
     queryFn: () => browserApi.get<BarberProfile>('/barbers/me'),
@@ -32,6 +63,8 @@ export default function ProfilePage(): React.ReactElement {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
@@ -48,6 +81,7 @@ export default function ProfilePage(): React.ReactElement {
         latitude: profile.data.latitude ?? undefined,
         longitude: profile.data.longitude ?? undefined,
       });
+      setShopLocation(shopLocationFor(profile.data));
     }
   }, [profile.data, reset]);
 
@@ -56,9 +90,14 @@ export default function ProfilePage(): React.ReactElement {
       missing
         ? browserApi.post<BarberProfile>('/barbers/me/profile', values)
         : browserApi.patch<BarberProfile>('/barbers/me/profile', values),
-    onSuccess: async () => {
+    onSuccess: async (updatedProfile) => {
+      setShopLocation(shopLocationFor(updatedProfile));
       setSaved(true);
-      await queryClient.invalidateQueries({ queryKey: ['barber-profile'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['barber-profile'] }),
+        queryClient.invalidateQueries({ queryKey: ['mobile-config'] }),
+        queryClient.invalidateQueries({ queryKey: ['public-barber'] }),
+      ]);
     },
   });
 
@@ -74,82 +113,68 @@ export default function ProfilePage(): React.ReactElement {
           <p>These details shape what clients see and where they find you.</p>
         </div>
       </div>
-      <form className="panel" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
-        <div className="panel-header">
-          <h2>Profile details</h2>
+      {mutation.isError && <Notice>{errorMessage(mutation.error)}</Notice>}
+      {saved && <Notice tone="success">Profile changes saved.</Notice>}
+      <form
+        className="profile-settings-form"
+        onSubmit={handleSubmit((values) => mutation.mutate(values))}
+      >
+        <div className="profile-settings-grid">
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <h2>Profile details</h2>
+                <p className="panel-description">How your business appears to clients.</p>
+              </div>
+            </div>
+            <div className="panel-body form-stack">
+              <div className="field">
+                <label htmlFor="businessName">Business name</label>
+                <input id="businessName" className="input" {...register('businessName')} />
+                {errors.businessName?.message !== undefined && (
+                  <span className="field-error">{errors.businessName.message}</span>
+                )}
+              </div>
+              <div className="field">
+                <label htmlFor="bio">About your work</label>
+                <textarea id="bio" className="textarea" {...register('bio')} />
+                {errors.bio?.message !== undefined && (
+                  <span className="field-error">{errors.bio.message}</span>
+                )}
+              </div>
+              <div className="field">
+                <label htmlFor="yearsOfExperience">Years of experience</label>
+                <input
+                  id="yearsOfExperience"
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={60}
+                  {...register('yearsOfExperience', {
+                    setValueAs: (value: string) => (value === '' ? undefined : Number(value)),
+                  })}
+                />
+              </div>
+            </div>
+          </section>
+
+          <ShopLocationEditor
+            businessName={watch('businessName')}
+            idPrefix="barber-profile-shop"
+            onChange={(location) => {
+              setSaved(false);
+              setShopLocation(location);
+              setValue('address', location.address, { shouldDirty: true });
+              setValue('city', location.city, { shouldDirty: true });
+              setValue('state', location.state, { shouldDirty: true });
+              setValue('zipCode', location.zipCode, { shouldDirty: true });
+              setValue('latitude', location.latitude, { shouldDirty: true });
+              setValue('longitude', location.longitude, { shouldDirty: true });
+            }}
+            value={shopLocation}
+          />
         </div>
-        <div className="panel-body form-stack">
-          {mutation.isError && <Notice>{errorMessage(mutation.error)}</Notice>}
-          {saved && <Notice tone="success">Profile changes saved.</Notice>}
-          <div className="field">
-            <label htmlFor="businessName">Business name</label>
-            <input id="businessName" className="input" {...register('businessName')} />
-            {errors.businessName?.message !== undefined && (
-              <span className="field-error">{errors.businessName.message}</span>
-            )}
-          </div>
-          <div className="field">
-            <label htmlFor="bio">About your work</label>
-            <textarea id="bio" className="textarea" {...register('bio')} />
-            {errors.bio?.message !== undefined && (
-              <span className="field-error">{errors.bio.message}</span>
-            )}
-          </div>
-          <div className="form-row">
-            <div className="field">
-              <label htmlFor="yearsOfExperience">Years of experience</label>
-              <input
-                id="yearsOfExperience"
-                className="input"
-                type="number"
-                min={0}
-                max={60}
-                {...register('yearsOfExperience', {
-                  setValueAs: (value: string) => (value === '' ? undefined : Number(value)),
-                })}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="address">Street address</label>
-              <input
-                id="address"
-                className="input"
-                autoComplete="street-address"
-                {...register('address')}
-              />
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="field">
-              <label htmlFor="city">City</label>
-              <input
-                id="city"
-                className="input"
-                autoComplete="address-level2"
-                {...register('city')}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="state">State</label>
-              <input
-                id="state"
-                className="input"
-                autoComplete="address-level1"
-                {...register('state')}
-              />
-            </div>
-          </div>
-          <div className="field">
-            <label htmlFor="zipCode">ZIP or postal code</label>
-            <input
-              id="zipCode"
-              className="input"
-              autoComplete="postal-code"
-              {...register('zipCode')}
-            />
-          </div>
-        </div>
-        <div className="panel-header" style={{ justifyContent: 'flex-end' }}>
+        <div className="profile-save-bar">
           <button className="button button-primary" disabled={mutation.isPending} type="submit">
             <Save size={17} />
             {mutation.isPending ? 'Saving...' : 'Save profile'}

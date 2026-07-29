@@ -710,6 +710,15 @@ export const getPublicProfile = async (barberId: string) => {
   );
   const row = rows[0];
   if (row === undefined) throw profileNotFound();
+  const shopLatitude = row.latitude === null ? null : Number(row.latitude);
+  const shopLongitude = row.longitude === null ? null : Number(row.longitude);
+  const hasShopLocation =
+    typeof row.address === 'string' &&
+    row.address.length > 0 &&
+    shopLatitude !== null &&
+    shopLongitude !== null &&
+    Number.isFinite(shopLatitude) &&
+    Number.isFinite(shopLongitude);
   return {
     id: row.id,
     businessName: row.business_name,
@@ -723,6 +732,16 @@ export const getPublicProfile = async (barberId: string) => {
     subscriptionTier: row.subscription_tier,
     isVerified: row.is_verified,
     onlinePaymentsAvailable: row.stripe_charges_enabled === true,
+    shopLocation: hasShopLocation
+      ? {
+          address: row.address,
+          city: row.city,
+          state: row.state,
+          zipCode: row.zip_code,
+          latitude: shopLatitude,
+          longitude: shopLongitude,
+        }
+      : null,
     mobileService:
       row.mobile_enabled === true
         ? {

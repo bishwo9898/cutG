@@ -2,6 +2,7 @@
 import type {
   OneTimeAddressRequest,
   SaveAddressRequest,
+  ShopLocationSearchRequest,
   UpdateAddressRequest,
 } from '@barber-saas/shared-types';
 
@@ -16,11 +17,26 @@ type GeocodeResponse = {
   status?: string;
   error_message?: string;
   results?: Array<{
+    place_id?: string;
     formatted_address?: string;
     geometry?: { location?: { lat?: number; lng?: number } };
     address_components?: Array<{
       long_name?: string;
       short_name?: string;
+      types?: string[];
+    }>;
+  }>;
+};
+
+type PlacesTextSearchResponse = {
+  places?: Array<{
+    id?: string;
+    displayName?: { text?: string };
+    formattedAddress?: string;
+    location?: { latitude?: number; longitude?: number };
+    addressComponents?: Array<{
+      longText?: string;
+      shortText?: string;
       types?: string[];
     }>;
   }>;
@@ -41,8 +57,32 @@ export type ResolvedAddress = {
   isApproximateAddress?: boolean;
 };
 
+export type ShopLocationSuggestion = {
+  placeId?: string;
+  name: string;
+  addressLine1: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  formattedAddress: string;
+  source: 'google_places' | 'google_geocoding' | 'saved';
+};
+
+export type ShopLocationSearchResult = {
+  suggestions: ShopLocationSuggestion[];
+  source: 'google_places' | 'google_geocoding' | 'saved' | 'unavailable';
+};
+
 type ReverseGeocodeOptions = {
   barberId?: string;
+  fetcher?: typeof fetch;
+};
+
+type ShopLocationSearchOptions = {
+  fallback?: ShopLocationSuggestion | null;
   fetcher?: typeof fetch;
 };
 
@@ -60,6 +100,265 @@ const component = (
     types.some((type) => candidate.types?.includes(type) === true),
   );
   return short ? match?.short_name : match?.long_name;
+};
+
+const placeComponent = (
+  components: NonNullable<
+    NonNullable<PlacesTextSearchResponse['places']>[number]['addressComponents']
+  >,
+  types: string[],
+  short = false,
+): string | undefined => {
+  const match = components.find((candidate) =>
+    types.some((type) => candidate.types?.includes(type) === true),
+  );
+  return short ? match?.shortText : match?.longText;
+};
+
+const joinedAddress = (...parts: Array<string | null | undefined>): string =>
+  parts.filter((part): part is string => typeof part === 'string' && part.length > 0).join(', ');
+
+const savedShopLocation = async (userId: string): Promise<ShopLocationSuggestion | null> => {
+  const rows = await query<Row>(
+    `SELECT id,business_name,address,city,state,zip_code,latitude,longitude
+     FROM barber_profiles
+     WHERE user_id=$1`,
+    [userId],
+  );
+  const profile = rows[0];
+  const latitude =
+    profile?.latitude === null || profile?.latitude === undefined
+      ? Number.NaN
+      : Number(profile.latitude);
+  const longitude =
+    profile?.longitude === null || profile?.longitude === undefined
+      ? Number.NaN
+      : Number(profile.longitude);
+  if (
+    typeof profile?.address !== 'string' ||
+    profile.address.length === 0 ||
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude)
+  ) {
+    return null;
+  }
+  const city = typeof profile.city === 'string' ? profile.city : '';
+  const state = typeof profile.state === 'string' ? profile.state : '';
+  const zipCode = typeof profile.zip_code === 'string' ? profile.zip_code : '';
+  return {
+    name:
+      typeof profile.business_name === 'string' && profile.business_name.length > 0
+        ? profile.business_name
+        : 'Saved shop',
+    addressLine1: profile.address,
+    city,
+    state,
+    zipCode,
+    country: 'US',
+    latitude,
+    longitude,
+    formattedAddress: joinedAddress(profile.address, city, state, zipCode),
+    source: 'saved',
+  };
+};
+
+const mapPlacesSuggestion = (
+  place: NonNullable<PlacesTextSearchResponse['places']>[number],
+): ShopLocationSuggestion | null => {
+  const latitude = place.location?.latitude;
+  const longitude = place.location?.longitude;
+  const formattedAddress = place.formattedAddress;
+  if (
+    latitude === undefined ||
+    longitude === undefined ||
+    formattedAddress === undefined ||
+    formattedAddress.length === 0
+  ) {
+    return null;
+  }
+  const components = place.addressComponents ?? [];
+  const streetNumber = placeComponent(components, ['street_number']);
+  const route = placeComponent(components, ['route']);
+  const addressLine1 =
+    [streetNumber, route].filter(Boolean).join(' ') ||
+    placeComponent(components, ['premise', 'subpremise']) ||
+    formattedAddress.split(',')[0] ||
+    formattedAddress;
+
+  return {
+    ...(place.id === undefined ? {} : { placeId: place.id }),
+    name: place.displayName?.text ?? addressLine1,
+    addressLine1,
+    city:
+      placeComponent(components, [
+        'locality',
+        'postal_town',
+        'sublocality',
+        'administrative_area_level_2',
+      ]) ?? '',
+    state: placeComponent(components, ['administrative_area_level_1'], true) ?? '',
+    zipCode: placeComponent(components, ['postal_code']) ?? '',
+    country: placeComponent(components, ['country'], true) ?? 'US',
+    latitude,
+    longitude,
+    formattedAddress,
+    source: 'google_places',
+  };
+};
+
+const mapGeocodingSuggestion = (
+  queryText: string,
+  result: NonNullable<GeocodeResponse['results']>[number],
+): ShopLocationSuggestion | null => {
+  const latitude = result.geometry?.location?.lat;
+  const longitude = result.geometry?.location?.lng;
+  const formattedAddress = result.formatted_address;
+  if (
+    latitude === undefined ||
+    longitude === undefined ||
+    formattedAddress === undefined ||
+    formattedAddress.length === 0
+  ) {
+    return null;
+  }
+  const components = result.address_components ?? [];
+  const streetNumber = component(components, ['street_number']);
+  const route = component(components, ['route']);
+  const addressLine1 =
+    [streetNumber, route].filter(Boolean).join(' ') ||
+    component(components, ['premise', 'subpremise']) ||
+    formattedAddress.split(',')[0] ||
+    formattedAddress;
+
+  return {
+    ...(result.place_id === undefined ? {} : { placeId: result.place_id }),
+    name: queryText,
+    addressLine1,
+    city:
+      component(components, [
+        'locality',
+        'postal_town',
+        'sublocality',
+        'administrative_area_level_2',
+      ]) ?? '',
+    state: component(components, ['administrative_area_level_1'], true) ?? '',
+    zipCode: component(components, ['postal_code']) ?? '',
+    country: component(components, ['country'], true) ?? 'US',
+    latitude,
+    longitude,
+    formattedAddress,
+    source: 'google_geocoding',
+  };
+};
+
+export const searchMapLocations = async (
+  input: ShopLocationSearchRequest,
+  options: ShopLocationSearchOptions = {},
+): Promise<ShopLocationSearchResult> => {
+  const fetcher = options.fetcher ?? fetch;
+  const fallbackResult = (): ShopLocationSearchResult =>
+    options.fallback === undefined || options.fallback === null
+      ? { suggestions: [], source: 'unavailable' }
+      : { suggestions: [options.fallback], source: 'saved' };
+
+  if (fetcher === fetch && (env.GOOGLE_MAPS_API_KEY.length === 0 || env.NODE_ENV === 'test')) {
+    return fallbackResult();
+  }
+
+  const requestBody: Record<string, unknown> = {
+    textQuery: input.query,
+    maxResultCount: 5,
+    languageCode: 'en',
+    regionCode: 'US',
+    includePureServiceAreaBusinesses: false,
+  };
+  if (input.latitude !== undefined && input.longitude !== undefined) {
+    requestBody.locationBias = {
+      circle: {
+        center: { latitude: input.latitude, longitude: input.longitude },
+        radius: 50_000,
+      },
+    };
+  }
+
+  try {
+    const response = await fetcher('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': env.GOOGLE_MAPS_API_KEY,
+        'X-Goog-FieldMask':
+          'places.id,places.displayName,places.formattedAddress,places.location,places.addressComponents',
+      },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (response.ok) {
+      const body = (await response.json()) as PlacesTextSearchResponse;
+      const suggestions = (body.places ?? [])
+        .map(mapPlacesSuggestion)
+        .filter((suggestion): suggestion is ShopLocationSuggestion => suggestion !== null);
+      if (suggestions.length > 0) {
+        return { suggestions, source: 'google_places' };
+      }
+    } else {
+      logger.warn('Google Places text search was unavailable; trying geocoding fallback', {
+        provider: 'google_places',
+        status: response.status,
+      });
+    }
+  } catch {
+    logger.warn('Google Places text search failed; trying geocoding fallback', {
+      provider: 'google_places',
+      status: 'NETWORK_ERROR',
+    });
+  }
+
+  try {
+    const parameters = new URLSearchParams({
+      address: input.query,
+      key: env.GOOGLE_MAPS_API_KEY,
+    });
+    const response = await fetcher(
+      `https://maps.googleapis.com/maps/api/geocode/json?${parameters.toString()}`,
+      { signal: AbortSignal.timeout(5_000) },
+    );
+    const body = (await response.json()) as GeocodeResponse;
+    if (response.ok && body.status === 'OK') {
+      const suggestions = (body.results ?? [])
+        .slice(0, 5)
+        .map((result) => mapGeocodingSuggestion(input.query, result))
+        .filter((suggestion): suggestion is ShopLocationSuggestion => suggestion !== null);
+      if (suggestions.length > 0) {
+        return { suggestions, source: 'google_geocoding' };
+      }
+    }
+  } catch {
+    logger.warn('Google address search fallback failed', {
+      provider: 'google_geocoding',
+      status: 'NETWORK_ERROR',
+    });
+  }
+
+  return fallbackResult();
+};
+
+export const searchShopLocations = async (
+  userId: string,
+  input: ShopLocationSearchRequest,
+): Promise<ShopLocationSearchResult> =>
+  searchMapLocations(input, { fallback: await savedShopLocation(userId) });
+
+export const reverseGeocodeShopCoordinates = async (
+  userId: string,
+  latitude: number,
+  longitude: number,
+): Promise<ResolvedAddress> => {
+  const rows = await query<Row>('SELECT id FROM barber_profiles WHERE user_id=$1', [userId]);
+  const barberId = typeof rows[0]?.id === 'string' ? rows[0].id : undefined;
+  return reverseGeocodeCoordinates(latitude, longitude, {
+    ...(barberId === undefined ? {} : { barberId }),
+  });
 };
 
 const fallbackContextForBarber = async (

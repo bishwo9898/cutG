@@ -82,12 +82,52 @@ describe('Phase 2 barber API', () => {
     expect((second.body as GenerateBody).generated).toBe(0);
   });
 
-  it('returns public profile data without private location fields', async () => {
+  it('saves a mapped shop location, suggests it, and exposes it as a public business address', async () => {
+    const updated = await request(app)
+      .patch('/barbers/me/profile')
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({
+        address: '1 Test Street',
+        city: 'Boston',
+        state: 'MA',
+        zipCode: '02108',
+        latitude: 42.3601,
+        longitude: -71.0589,
+      });
+    expect(updated.status).toBe(200);
+
+    const suggestions = await request(app)
+      .post('/barbers/me/shop-location/search')
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({ query: 'Fixture Studio' });
+    expect(suggestions.status).toBe(200);
+    expect(suggestions.body).toMatchObject({
+      source: 'saved',
+      suggestions: [
+        {
+          name: 'Fixture Studio',
+          addressLine1: '1 Test Street',
+          latitude: 42.3601,
+          longitude: -71.0589,
+        },
+      ],
+    });
+
     const response = await request(app).get(`/barbers/${barberId}`);
     expect(response.status).toBe(200);
     expect(response.body).not.toHaveProperty('latitude');
     expect(response.body).not.toHaveProperty('address');
     expect(response.body).not.toHaveProperty('stripeAccountId');
+    expect(response.body).toMatchObject({
+      shopLocation: {
+        address: '1 Test Street',
+        city: 'Boston',
+        state: 'MA',
+        zipCode: '02108',
+        latitude: 42.3601,
+        longitude: -71.0589,
+      },
+    });
   });
 
   it('keeps service images optional and rejects unsupported uploads', async () => {

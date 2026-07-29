@@ -67,6 +67,23 @@ export type UpdateBarberProfileRequest = z.infer<typeof UpdateBarberProfileSchem
 
 export const UpdateBarberPhotoSchema = z.object({ photoUrl: z.string().url().max(500) });
 
+export const ShopLocationSearchSchema = z
+  .object({
+    query: z.string().trim().min(3).max(250),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+  })
+  .refine((value) => (value.latitude === undefined) === (value.longitude === undefined), {
+    message: 'Latitude and longitude must be provided together',
+  });
+export type ShopLocationSearchRequest = z.infer<typeof ShopLocationSearchSchema>;
+
+export const ShopLocationReverseGeocodeSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+export type ShopLocationReverseGeocodeRequest = z.infer<typeof ShopLocationReverseGeocodeSchema>;
+
 export const CreateServiceSchema = z.object({
   name: z.string().trim().min(1).max(255),
   description: z.string().trim().max(1000).optional(),

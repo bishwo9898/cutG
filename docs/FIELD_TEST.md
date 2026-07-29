@@ -79,7 +79,8 @@ Stop the test with **Ctrl+C**. The public URL immediately stops working.
 - Arrived, in-progress, and completed workflow
 
 The map can still track coordinates without a Google Maps server key. In that case cutG uses its
-fallback distance estimate. A configured `GOOGLE_MAPS_API_KEY` improves driving ETA and reverse
+fallback distance estimate. A configured `GOOGLE_MAPS_API_KEY` with Places API (New) and Geocoding
+enabled adds live barber-shop name/address suggestions and improves driving ETA and reverse
 geocoding, but Google Cloud does not replace the cutG API or database.
 
 ## Expected test limitations

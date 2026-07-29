@@ -2,12 +2,13 @@
 
 import { barberDiscoveryApi, clientApi } from '@barber-saas/api-client';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CalendarDays, Car, Heart, MapPin, Share2, ShieldCheck } from 'lucide-react';
+import { CalendarDays, Car, Heart, MapPin, Navigation, Share2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { BarberCover } from '@/components/client/barber-cover';
+import { ServiceAreaMap } from '@/components/client/service-area-map';
 import { ClientHeader } from '@/components/client-header';
 import { ReviewCard, SlotPicker, StarRating } from '@/components/client-ui';
 import { Notice } from '@/components/notice';
@@ -24,6 +25,14 @@ type Profile = {
   profilePhotoUrl: string | null;
   city: string | null;
   state: string | null;
+  shopLocation: {
+    address: string;
+    city: string | null;
+    state: string | null;
+    zipCode: string | null;
+    latitude: number;
+    longitude: number;
+  } | null;
   subscriptionTier: string;
   isVerified: boolean;
   mobileService: {
@@ -145,7 +154,15 @@ export default function BarberProfilePage(): React.ReactElement {
           </div>
           <p className="muted">
             <MapPin size={16} />{' '}
-            {[profile.data.city, profile.data.state].filter(Boolean).join(', ')}
+            {profile.data.shopLocation === null
+              ? [profile.data.city, profile.data.state].filter(Boolean).join(', ')
+              : [
+                  profile.data.shopLocation.address,
+                  profile.data.shopLocation.city,
+                  profile.data.shopLocation.state,
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
           </p>
           {profile.data.bio !== null && <p>{profile.data.bio}</p>}
           <div className="button-row">
@@ -180,6 +197,54 @@ export default function BarberProfilePage(): React.ReactElement {
           {save.error instanceof Error && <Notice>{save.error.message}</Notice>}
         </div>
       </section>
+
+      {profile.data.shopLocation !== null && (
+        <section className="public-shop-location">
+          <div className="public-shop-location-copy">
+            <span>
+              <MapPin size={20} />
+            </span>
+            <p className="eyebrow">Visit the shop</p>
+            <h2>Know exactly where to arrive</h2>
+            <p>
+              {[
+                profile.data.shopLocation.address,
+                profile.data.shopLocation.city,
+                profile.data.shopLocation.state,
+                profile.data.shopLocation.zipCode,
+              ]
+                .filter(Boolean)
+                .join(', ')}
+            </p>
+            <a
+              className="button button-secondary"
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                `${profile.data.shopLocation.latitude},${profile.data.shopLocation.longitude}`,
+              )}`}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <Navigation size={16} /> Get directions
+            </a>
+          </div>
+          <div className="public-shop-location-map">
+            <ServiceAreaMap
+              center={{
+                latitude: profile.data.shopLocation.latitude,
+                longitude: profile.data.shopLocation.longitude,
+              }}
+              destination={{
+                latitude: profile.data.shopLocation.latitude,
+                longitude: profile.data.shopLocation.longitude,
+              }}
+              interactive={false}
+              markerVariant="store"
+              radiusMiles={null}
+              zoom={14}
+            />
+          </div>
+        </section>
+      )}
 
       {profile.data.mobileService?.isEnabled === true && (
         <section className="mobile-service-callout">

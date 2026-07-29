@@ -21,7 +21,7 @@ type ServiceAreaMapProps = {
   center: MapPoint;
   destination?: MapPoint | null;
   interactive?: boolean;
-  radiusMiles?: number;
+  radiusMiles?: number | null;
   markerVariant?: 'pin' | 'store';
   zoom?: number;
   onDestinationChange?: (point: MapPoint) => void;
@@ -136,8 +136,20 @@ export function ServiceAreaMap({
   useEffect(() => {
     const instance = map.current;
     if (instance === null) return;
-    const sourceData = circleGeometry(center, radiusMiles);
     const syncCircle = (): void => {
+      if (radiusMiles === null) {
+        if (instance.getLayer('service-radius-line') !== undefined) {
+          instance.removeLayer('service-radius-line');
+        }
+        if (instance.getLayer('service-radius-fill') !== undefined) {
+          instance.removeLayer('service-radius-fill');
+        }
+        if (instance.getSource('service-radius') !== undefined) {
+          instance.removeSource('service-radius');
+        }
+        return;
+      }
+      const sourceData = circleGeometry(center, radiusMiles);
       if (instance.getSource('service-radius') === undefined) {
         instance.addSource('service-radius', { type: 'geojson', data: sourceData });
         instance.addLayer({
@@ -175,12 +187,20 @@ export function ServiceAreaMap({
   useEffect(() => {
     const instance = map.current;
     if (instance === null || destination === null) return;
+    if (center.latitude === destination.latitude && center.longitude === destination.longitude) {
+      instance.easeTo({
+        center: [center.longitude, center.latitude],
+        zoom: Math.min(zoom, 15),
+        duration: 400,
+      });
+      return;
+    }
     const bounds = new LngLatBounds(
       [center.longitude, center.latitude] as LngLatLike,
       [destination.longitude, destination.latitude] as LngLatLike,
     );
     instance.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 400 });
-  }, [center.latitude, center.longitude, destination?.latitude, destination?.longitude]);
+  }, [center.latitude, center.longitude, destination?.latitude, destination?.longitude, zoom]);
 
   return <div className="service-area-map" ref={container} />;
 }
