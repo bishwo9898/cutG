@@ -47,6 +47,11 @@ const checkStorage = async (): Promise<void> => {
 };
 
 export const ensurePrivateStorageReady = async (): Promise<void> => {
+  // Integration tests only consume signed URLs; they never upload or download the referenced
+  // objects. Keeping presigning offline makes the API suite deterministic in CI, where Postgres is
+  // the only required service. Metadata verification and object operations still contact storage.
+  if (env.NODE_ENV === 'test') return;
+
   storageReadiness ??= checkStorage();
   try {
     await storageReadiness;

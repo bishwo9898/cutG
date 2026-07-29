@@ -416,7 +416,7 @@ export const reverseGeocodeCoordinates = async (
   if (env.NODE_ENV === 'test' && fetcher === fetch) {
     return coordinateFallback(latitude, longitude, options.barberId);
   }
-  if (env.GOOGLE_MAPS_API_KEY.length === 0) {
+  if (env.GOOGLE_MAPS_API_KEY.length === 0 && fetcher === fetch) {
     logger.warn('Reverse geocoding skipped because GOOGLE_MAPS_API_KEY is empty', {
       provider: 'google',
       status: 'MISSING_KEY',
