@@ -15,3 +15,6 @@ def require_internal_auth(
     service_header_matches = hmac.compare_digest(x_cutg_ai_secret, settings.internal_secret)
     if not bearer_matches and not service_header_matches:
         raise HTTPException(status_code=401, detail="Invalid internal AI credential")
+
+
+#for the streaks
