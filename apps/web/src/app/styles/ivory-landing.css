@@ -1,0 +1,271 @@
+.landing-cinematic-page {
+  --landing-bg: var(--ivory-canvas);
+  --landing-surface: var(--ivory-surface);
+  --landing-surface-raised: var(--ivory-surface-raised);
+  --landing-border: rgba(89, 70, 55, 0.16);
+  --landing-border-strong: rgba(65, 50, 40, 0.26);
+  --landing-gold: var(--ivory-champagne);
+  --landing-gold-soft: var(--ivory-champagne-soft);
+  --landing-cream: var(--ivory-ink);
+  --landing-muted: var(--ivory-muted);
+  --landing-shadow: var(--ivory-shadow-lg);
+  background:
+    radial-gradient(circle at 8% 4%, rgba(234, 215, 211, 0.72), transparent 28%),
+    linear-gradient(180deg, #faf7f1 0%, #f5efe7 52%, #fbf7f1 100%);
+}
+
+.landing-cinematic-nav {
+  color: var(--ivory-ink);
+}
+
+.landing-cinematic-nav.is-scrolled {
+  border-bottom-color: rgba(89, 70, 55, 0.12);
+  background: rgba(250, 247, 241, 0.88);
+  box-shadow: 0 8px 30px rgba(57, 45, 36, 0.05);
+}
+
+.landing-cinematic-brand {
+  color: var(--ivory-ink);
+  font-family: var(--font-display);
+  font-size: 27px;
+  letter-spacing: -0.04em;
+  text-transform: none;
+}
+
+.landing-cinematic-brand-mark {
+  border-color: var(--ivory-ink);
+  color: #fff;
+  background: var(--ivory-ink);
+}
+
+.landing-cinematic-nav-links {
+  color: var(--ivory-muted);
+}
+
+.landing-cinematic-button-primary {
+  border-color: var(--ivory-ink);
+  color: #fff;
+  background: var(--ivory-ink);
+}
+
+.landing-cinematic-button-primary:hover {
+  color: #fff;
+  background: #000;
+}
+
+.landing-cinematic-button-ghost,
+.landing-cinematic-menu-button {
+  border-color: var(--ivory-line-strong);
+  color: var(--ivory-ink);
+  background: rgba(255, 253, 249, 0.62);
+}
+
+.landing-cinematic-button-ghost:hover,
+.landing-cinematic-menu-button:hover {
+  border-color: var(--ivory-ink);
+  background: var(--ivory-surface);
+}
+
+.landing-cinematic-mobile-sheet {
+  background: rgba(61, 50, 43, 0.25);
+}
+
+.landing-cinematic-mobile-sheet-inner {
+  border-color: var(--ivory-line);
+  background: rgba(255, 253, 249, 0.97);
+  box-shadow: var(--ivory-shadow-lg);
+}
+
+.landing-cinematic-hero {
+  min-height: 100svh;
+  background: #f4eee6;
+}
+
+.landing-cinematic-hero-backdrop {
+  inset: 88px 28px 28px;
+  border-radius: 34px;
+}
+
+.landing-cinematic-hero-backdrop-image {
+  background-image: url('/images/barbers/barber-2.webp');
+  background-position: center 28%;
+  filter: saturate(0.54) contrast(0.9) brightness(1.08);
+  transform: scale(1.03);
+}
+
+.landing-cinematic-hero-backdrop-wash {
+  background:
+    linear-gradient(90deg, rgba(250, 247, 241, 0.94) 0%, rgba(250, 247, 241, 0.72) 48%, rgba(250, 247, 241, 0.25) 100%),
+    linear-gradient(0deg, rgba(246, 237, 229, 0.84), transparent 55%);
+}
+
+.landing-cinematic-aurora {
+  opacity: 0.7;
+}
+
+.landing-cinematic-aurora-left {
+  background: rgba(234, 215, 211, 0.85);
+}
+
+.landing-cinematic-aurora-right {
+  background: rgba(237, 226, 207, 0.74);
+}
+
+.landing-cinematic-hero-grid {
+  justify-items: start;
+}
+
+.landing-cinematic-hero-copy {
+  max-width: 780px;
+  justify-items: start;
+  padding-left: clamp(12px, 4vw, 58px);
+  text-align: left;
+}
+
+.landing-cinematic-hero-copy h1 {
+  color: var(--ivory-ink);
+  font-size: clamp(58px, 7.6vw, 108px);
+  line-height: 0.9;
+}
+
+.landing-cinematic-flip-word {
+  color: var(--ivory-champagne);
+}
+
+.landing-cinematic-hero-subhead {
+  color: var(--ivory-ink-soft);
+}
+
+.landing-cinematic-hero-actions {
+  justify-content: flex-start;
+}
+
+.landing-cinematic-section {
+  padding-block: clamp(76px, 9vw, 126px);
+}
+
+.landing-cinematic-section-surface,
+.landing-cinematic-proof-band {
+  border-block: 1px solid var(--ivory-line);
+  background: rgba(255, 253, 249, 0.56);
+}
+
+.landing-cinematic-section-heading h2,
+.landing-cinematic-tracking-copy h2,
+.landing-cinematic-final-copy h2 {
+  color: var(--ivory-ink);
+}
+
+.landing-cinematic-slider-frame,
+.landing-cinematic-story-card {
+  border-color: var(--ivory-line);
+  background: var(--ivory-surface);
+  box-shadow: var(--ivory-shadow-md);
+}
+
+.landing-cinematic-slider-frame {
+  border-radius: 28px;
+}
+
+.landing-cinematic-slider-copy,
+.landing-cinematic-image-label {
+  border-color: rgba(255, 255, 255, 0.48);
+  color: #fff;
+  background: rgba(25, 21, 18, 0.68);
+}
+
+.landing-cinematic-slider-handle {
+  color: #fff;
+  background: var(--ivory-ink);
+}
+
+.landing-cinematic-style-tabs button {
+  color: var(--ivory-muted);
+}
+
+.landing-cinematic-style-tabs button.is-active {
+  border-bottom-color: var(--ivory-ink);
+  color: var(--ivory-ink);
+}
+
+.landing-cinematic-stat-capsules div,
+.landing-cinematic-map-card,
+.landing-cinematic-timeline,
+.landing-cinematic-steps article,
+.landing-cinematic-barber-benefits article,
+.landing-cinematic-pricing article,
+.landing-cinematic-final-grid article {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: rgba(255, 253, 249, 0.82);
+  box-shadow: var(--ivory-shadow-sm);
+}
+
+.landing-cinematic-story-card {
+  background:
+    radial-gradient(circle at top left, rgba(234, 215, 211, 0.55), transparent 38%),
+    var(--ivory-surface);
+}
+
+.landing-cinematic-story-head strong,
+.landing-cinematic-timeline-row strong,
+.landing-cinematic-pricing article h3,
+.landing-cinematic-final-grid article h3,
+.landing-cinematic-barber-benefits h3,
+.landing-cinematic-steps h3 {
+  color: var(--ivory-ink);
+}
+
+.landing-cinematic-story-head span,
+.landing-cinematic-status-pill,
+.landing-cinematic-preview-chip,
+.landing-cinematic-pricing-chip {
+  border-color: #d9c6aa;
+  color: #765d38;
+  background: var(--ivory-champagne-soft);
+}
+
+.landing-cinematic-map-grid {
+  opacity: 0.42;
+}
+
+.landing-cinematic-map-route-pill,
+.landing-cinematic-map-service-note,
+.landing-cinematic-map-stop {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: rgba(255, 253, 249, 0.94);
+  box-shadow: var(--ivory-shadow-sm);
+}
+
+.landing-cinematic-timeline-row span,
+.landing-cinematic-map-stop-icon {
+  border-color: var(--ivory-champagne);
+  background: var(--ivory-champagne-soft);
+}
+
+.landing-cinematic-pricing article.is-featured {
+  border-color: var(--ivory-ink);
+  background: var(--ivory-surface-raised);
+  box-shadow: var(--ivory-shadow-md);
+}
+
+.landing-cinematic-final-cta {
+  border: 1px solid var(--ivory-line);
+  border-radius: 32px;
+  padding: clamp(30px, 5vw, 64px);
+  background: linear-gradient(135deg, #fffdf9, #f1e4df);
+  box-shadow: var(--ivory-shadow-md);
+}
+
+.landing-cinematic-footer {
+  border-top: 1px solid var(--ivory-line);
+  color: var(--ivory-ink);
+  background: #eee6dc;
+}
+
+.landing-cinematic-footer p,
+.landing-cinematic-footer small,
+.landing-cinematic-footer nav {
+  color: var(--ivory-muted);
+}

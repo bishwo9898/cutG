@@ -1,0 +1,470 @@
+.app-shell {
+  color: var(--ivory-ink);
+  background:
+    radial-gradient(circle at 94% 4%, rgba(234, 215, 211, 0.42), transparent 22%),
+    var(--ivory-canvas);
+}
+
+.sidebar {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: #eee6dc;
+}
+
+.sidebar .brand-lockup {
+  color: var(--ivory-ink);
+}
+
+.nav-link {
+  border: 1px solid transparent;
+  color: var(--ivory-muted);
+}
+
+.nav-link:hover {
+  border-color: rgba(201, 187, 174, 0.65);
+  color: var(--ivory-ink);
+  background: rgba(255, 253, 249, 0.62);
+}
+
+.nav-link-active,
+.nav-link-active:hover {
+  border-color: var(--ivory-ink);
+  color: #fff;
+  background: var(--ivory-ink);
+  box-shadow: 0 10px 24px rgba(23, 21, 19, 0.13);
+}
+
+.sidebar-footer {
+  border-color: var(--ivory-line-strong);
+}
+
+.sidebar-user strong {
+  color: var(--ivory-ink);
+}
+
+.sidebar-user span {
+  color: var(--ivory-muted);
+}
+
+.topbar {
+  border-color: var(--ivory-line);
+  background: rgba(250, 247, 241, 0.9);
+  box-shadow: 0 8px 30px rgba(57, 45, 36, 0.04);
+  backdrop-filter: blur(20px);
+}
+
+.topbar-label {
+  color: var(--ivory-muted);
+}
+
+.dashboard-backbar {
+  border-color: var(--ivory-line);
+  background: rgba(250, 247, 241, 0.96);
+}
+
+.page {
+  padding-block: 42px;
+}
+
+.page-header {
+  margin-bottom: 32px;
+}
+
+.page-header h1 {
+  color: var(--ivory-ink);
+  font-size: clamp(34px, 4vw, 48px);
+  line-height: 1;
+}
+
+.page-header p {
+  color: var(--ivory-muted);
+  font-size: 14px;
+}
+
+.stat {
+  min-height: 146px;
+  border-color: var(--ivory-line);
+  background: linear-gradient(145deg, var(--ivory-surface), #f8f0eb);
+  box-shadow: var(--ivory-shadow-sm);
+}
+
+.stat-icon {
+  border: 1px solid var(--ivory-line);
+  border-radius: 999px;
+  color: var(--ivory-ink);
+  background: var(--ivory-surface-raised);
+}
+
+.stat-value {
+  color: var(--ivory-ink);
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 500;
+}
+
+.stat-label {
+  color: var(--ivory-muted);
+}
+
+.panel {
+  border-color: var(--ivory-line);
+  background: var(--ivory-surface);
+  box-shadow: var(--ivory-shadow-sm);
+}
+
+.panel-header h2,
+.panel-header h3,
+.panel-body strong,
+.service-card h3,
+.list-row strong,
+.booking-summary-lines strong,
+.compact-calendar strong {
+  color: var(--ivory-ink);
+}
+
+.service-manager-toolbar,
+.service-manager-card,
+.service-filter-empty,
+.schedule-row,
+.service-toggle,
+.radius-control,
+.suggestion-row,
+.subscription-card,
+.earnings-card,
+.payment-card {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface);
+}
+
+.service-manager-card,
+.subscription-card,
+.earnings-card,
+.payment-card {
+  box-shadow: var(--ivory-shadow-sm);
+}
+
+.service-manager-card:hover {
+  border-color: var(--ivory-line-strong);
+  box-shadow: var(--ivory-shadow-md);
+}
+
+.service-manager-card h2,
+.service-manager-card strong,
+.service-manager-toolbar strong {
+  color: var(--ivory-ink);
+}
+
+.service-manager-card p,
+.service-manager-toolbar span,
+.service-toggle-copy small,
+.radius-control-copy small,
+.suggestion-row small {
+  color: var(--ivory-muted);
+}
+
+.service-category-pills button,
+.segmented button,
+.filter-preset-list .list-row,
+.map-mode-control button {
+  border-color: var(--ivory-line);
+  color: var(--ivory-muted);
+  background: var(--ivory-surface);
+}
+
+.service-category-pills button:hover,
+.segmented button:hover,
+.filter-preset-list .list-row:hover,
+.map-mode-control button:hover {
+  color: var(--ivory-ink);
+  background: var(--ivory-canvas-pink);
+}
+
+.schedule-row {
+  border-bottom-color: var(--ivory-line);
+  background: transparent;
+}
+
+.mobile-service-map,
+.service-area-map,
+.shop-location-map {
+  border: 1px solid var(--ivory-line);
+  background: #e9e0d5;
+}
+
+.radius-control,
+.suggestion-row {
+  border-radius: 14px;
+}
+
+.radius-control-copy svg,
+.portfolio-panel-heading > span svg,
+.portfolio-career-mark svg {
+  color: var(--ivory-champagne);
+}
+
+.pac-container,
+.pac-item {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface-raised);
+}
+
+.pac-item:hover {
+  background: var(--ivory-canvas-pink);
+}
+
+.portfolio-view-toggle,
+.portfolio-completion-card,
+.portfolio-editor-panel,
+.portfolio-media-panel,
+.portfolio-published-work,
+.portfolio-career-list,
+.portfolio-certification-list,
+.portfolio-editor-tabs,
+.portfolio-retention-preview,
+.portfolio-live-preview,
+.portfolio-merged-save,
+.portfolio-location-panel .shop-location-results,
+.portfolio-location-panel .shop-location-results > button,
+.portfolio-location-panel .shop-address-details {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface);
+  box-shadow: var(--ivory-shadow-sm);
+}
+
+.portfolio-completion-card {
+  background: linear-gradient(115deg, rgba(234, 215, 211, 0.7), transparent 54%),
+    var(--ivory-surface);
+}
+
+.portfolio-completion-score strong,
+.portfolio-editor-work-list article > div:nth-child(2) span,
+.portfolio-retention-preview > strong {
+  color: var(--ivory-champagne);
+}
+
+.portfolio-completion-track {
+  background: var(--ivory-surface-soft);
+}
+
+.portfolio-completion-track span,
+.portfolio-mini-chart span {
+  background: linear-gradient(90deg, #d2b98f, var(--ivory-champagne));
+}
+
+.portfolio-editor-tabs button,
+.portfolio-view-toggle button {
+  color: var(--ivory-muted);
+}
+
+.portfolio-editor-tabs button:hover:not(.is-active),
+.portfolio-view-toggle button:hover:not(:disabled) {
+  color: var(--ivory-ink);
+  background: var(--ivory-canvas-pink);
+}
+
+.portfolio-editor-tabs button.is-active,
+.portfolio-view-toggle button.is-active {
+  color: #fff;
+  background: var(--ivory-ink);
+}
+
+.portfolio-banner-preview,
+.portfolio-upload-pair label,
+.portfolio-empty,
+.portfolio-work-processing,
+.portfolio-location-placeholder,
+.portfolio-section-unavailable,
+.portfolio-preview-empty {
+  border-color: var(--ivory-line-strong);
+  color: var(--ivory-muted);
+  background: #faf6f0;
+}
+
+.portfolio-upload-pair label:hover {
+  border-color: var(--ivory-champagne);
+  background: var(--ivory-canvas-pink);
+}
+
+.portfolio-empty strong,
+.portfolio-career-list h3,
+.portfolio-career-list strong,
+.portfolio-certification-list h3,
+.portfolio-certification-list strong,
+.portfolio-location-placeholder h2,
+.portfolio-section-unavailable h2,
+.portfolio-preview-empty h2 {
+  color: var(--ivory-ink);
+}
+
+.portfolio-preview-toolbar {
+  border-color: var(--ivory-line);
+  background: #f7f1e9;
+}
+
+.portfolio-live-preview iframe {
+  background: var(--ivory-canvas);
+}
+
+.mobile-nav {
+  border-color: var(--ivory-line);
+  background: rgba(250, 247, 241, 0.97);
+  box-shadow: 0 -10px 30px rgba(57, 45, 36, 0.06);
+}
+
+.mobile-nav a {
+  color: var(--ivory-muted);
+}
+
+.mobile-nav .nav-link-active {
+  color: var(--ivory-ink);
+  background: var(--ivory-blush-soft);
+}
+
+.preview-cover {
+  color: #fff;
+  background:
+    linear-gradient(180deg, transparent 28%, rgba(23, 21, 19, 0.76)),
+    url('/images/barbers/barber-2.webp') center 28% / cover;
+}
+
+.service-location-tabs,
+.shop-location-results,
+.shop-location-results > button,
+.shop-address-details,
+.shop-settings-summary,
+.profile-settings-form,
+.profile-save-bar {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface);
+}
+
+.service-location-tabs button {
+  color: var(--ivory-muted);
+  background: transparent;
+}
+
+.service-location-tabs button.is-active {
+  color: #fff;
+  background: var(--ivory-ink);
+}
+
+.shop-search-input {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface-raised);
+}
+
+.shop-search-input:focus-within {
+  border-color: var(--ivory-ink);
+  box-shadow: 0 0 0 3px rgba(23, 21, 19, 0.08);
+}
+
+.shop-location-results > button:hover,
+.shop-location-results > button:focus-visible {
+  background: var(--ivory-canvas-pink);
+}
+
+.shop-location-status,
+.shop-result-icon,
+.public-shop-location-copy > span,
+.shop-settings-summary > span {
+  color: var(--ivory-ink);
+  background: var(--ivory-champagne-soft);
+}
+
+.shop-location-status,
+.shop-preview-note,
+.shop-map-hint,
+.shop-location-results small,
+.shop-address-heading small,
+.shop-address-heading > span,
+.shop-settings-summary p {
+  color: var(--ivory-muted);
+}
+
+.shop-google-attribution {
+  color: var(--ivory-muted);
+  background: var(--ivory-surface-soft);
+}
+
+.shop-location-map-frame,
+.public-shop-location {
+  border-color: var(--ivory-line);
+  background: var(--ivory-surface);
+}
+
+/* Auth is shared by both audiences. */
+.auth-page {
+  background: var(--ivory-canvas);
+}
+
+.auth-brand {
+  color: var(--ivory-ink);
+  background:
+    linear-gradient(90deg, rgba(246, 239, 232, 0.9), rgba(246, 239, 232, 0.38)),
+    url('/images/barbers/barber-3.webp') center / cover;
+}
+
+.auth-brand::after {
+  position: absolute;
+  inset: 24px;
+  border: 1px solid rgba(255, 253, 249, 0.55);
+  border-radius: 24px;
+  pointer-events: none;
+  content: '';
+}
+
+.auth-brand > * {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-brand .brand-lockup,
+.auth-quote h2 {
+  color: var(--ivory-ink);
+}
+
+.auth-quote p,
+.auth-brand > small {
+  color: var(--ivory-ink-soft);
+}
+
+.auth-panel {
+  background:
+    radial-gradient(circle at 80% 12%, rgba(234, 215, 211, 0.58), transparent 28%),
+    var(--ivory-canvas);
+}
+
+.auth-form {
+  border: 1px solid var(--ivory-line);
+  border-radius: 24px;
+  padding: clamp(24px, 4vw, 42px);
+  background: rgba(255, 253, 249, 0.9);
+  box-shadow: var(--ivory-shadow-md);
+}
+
+.auth-form h1 {
+  color: var(--ivory-ink);
+}
+
+.auth-role-card {
+  border-color: var(--ivory-line);
+  background: var(--ivory-surface);
+}
+
+.auth-role-card:hover,
+.auth-role-card:focus-visible {
+  border-color: var(--ivory-ink);
+  box-shadow: var(--ivory-shadow-md);
+}
+
+.auth-role-card-icon,
+.auth-role-icon {
+  border: 1px solid var(--ivory-line);
+  color: var(--ivory-ink);
+  background: var(--ivory-blush-soft);
+}

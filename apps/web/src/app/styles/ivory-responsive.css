@@ -1,0 +1,244 @@
+@media (max-width: 1024px) {
+  .landing-cinematic-hero-backdrop {
+    inset-inline: 18px;
+  }
+
+  .landing-cinematic-hero-backdrop-wash {
+    background: linear-gradient(90deg, rgba(250, 247, 241, 0.94), rgba(250, 247, 241, 0.48));
+  }
+
+  .landing-cinematic-hero-copy {
+    max-width: 700px;
+  }
+
+  .app-shell {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .client-header {
+    gap: 18px;
+  }
+}
+
+@media (max-width: 820px) {
+  .auth-page {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-brand {
+    min-height: 360px;
+    padding: 34px;
+  }
+
+  .auth-panel {
+    min-height: auto;
+    padding: 32px 18px 48px;
+  }
+
+  .auth-form {
+    margin-top: -72px;
+  }
+
+  .app-shell {
+    display: block;
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .mobile-nav {
+    display: grid;
+  }
+
+  .page {
+    padding-inline: 22px;
+  }
+
+  .stats-grid,
+  .dashboard-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .landing-cinematic-hero {
+    min-height: 780px;
+  }
+
+  .landing-cinematic-hero-backdrop {
+    inset: 82px 12px 16px;
+    border-radius: 24px;
+  }
+
+  .landing-cinematic-hero-backdrop-image {
+    background-position: 66% center;
+  }
+
+  .landing-cinematic-hero-backdrop-wash {
+    background:
+      linear-gradient(0deg, rgba(250, 247, 241, 0.96) 0%, rgba(250, 247, 241, 0.66) 70%, rgba(250, 247, 241, 0.25) 100%),
+      linear-gradient(90deg, rgba(250, 247, 241, 0.72), transparent);
+  }
+
+  .landing-cinematic-hero-grid {
+    align-items: end;
+  }
+
+  .landing-cinematic-hero-copy {
+    align-items: stretch;
+    padding: 0 12px 34px;
+  }
+
+  .landing-cinematic-hero-copy h1 {
+    font-size: clamp(49px, 14vw, 70px);
+  }
+
+  .landing-cinematic-final-cta {
+    width: calc(100% - 28px);
+  }
+
+  .market-page .market-hero {
+    min-height: 560px;
+    align-items: flex-end;
+    background:
+      linear-gradient(0deg, rgba(250, 247, 241, 0.98) 0%, rgba(250, 247, 241, 0.72) 68%, rgba(250, 247, 241, 0.24) 100%),
+      url('/images/barbers/barber-1.webp') 64% center / cover;
+  }
+
+  .market-page .market-section,
+  .market-page .market-shell,
+  .market-page .profile-hero,
+  .market-page .booking-shell,
+  .market-page .narrow-page {
+    width: min(100% - 28px, 1180px);
+  }
+
+  .design-home-band.design-home-band-featured {
+    width: calc(100% - 28px);
+    gap: 30px;
+    border-radius: 22px;
+    padding: 28px 20px;
+  }
+
+  .design-home-visual {
+    min-height: 350px;
+  }
+
+  .nearby-barbers-panel {
+    padding: 10px;
+  }
+
+  .nearby-barbers-panel-topline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .client-mobile-nav,
+  .mobile-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .page {
+    padding: 28px 16px;
+  }
+
+  .page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .page-header > .button,
+  .page-header > button,
+  .page-header .toolbar {
+    width: 100%;
+  }
+
+  .page-header .toolbar > * {
+    flex: 1 1 150px;
+  }
+
+  .panel,
+  .stat,
+  .market-card,
+  .summary-panel,
+  .filter-panel {
+    border-radius: 15px;
+  }
+
+  .drawer {
+    width: 100%;
+    padding: 22px 18px;
+  }
+
+  .auth-brand {
+    min-height: 320px;
+    padding: 28px;
+  }
+
+  .auth-brand::after {
+    inset: 14px;
+  }
+
+  .auth-form {
+    border-radius: 20px;
+    padding: 26px 20px;
+  }
+}
+
+@media (max-width: 540px) {
+  .form-row,
+  .auth-role-grid,
+  .stats-grid,
+  .dashboard-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-switcher {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .landing-cinematic-section-heading h2,
+  .landing-cinematic-tracking-copy h2,
+  .landing-cinematic-final-copy h2,
+  .market-page .market-hero h1,
+  .page-header h1 {
+    font-size: 39px;
+  }
+
+  .landing-cinematic-slider-frame {
+    min-height: 390px;
+  }
+
+  .button {
+    min-height: 48px;
+  }
+
+  .table th,
+  .table td {
+    padding-inline: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

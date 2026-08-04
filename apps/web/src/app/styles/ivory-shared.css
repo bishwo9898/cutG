@@ -1,0 +1,327 @@
+/* Shared editorial foundations */
+.landing-cinematic-page,
+.market-page,
+.app-shell,
+.auth-page,
+.hair-studio-v2 {
+  color: var(--ivory-ink);
+  background: var(--ivory-canvas);
+}
+
+.landing-cinematic-page h1,
+.landing-cinematic-page h2,
+.market-page h1,
+.market-page h2,
+.page-header h1,
+.auth-quote h2,
+.auth-form h1,
+.drawer-header h2,
+.portfolio-title-row h1 {
+  color: var(--ivory-ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+
+.eyebrow,
+.landing-cinematic-eyebrow {
+  color: var(--ivory-champagne);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.subtitle,
+.muted,
+.field-help,
+.panel-description {
+  color: var(--ivory-muted);
+}
+
+.brand-lockup,
+.brand-lockup.dark,
+.topbar .brand-lockup {
+  color: var(--ivory-ink);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.brand-mark,
+.brand-lockup.dark .brand-mark {
+  border: 1px solid var(--ivory-ink);
+  border-radius: 999px;
+  color: var(--ivory-surface);
+  background: var(--ivory-ink);
+}
+
+.button {
+  min-height: 46px;
+  border-radius: 999px;
+  padding: 10px 19px;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease,
+    box-shadow 160ms ease, transform 160ms ease;
+}
+
+.button-primary,
+.market-page .button-primary {
+  border-color: var(--ivory-ink);
+  color: #fffdf9;
+  background: var(--ivory-ink);
+  box-shadow: 0 9px 22px rgba(23, 21, 19, 0.12);
+}
+
+.button-primary:hover:not(:disabled),
+.market-page .button-primary:hover:not(:disabled) {
+  border-color: #000;
+  color: #fff;
+  background: #000;
+  box-shadow: 0 12px 28px rgba(23, 21, 19, 0.18);
+  transform: translateY(-1px);
+}
+
+.button-secondary,
+.button-ghost,
+.market-page .button-secondary,
+.market-page .button-ghost {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: rgba(255, 253, 249, 0.8);
+}
+
+.button-secondary:hover:not(:disabled),
+.button-ghost:hover:not(:disabled),
+.market-page .button-secondary:hover:not(:disabled),
+.market-page .button-ghost:hover:not(:disabled) {
+  border-color: var(--ivory-line-strong);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface-raised);
+}
+
+.button-danger {
+  border-color: #ddc2bf;
+  color: var(--ivory-danger);
+  background: #fff8f7;
+}
+
+.text-link,
+.market-page .text-link {
+  color: var(--ivory-ink);
+  text-decoration-color: var(--ivory-champagne);
+  text-underline-offset: 4px;
+}
+
+.input,
+.select,
+.textarea,
+.money-input,
+.input-with-icon,
+.precise-location-search,
+.client-header-search {
+  min-height: 48px;
+  border: 1px solid var(--ivory-line);
+  border-radius: 12px;
+  color: var(--ivory-ink);
+  background: var(--ivory-surface-raised);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus,
+.money-input:focus-within,
+.input-with-icon:focus-within,
+.precise-location-search:focus-within,
+.client-header-search:focus-within {
+  border-color: var(--ivory-ink);
+  box-shadow: 0 0 0 3px rgba(23, 21, 19, 0.08);
+}
+
+.input::placeholder,
+.textarea::placeholder,
+.hero-search input::placeholder,
+.client-header-search input::placeholder {
+  color: var(--ivory-faint);
+  opacity: 1;
+}
+
+.panel,
+.stat,
+.market-card,
+.review-card,
+.summary-panel,
+.filter-panel,
+.service-card,
+.auth-role-card,
+.drawer,
+.compact-calendar,
+.booking-step-panel,
+.booking-summary-panel,
+.appointment-side-panel,
+.travel-estimate-card,
+.selected-address-card {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface);
+  box-shadow: var(--ivory-shadow-sm);
+}
+
+.panel,
+.stat,
+.market-card,
+.review-card,
+.summary-panel,
+.filter-panel,
+.service-card,
+.booking-step-panel,
+.booking-summary-panel,
+.appointment-side-panel {
+  border-radius: 18px;
+}
+
+.panel-header,
+.table th,
+.table td,
+.list-row,
+.card-actions,
+.sidebar-footer,
+.auth-switcher {
+  border-color: var(--ivory-line);
+}
+
+.table th {
+  color: var(--ivory-muted);
+  background: #f3eee7;
+  letter-spacing: 0.1em;
+}
+
+.table tr:hover td {
+  background: var(--ivory-canvas-pink);
+}
+
+.badge,
+.status-badge,
+.mobile-badge,
+.availability-label,
+.radius-badge {
+  border: 1px solid var(--ivory-line);
+  color: var(--ivory-ink-soft);
+  background: var(--ivory-surface-soft);
+}
+
+.badge-success,
+.status-confirmed,
+.status-completed,
+.availability-label.has-slots,
+.travel-estimate-card.is-success {
+  border-color: #c8d8cd;
+  color: var(--ivory-success);
+  background: #edf4ef;
+}
+
+.badge-warning,
+.status-pending,
+.notice-warning {
+  border-color: #dfd0b6;
+  color: var(--ivory-warning);
+  background: #faf5e9;
+}
+
+.badge-danger,
+.status-cancelled,
+.status-no_show,
+.notice-error {
+  border-color: #e4cac7;
+  color: var(--ivory-danger);
+  background: #fff5f4;
+}
+
+.notice,
+.notice-success,
+.notice-warning,
+.notice-error {
+  border-radius: 12px;
+}
+
+.drawer-backdrop {
+  background: rgba(34, 29, 25, 0.36);
+  backdrop-filter: blur(5px);
+}
+
+.drawer {
+  box-shadow: -24px 0 80px rgba(48, 38, 30, 0.16);
+}
+
+.icon-button {
+  border-color: var(--ivory-line);
+  border-radius: 999px;
+  color: var(--ivory-ink);
+  background: var(--ivory-surface);
+}
+
+.spinner {
+  border-color: var(--ivory-line);
+  border-top-color: var(--ivory-ink);
+}
+
+.skeleton-line,
+.client-auth-skeleton,
+.skeleton-card {
+  background: linear-gradient(100deg, #eee7df 20%, #faf7f2 40%, #eee7df 60%);
+  background-size: 220% 100%;
+}
+
+.is-selected,
+.slot-button.is-selected,
+.segmented button.is-active,
+.steps .is-active,
+.service-category-pills button.is-active,
+.style-preset-grid button.is-selected,
+.map-mode-control button.is-active,
+.compact-date-rail button.is-selected,
+.compact-time-grid button.is-selected,
+.appointment-type-option.is-selected,
+.address-option.is-selected {
+  border-color: var(--ivory-ink);
+  color: #fff;
+  background: var(--ivory-ink);
+}
+
+.is-selected *,
+.slot-button.is-selected *,
+.segmented button.is-active *,
+.steps .is-active *,
+.service-category-pills button.is-active *,
+.style-preset-grid button.is-selected *,
+.map-mode-control button.is-active *,
+.compact-date-rail button.is-selected *,
+.compact-time-grid button.is-selected *,
+.appointment-type-option.is-selected *,
+.address-option.is-selected * {
+  color: #fff;
+}
+
+.toggle-track {
+  border: 1px solid var(--ivory-line-strong);
+  background: #d9d0c7;
+}
+
+.toggle-track::after {
+  background: #fff;
+}
+
+input:checked + .toggle-track,
+.toggle-input:checked + .toggle-track {
+  border-color: var(--ivory-ink);
+  background: var(--ivory-ink);
+}
+
+input:checked + .toggle-track::after,
+.toggle-input:checked + .toggle-track::after {
+  background: #fff;
+}

@@ -1,0 +1,566 @@
+.market-page {
+  --client-bg: var(--ivory-canvas);
+  --client-surface: var(--ivory-surface);
+  --client-surface-raised: var(--ivory-surface-raised);
+  --client-cream: var(--ivory-ink);
+  --client-cream-muted: var(--ivory-ink-soft);
+  --client-muted: var(--ivory-muted);
+  --client-line: var(--ivory-line);
+  --client-gold: var(--ivory-champagne);
+  color: var(--ivory-ink);
+  background:
+    radial-gradient(circle at 95% 2%, rgba(234, 215, 211, 0.46), transparent 24%),
+    var(--ivory-canvas);
+}
+
+.market-page h1,
+.market-page h2,
+.market-page h3,
+.market-page strong,
+.market-page label {
+  color: var(--ivory-ink);
+}
+
+.market-page p,
+.market-page small,
+.market-page .muted {
+  color: var(--ivory-muted);
+}
+
+.market-page .eyebrow,
+.market-page .rating-row,
+.market-page .stars {
+  color: var(--ivory-champagne);
+}
+
+.market-page .client-header {
+  border-color: var(--ivory-line);
+  background: rgba(250, 247, 241, 0.92);
+  box-shadow: 0 8px 30px rgba(57, 45, 36, 0.045);
+  backdrop-filter: blur(20px);
+}
+
+.client-header-search {
+  background: rgba(255, 253, 249, 0.82);
+}
+
+.client-primary-nav a {
+  color: var(--ivory-muted);
+}
+
+.client-primary-nav .client-nav-active {
+  border-bottom-color: var(--ivory-ink);
+  color: var(--ivory-ink);
+}
+
+.client-avatar,
+.client-profile-avatar,
+.avatar {
+  color: #fff;
+  background: var(--ivory-ink);
+}
+
+.client-account-dropdown {
+  border-color: var(--ivory-line);
+  background: var(--ivory-surface);
+  box-shadow: var(--ivory-shadow-md);
+}
+
+.client-account-dropdown > a,
+.client-account-dropdown > button {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: transparent;
+}
+
+.client-account-dropdown > a:hover,
+.client-account-dropdown > button:hover {
+  color: var(--ivory-ink);
+  background: var(--ivory-canvas-pink);
+}
+
+.client-backbar {
+  border-color: var(--ivory-line);
+  background: rgba(250, 247, 241, 0.96);
+}
+
+.go-back-button {
+  color: var(--ivory-muted);
+}
+
+.go-back-button:hover {
+  color: var(--ivory-ink);
+}
+
+.market-page .market-hero {
+  min-height: 460px;
+  border-bottom: 1px solid var(--ivory-line);
+  background:
+    linear-gradient(90deg, rgba(250, 247, 241, 0.97) 0%, rgba(250, 247, 241, 0.84) 54%, rgba(250, 247, 241, 0.28) 100%),
+    url('/images/barbers/barber-1.webp') center 28% / cover;
+}
+
+.market-page .market-hero::after {
+  display: none;
+}
+
+.market-page .market-hero h1 {
+  color: var(--ivory-ink);
+  font-size: clamp(46px, 6vw, 76px);
+  line-height: 0.96;
+}
+
+.market-page .market-hero > div > p:not(.eyebrow) {
+  color: var(--ivory-ink-soft);
+}
+
+.market-page .hero-search {
+  border-color: var(--ivory-line-strong);
+  background: rgba(255, 253, 249, 0.96);
+  box-shadow: var(--ivory-shadow-md);
+}
+
+.market-page .hero-search input {
+  color: var(--ivory-ink);
+}
+
+.market-page .quick-filter-row a,
+.market-page .style-chip-row span,
+.market-page .service-category-pills button {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink-soft);
+  background: rgba(255, 253, 249, 0.78);
+}
+
+.market-page .quick-filter-row a:hover,
+.market-page .service-category-pills button:hover {
+  border-color: var(--ivory-line-strong);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface);
+}
+
+.market-page .market-section,
+.market-page .market-shell,
+.market-page .profile-hero,
+.market-page .booking-shell,
+.market-page .narrow-page {
+  width: min(1180px, calc(100% - 40px));
+}
+
+.market-page .market-card,
+.market-page .review-card,
+.market-page .filter-panel,
+.market-page .summary-panel,
+.market-page .service-card {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface);
+  box-shadow: var(--ivory-shadow-sm);
+}
+
+.market-page .market-card:hover,
+.market-page .service-card:hover {
+  border-color: var(--ivory-line-strong);
+  box-shadow: var(--ivory-shadow-md);
+  transform: translateY(-3px);
+}
+
+.market-card .barber-cover,
+.market-card img {
+  filter: saturate(0.72) contrast(0.97);
+}
+
+.market-page .card-meta {
+  color: var(--ivory-ink);
+}
+
+.design-home-band.design-home-band-featured {
+  border-color: var(--ivory-line);
+  background:
+    radial-gradient(circle at 85% 8%, rgba(178, 146, 98, 0.18), transparent 34%),
+    linear-gradient(145deg, #fffdf9, #f2e7e2);
+  box-shadow: var(--ivory-shadow-md);
+}
+
+.design-home-copy h2,
+.nearby-barbers-section .section-title h2 {
+  color: var(--ivory-ink);
+}
+
+.design-home-copy > p:not(.eyebrow),
+.nearby-barbers-intro {
+  color: var(--ivory-muted);
+}
+
+.design-home-proof span {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink-soft);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.design-home-visual {
+  border-color: var(--ivory-line-strong);
+  background: var(--ivory-surface-soft);
+  box-shadow: var(--ivory-shadow-md);
+}
+
+.nearby-barbers-view-all {
+  border-color: var(--ivory-champagne);
+  color: var(--ivory-ink);
+}
+
+.nearby-barbers-panel {
+  border-color: var(--ivory-line);
+  background: rgba(255, 253, 249, 0.65);
+}
+
+.nearby-barbers-panel-topline {
+  border-color: var(--ivory-line);
+  color: var(--ivory-muted);
+}
+
+.market-page .spotlight-section,
+.market-page .profile-tabs-section {
+  border-color: var(--ivory-line);
+  background: rgba(255, 253, 249, 0.52);
+}
+
+.market-page .profile-hero {
+  border: 1px solid var(--ivory-line);
+  background: var(--ivory-surface);
+  box-shadow: var(--ivory-shadow-md);
+}
+
+.market-page .profile-tabs {
+  border-color: var(--ivory-line);
+}
+
+.market-page .profile-tabs button {
+  color: var(--ivory-muted);
+}
+
+.market-page .profile-tabs button:hover,
+.market-page .profile-tabs button.is-active {
+  border-bottom-color: var(--ivory-ink);
+  color: var(--ivory-ink);
+}
+
+.client-booking-shell,
+.booking-shell {
+  color: var(--ivory-ink);
+  background: var(--ivory-canvas);
+}
+
+.booking-progress span,
+.booking-service-option,
+.booking-type-grid button,
+.address-option,
+.appointment-type-option,
+.compact-date-rail button,
+.compact-time-grid button {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface);
+}
+
+.booking-service-option:hover,
+.booking-type-grid button:hover,
+.address-option:hover,
+.appointment-type-option:hover,
+.compact-date-rail button:hover,
+.compact-time-grid button:hover {
+  border-color: var(--ivory-line-strong);
+  background: var(--ivory-canvas-pink);
+}
+
+.booking-summary-panel {
+  background: linear-gradient(160deg, var(--ivory-surface), #f7ede8);
+}
+
+.market-page .appointment-timeline,
+.market-page .appointment-price-breakdown,
+.market-page .appointment-notes-grid div,
+.market-page .style-reference-card {
+  border-color: var(--ivory-line);
+  background: var(--ivory-surface);
+}
+
+.client-map-canvas,
+.static-map-fallback,
+.precise-location-map-wrap,
+.mobile-service-callout {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background-color: #eae2d8;
+}
+
+.hair-studio-v2 {
+  color: var(--ivory-ink);
+  background:
+    radial-gradient(circle at 90% 8%, rgba(234, 215, 211, 0.52), transparent 24%),
+    var(--ivory-canvas);
+}
+
+.hair-studio-v2-header,
+.hair-phase-nav,
+.hair-category-tabs {
+  border-color: var(--ivory-line);
+}
+
+.hair-studio-v2-header h1,
+.hair-upload-copy h2,
+.hair-photo-review h2,
+.hair-style-picker-v2 h2,
+.hair-generation-stage h2,
+.hair-result-v2 h2,
+.saved-looks-v2 h2 {
+  color: var(--ivory-ink);
+}
+
+.hair-studio-v2-header > div > p:last-child,
+.hair-upload-copy > p,
+.hair-photo-review p,
+.hair-generation-stage > p,
+.hair-style-heading + p {
+  color: var(--ivory-muted);
+}
+
+.hair-dropzone,
+.hair-camera-panel,
+.hair-photo-frame,
+.hair-style-options button,
+.hair-studio-v2 .hair-studio-trust {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface);
+}
+
+.hair-dropzone:hover:not(:disabled),
+.hair-style-options button:hover,
+.hair-style-options button.is-selected {
+  border-color: var(--ivory-champagne);
+  background: var(--ivory-canvas-pink);
+}
+
+.hair-category-tabs button {
+  color: var(--ivory-muted);
+}
+
+.hair-category-tabs button:hover,
+.hair-category-tabs button.is-active {
+  border-bottom-color: var(--ivory-ink);
+  color: var(--ivory-ink);
+}
+
+.client-mobile-nav {
+  border-color: var(--ivory-line);
+  background: rgba(250, 247, 241, 0.96);
+}
+
+.client-mobile-nav a {
+  color: var(--ivory-muted);
+}
+
+.client-mobile-nav .client-nav-active {
+  color: var(--ivory-ink);
+  background: var(--ivory-blush-soft);
+}
+
+/* Saved looks, capture, and booking-reference flows */
+.saved-look-grid-v2 .saved-look-card-v2,
+.saved-look-detail-image,
+.saved-look-detail-compare,
+.saved-look-detail-notes,
+.saved-look-empty-v2,
+.booking-look-grid > button,
+.booking-look-empty,
+.booking-new-style-option,
+.booking-style-notes,
+.booking-mobile-nudge,
+.hair-consent-modal,
+.hair-scan-sidebar,
+.hair-original-preview {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface);
+  box-shadow: var(--ivory-shadow-sm);
+}
+
+.saved-look-grid-v2 .saved-look-card-v2:hover,
+.booking-look-grid > button:hover,
+.booking-new-style-option:hover {
+  border-color: var(--ivory-line-strong);
+  background: var(--ivory-canvas-pink);
+  box-shadow: var(--ivory-shadow-md);
+}
+
+.saved-look-card-v2-copy strong,
+.saved-look-detail-header h1,
+.saved-look-compare-heading h2,
+.saved-look-detail-notes strong,
+.saved-look-empty-v2 strong,
+.booking-style-title strong,
+.booking-look-grid > button > strong,
+.booking-look-empty strong,
+.booking-new-style-option strong,
+.hair-consent-modal h2,
+.hair-capture-copy h2,
+.hair-scan-heading h2,
+.hair-review-copy h2,
+.hair-scan-sidebar h3 {
+  color: var(--ivory-ink);
+}
+
+.saved-look-card-v2-copy small,
+.saved-look-detail-header p:last-child,
+.saved-look-detail-notes span,
+.saved-look-detail-direction p,
+.saved-look-empty-v2 p,
+.booking-style-title span,
+.booking-style-title small,
+.booking-look-grid > button > small,
+.booking-look-empty p,
+.booking-new-style-option small,
+.hair-consent-modal > p:not(.eyebrow),
+.hair-consent-modal > small,
+.hair-capture-copy > p:not(.eyebrow),
+.hair-scan-sidebar > p,
+.hair-scan-steps small,
+.hair-review-copy > p:not(.eyebrow) {
+  color: var(--ivory-muted);
+}
+
+.saved-look-storage-badge,
+.hair-quality-list span,
+.hair-captured-summary span,
+.hair-capture-privacy,
+.hair-scan-privacy,
+.hair-scan-time,
+.hair-detector-note {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink-soft);
+  background: var(--ivory-blush-soft);
+}
+
+.hair-consent-backdrop {
+  background: rgba(44, 36, 31, 0.42);
+  backdrop-filter: blur(7px);
+}
+
+.hair-consent-choices label,
+.hair-scan-steps li {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: #faf6f0;
+}
+
+.hair-scan-stage,
+.hair-scan-view {
+  border-color: var(--ivory-line);
+  background: #171513;
+}
+
+.hair-upload-rejected {
+  border-color: #e4cac7;
+  color: var(--ivory-danger);
+  background: #fff5f4;
+}
+
+.booking-look-grid > button.is-selected,
+.booking-new-style-option.is-selected {
+  border-color: var(--ivory-ink);
+  color: #fff;
+  background: var(--ivory-ink);
+}
+
+.booking-look-grid > button.is-selected strong,
+.booking-look-grid > button.is-selected small,
+.booking-new-style-option.is-selected * {
+  color: #fff;
+}
+
+/* Public barber portfolio */
+.public-portfolio-page {
+  color: var(--ivory-ink);
+  background: var(--ivory-canvas);
+}
+
+.public-portfolio-page .client-header,
+.portfolio-section-nav {
+  border-color: var(--ivory-line);
+  background: rgba(250, 247, 241, 0.94);
+  backdrop-filter: blur(18px);
+}
+
+.portfolio-public-hero,
+.portfolio-work-card,
+.portfolio-trust-grid > article,
+.portfolio-public-certifications article,
+.portfolio-service-list article,
+.portfolio-tab-panel,
+.portfolio-shop-section,
+.portfolio-booking-card {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink);
+  background: var(--ivory-surface);
+  box-shadow: var(--ivory-shadow-sm);
+}
+
+.portfolio-hero-profile {
+  background: var(--ivory-surface);
+}
+
+.portfolio-hero-shade {
+  background: linear-gradient(180deg, transparent, rgba(23, 21, 19, 0.4));
+}
+
+.portfolio-title-row h1,
+.portfolio-public-heading h2,
+.portfolio-work-copy h3,
+.portfolio-repeat-stat h3,
+.portfolio-retention-chart h3,
+.portfolio-trust-note h3,
+.portfolio-shop-copy h2,
+.portfolio-service-list h3 {
+  color: var(--ivory-ink);
+}
+
+.portfolio-title-row p,
+.portfolio-bio,
+.portfolio-public-heading p:last-child,
+.portfolio-work-copy > p,
+.portfolio-repeat-stat p,
+.portfolio-retention-chart p,
+.portfolio-trust-note p,
+.portfolio-shop-copy > p:not(.eyebrow),
+.portfolio-service-list p {
+  color: var(--ivory-muted);
+}
+
+.portfolio-verified-badge,
+.portfolio-specialty-list span,
+.portfolio-filter-row button,
+.portfolio-products span {
+  border-color: var(--ivory-line);
+  color: var(--ivory-ink-soft);
+  background: var(--ivory-surface-soft);
+}
+
+.portfolio-filter-row button:hover,
+.portfolio-filter-row button.is-active {
+  border-color: var(--ivory-ink);
+  color: #fff;
+  background: var(--ivory-ink);
+}
+
+.portfolio-section-nav a {
+  color: var(--ivory-muted);
+}
+
+.portfolio-section-nav a:hover {
+  color: var(--ivory-ink);
+}
+
+.portfolio-public-section + .portfolio-public-section {
+  border-color: var(--ivory-line);
+}

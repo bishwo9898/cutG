@@ -2,6 +2,12 @@ import type { Metadata } from 'next';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import './globals.css';
+import './styles/ivory-tokens.css';
+import './styles/ivory-shared.css';
+import './styles/ivory-landing.css';
+import './styles/ivory-client.css';
+import './styles/ivory-barber.css';
+import './styles/ivory-responsive.css';
 
 import { Providers } from '@/components/providers';
 
