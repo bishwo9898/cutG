@@ -8,6 +8,7 @@ import './styles/ivory-landing.css';
 import './styles/ivory-client.css';
 import './styles/ivory-barber.css';
 import './styles/ivory-responsive.css';
+import './styles/ivory-contrast.css';
 
 import { Providers } from '@/components/providers';
 
