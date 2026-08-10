@@ -1,70 +1,35 @@
 /*
- * Contrast contracts are intentionally loaded after the page-specific themes.
- * Keep foreground and background colors together here so broad typography rules
- * (for example, `.market-page strong`) cannot turn dark controls into black-on-black.
+ * Landing-page contrast contracts are intentionally loaded after the page theme.
+ * Keep foreground and background colors together so the light editorial palette
+ * cannot leak dark text into the few intentionally dark interactive surfaces.
  */
-.button.button-primary,
-.market-page .button.button-primary,
-.landing-cinematic-button-primary {
+.landing-cinematic-page .landing-cinematic-button-primary {
   border-color: var(--ivory-ink);
   color: var(--ivory-on-ink);
   background: var(--ivory-ink);
 }
 
-.button.button-primary > *,
-.market-page .button.button-primary > *,
-.landing-cinematic-button-primary > * {
+.landing-cinematic-page .landing-cinematic-button-primary > * {
   color: var(--ivory-on-ink);
 }
 
-.button.button-primary:hover:not(:disabled),
-.market-page .button.button-primary:hover:not(:disabled),
-.landing-cinematic-button-primary:hover {
+.landing-cinematic-page .landing-cinematic-button-primary:hover {
   border-color: #000;
   color: #fff;
   background: #000;
 }
 
-.button.button-primary:hover:not(:disabled) > *,
-.market-page .button.button-primary:hover:not(:disabled) > *,
-.landing-cinematic-button-primary:hover > * {
+.landing-cinematic-page .landing-cinematic-button-primary:hover > * {
   color: #fff;
 }
 
-.is-selected,
-.slot-button.is-selected,
-.segmented button.is-active,
-.steps .is-active,
-.service-category-pills button.is-active,
-.style-preset-grid button.is-selected,
-.map-mode-control button.is-active,
-.compact-date-rail button.is-selected,
-.compact-time-grid button.is-selected,
-.appointment-type-option.is-selected,
-.address-option.is-selected,
-.booking-service-option.is-selected,
-.payment-method-grid button.is-selected,
-.booking-look-grid > button.is-selected,
-.booking-new-style-option.is-selected {
-  border-color: var(--ivory-ink);
+.landing-cinematic-page .landing-cinematic-brand-mark,
+.landing-cinematic-page .landing-cinematic-slider-handle,
+.landing-cinematic-page .landing-cinematic-slider-copy,
+.landing-cinematic-page .landing-cinematic-image-label {
   color: var(--ivory-on-ink);
-  background: var(--ivory-ink);
 }
 
-.is-selected *,
-.slot-button.is-selected *,
-.segmented button.is-active *,
-.steps .is-active *,
-.service-category-pills button.is-active *,
-.style-preset-grid button.is-selected *,
-.map-mode-control button.is-active *,
-.compact-date-rail button.is-selected *,
-.compact-time-grid button.is-selected *,
-.appointment-type-option.is-selected *,
-.address-option.is-selected *,
-.booking-service-option.is-selected *,
-.payment-method-grid button.is-selected *,
-.booking-look-grid > button.is-selected *,
-.booking-new-style-option.is-selected * {
-  color: var(--ivory-on-ink);
+.landing-cinematic-page .landing-cinematic-slider-copy p {
+  color: var(--ivory-on-ink-muted);
 }
