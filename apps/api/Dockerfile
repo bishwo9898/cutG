@@ -24,4 +24,6 @@ COPY --from=build /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/packages ./packages
 EXPOSE 4000
-CMD ["node", "apps/api/dist/index.js"]
+# Free Render services cannot use paid pre-deploy commands. Knex migrations are transactional and
+# idempotent, so run them before the single testing instance starts accepting traffic.
+CMD ["sh", "-c", "pnpm --dir apps/api db:migrate:compiled && node apps/api/dist/index.js"]

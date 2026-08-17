@@ -113,3 +113,5 @@ Google Maps keys are optional during local development because Phase 6 has deter
 ## Documentation
 
 Start with [docs/FOUNDATION_TRACKER.md](docs/FOUNDATION_TRACKER.md) for the current build status, then read [docs/PORTALS.md](docs/PORTALS.md), [docs/SETUP.md](docs/SETUP.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DATABASE.md](docs/DATABASE.md), [docs/MOBILE.md](docs/MOBILE.md), and [docs/MOBILE_BARBER.md](docs/MOBILE_BARBER.md).
+
+For the zero-cost testing deployment, follow [docs/PRODUCTION_FREE_TIER.md](docs/PRODUCTION_FREE_TIER.md).

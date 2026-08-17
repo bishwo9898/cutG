@@ -9,6 +9,9 @@ import { stripeWebhookHandler } from './routes/webhooks';
 
 export const createApp = (): Express => {
   const app = express();
+  // Render terminates TLS and forwards the original client IP through one trusted proxy. This is
+  // required for express-rate-limit to identify callers correctly in production.
+  app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(corsMiddleware);

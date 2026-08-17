@@ -44,9 +44,39 @@ const sendWithSendGrid = async (message: EmailMessage): Promise<void> => {
   }
 };
 
+const sendWithResend = async (message: EmailMessage): Promise<void> => {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `cutG <${env.EMAIL_FROM}>`,
+      to: [message.to],
+      subject: message.subject,
+      text: message.text,
+    }),
+  });
+
+  if (!response.ok) {
+    const providerRequestId = response.headers.get('x-resend-id');
+    logger.error('Resend rejected an email request', undefined, {
+      status: response.status,
+      providerRequestId,
+    });
+    throw new Error('The email provider rejected the request.');
+  }
+};
+
 const deliver = async (message: EmailMessage, developmentCode: string): Promise<void> => {
   if (env.EMAIL_PROVIDER === 'sendgrid') {
     await sendWithSendGrid(message);
+    return;
+  }
+
+  if (env.EMAIL_PROVIDER === 'resend') {
+    await sendWithResend(message);
     return;
   }
 

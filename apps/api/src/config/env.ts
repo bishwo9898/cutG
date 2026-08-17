@@ -109,7 +109,8 @@ const EnvSchema = z
     AI_SCAN_RETENTION_HOURS: z.coerce.number().int().min(1).max(168).default(24),
     AI_GENERATION_DAILY_LIMIT: z.coerce.number().int().min(1).max(100).default(5),
     AI_MONTHLY_BUDGET_CENTS: z.coerce.number().nonnegative().default(0),
-    EMAIL_PROVIDER: z.enum(['log', 'sendgrid']).default('log'),
+    EMAIL_PROVIDER: z.enum(['log', 'resend', 'sendgrid']).default('log'),
+    RESEND_API_KEY: z.string().default(''),
     SENDGRID_API_KEY: z.string().default(''),
     EMAIL_FROM: z.string().email().default('noreply@example.com'),
     WEB_APP_URL: z.string().url().default('http://localhost:3000'),
@@ -167,6 +168,22 @@ const EnvSchema = z
           code: z.ZodIssueCode.custom,
           path: ['EMAIL_FROM'],
           message: 'EMAIL_FROM must be a verified sender when EMAIL_PROVIDER=sendgrid.',
+        });
+      }
+    }
+    if (value.EMAIL_PROVIDER === 'resend') {
+      if (!value.RESEND_API_KEY.startsWith('re_')) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['RESEND_API_KEY'],
+          message: 'A Resend API key is required when EMAIL_PROVIDER=resend.',
+        });
+      }
+      if (value.EMAIL_FROM === 'noreply@example.com') {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['EMAIL_FROM'],
+          message: 'EMAIL_FROM must use a domain verified in Resend.',
         });
       }
     }

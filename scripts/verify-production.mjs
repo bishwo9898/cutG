@@ -3,6 +3,7 @@ const apiUrl = process.env.API_URL?.replace(/\/$/, '');
 const clientEmail = process.env.PRODUCTION_CLIENT_EMAIL ?? 'client.test@example.com';
 const barberEmail = process.env.PRODUCTION_BARBER_EMAIL ?? 'barber.test@example.com';
 const testPassword = process.env.PRODUCTION_TEST_PASSWORD ?? 'password123';
+const requestTimeoutMs = Number(process.env.PRODUCTION_REQUEST_TIMEOUT_MS ?? 90_000);
 
 const report = (name, status) =>
   process.stdout.write(`${status === 'pass' ? 'PASS' : 'FAIL'} ${name}\n`);
@@ -10,7 +11,7 @@ const report = (name, status) =>
 const request = async (name, url, init = {}, expectedStatus = 200) => {
   let response;
   try {
-    response = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
+    response = await fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) });
   } catch (error) {
     throw new Error(
       `${name} could not be reached: ${error instanceof Error ? error.message : String(error)}`,
