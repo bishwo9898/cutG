@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer';
+
 import { env } from '../../config/env';
 import { logger } from '../../utils/logger';
 
@@ -69,6 +71,40 @@ const sendWithResend = async (message: EmailMessage): Promise<void> => {
   }
 };
 
+const smtpTransport =
+  env.EMAIL_PROVIDER === 'smtp'
+    ? nodemailer.createTransport({
+        host: env.SMTP_HOST,
+        port: env.SMTP_PORT,
+        secure: env.SMTP_SECURE,
+        auth: {
+          user: env.SMTP_USER,
+          pass: env.SMTP_PASSWORD,
+        },
+      })
+    : null;
+
+const sendWithSmtp = async (message: EmailMessage): Promise<void> => {
+  if (smtpTransport === null) {
+    throw new Error('SMTP email transport is not configured.');
+  }
+
+  const result = await smtpTransport.sendMail({
+    from: { name: 'cutG', address: env.EMAIL_FROM },
+    to: message.to,
+    subject: message.subject,
+    text: message.text,
+  });
+
+  if (result.rejected.length > 0) {
+    logger.error('SMTP server rejected an email request', undefined, {
+      rejectedRecipientCount: result.rejected.length,
+      providerRequestId: result.messageId,
+    });
+    throw new Error('The email provider rejected the request.');
+  }
+};
+
 const deliver = async (message: EmailMessage, developmentCode: string): Promise<void> => {
   if (env.EMAIL_PROVIDER === 'sendgrid') {
     await sendWithSendGrid(message);
@@ -77,6 +113,11 @@ const deliver = async (message: EmailMessage, developmentCode: string): Promise<
 
   if (env.EMAIL_PROVIDER === 'resend') {
     await sendWithResend(message);
+    return;
+  }
+
+  if (env.EMAIL_PROVIDER === 'smtp') {
+    await sendWithSmtp(message);
     return;
   }
 

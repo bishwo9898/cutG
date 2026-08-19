@@ -5,15 +5,15 @@ It hosts only the services used by the current non-AI product flows.
 
 ## Architecture and expected cost
 
-| Component           | Provider and plan             | Purpose                                       | Expected testing cost            |
-| ------------------- | ----------------------------- | --------------------------------------------- | -------------------------------- |
-| Web                 | Existing Vercel Hobby project | Next.js UI and same-origin API proxy          | $0                               |
-| API                 | Render Free web service       | Express API and automatic Knex migrations     | $0                               |
-| Database            | Neon Free                     | Durable PostgreSQL                            | $0 within limits                 |
-| Images              | Cloudinary Free               | Profile, service, portfolio, and banner media | $0 within 25 monthly credits     |
-| Transactional email | Resend Free                   | Verification and password-reset messages      | $0 up to 3,000/month and 100/day |
-| Payments            | Stripe test mode              | Payment and Connect testing                   | $0; no real charges              |
-| Maps                | Google Maps Platform          | Address, geocoding, and maps                  | Usage-based; keep quotas low     |
+| Component           | Provider and plan             | Purpose                                       | Expected testing cost              |
+| ------------------- | ----------------------------- | --------------------------------------------- | ---------------------------------- |
+| Web                 | Existing Vercel Hobby project | Next.js UI and same-origin API proxy          | $0                                 |
+| API                 | Render Free web service       | Express API and automatic Knex migrations     | $0                                 |
+| Database            | Neon Free                     | Durable PostgreSQL                            | $0 within limits                   |
+| Images              | Cloudinary Free               | Profile, service, portfolio, and banner media | $0 within 25 monthly credits       |
+| Transactional email | Gmail SMTP via Nodemailer     | Verification and password-reset test messages | $0 for a small private test cohort |
+| Payments            | Stripe test mode              | Payment and Connect testing                   | $0; no real charges                |
+| Maps                | Google Maps Platform          | Address, geocoding, and maps                  | Usage-based; keep quotas low       |
 
 AI generation is disabled. Redis, the FastAPI service, the RQ worker, fal.ai, and private S3/R2
 storage are therefore not deployed. Re-enable them only when AI testing is scheduled and a budget
@@ -21,7 +21,7 @@ has been approved.
 
 ## 1. Prepare accounts
 
-You need accounts for GitHub, Vercel, Render, Neon, Cloudinary, Resend, Stripe, and optionally Google
+You need accounts for GitHub, Vercel, Render, Neon, Cloudinary, Gmail, Stripe, and optionally Google
 Cloud. Keep every provider in test/free mode and configure provider billing alerts or hard quotas
 where available.
 
@@ -70,16 +70,22 @@ Cloudinary is required for production image uploads. Without it, the rest of the
 but profile, service, portfolio, and banner uploads return a configuration error. The API never
 stores uploads on Render's ephemeral filesystem.
 
-## 4. Configure transactional email with Resend
+## 4. Configure temporary transactional email with Gmail SMTP
 
-1. Add a domain or subdomain you own in Resend, such as `mail.yourdomain.com`.
-2. Add the SPF and DKIM records shown by Resend to the domain's DNS provider and wait for **Verified**.
-3. Create a sending-only API key.
-4. Choose a sender at the exact verified domain, for example `noreply@mail.yourdomain.com`.
-5. Save the key as `RESEND_API_KEY` and the bare email address as `EMAIL_FROM` on Render.
+This zero-cost testing configuration uses Nodemailer with a dedicated Gmail account. It is suitable
+only for a small private test cohort; use a transactional provider with a verified domain before a
+public beta.
+
+1. Enable 2-Step Verification on the dedicated Google account.
+2. Create a 16-character Google App Password named `cutG Render`.
+3. Configure Render with `EMAIL_PROVIDER=smtp`, `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, and
+   `SMTP_SECURE=true`.
+4. Set both `SMTP_USER` and `EMAIL_FROM` to the Gmail address.
+5. Save the App Password as `SMTP_PASSWORD`. Never use the normal Google account password.
 
 Registration and password reset require working email. `EMAIL_PROVIDER=log` is not a production
-fallback because production deliberately does not write security codes to logs.
+fallback because production deliberately does not write security codes to logs. Gmail may throttle
+or block automated server traffic, so replace this transport before inviting real customers.
 
 ## 5. Configure Stripe test mode
 
@@ -163,7 +169,7 @@ pnpm verify:production
 
 The verifier allows 90 seconds for a sleeping free API to wake. Then manually test:
 
-1. Register a new client and receive/submit the Resend verification code.
+1. Register a new client and receive/submit the Gmail-delivered verification code.
 2. Register a barber, edit the profile, availability, and services, and upload an image.
 3. Discover that barber as a client and create an appointment.
 4. Test password reset email.
@@ -174,7 +180,7 @@ The verifier allows 90 seconds for a sleeping free API to wake. Then manually te
 
 - Use only synthetic people, images, addresses, and payment data during this phase.
 - Monitor Neon storage/compute, Render free hours/bandwidth/build minutes, Cloudinary credits,
-  Resend daily/monthly sends, Vercel usage, and Google Maps quotas weekly.
+  Gmail delivery/security alerts, Vercel usage, and Google Maps quotas weekly.
 - Neon is the system of record. Export a logical backup before destructive schema or seed work.
 - Do not rely on Render local files; they disappear on sleep, restart, and deploy.
 - If API cold starts disrupt testing, temporarily keep the service warm only during scheduled test
