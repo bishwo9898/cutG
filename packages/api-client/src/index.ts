@@ -206,6 +206,10 @@ export const mobileBarberApi = {
   disable: <T>(client: ApiClient): Promise<T> => client.post<T>('/barbers/me/mobile/disable'),
   estimate: <T>(client: ApiClient, body: unknown): Promise<T> =>
     client.post<T>('/barbers/me/mobile/estimate', body),
+  searchShopLocations: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/barbers/me/shop-location/search', body),
+  reverseGeocodeShopLocation: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/barbers/me/shop-location/reverse-geocode', body),
   sendLocationPing: <T>(client: ApiClient, appointmentId: string, body: unknown): Promise<T> =>
     client.post<T>(`/barbers/me/appointments/${appointmentId}/location`, body),
   appointment: <T>(client: ApiClient, appointmentId: string): Promise<T> =>

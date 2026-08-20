@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Check, Crosshair, LoaderCircle, MapPin, Search, Store } from 'lucide-react';
+import { Check, Crosshair, LoaderCircle, LocateFixed, MapPin, Search, Store } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { ServiceAreaMap } from '@/components/client/service-area-map';
@@ -104,7 +104,10 @@ export function ShopLocationEditor({
   const [pin, setPin] = useState(() =>
     value === null ? DEFAULT_SHOP_POINT : { latitude: value.latitude, longitude: value.longitude },
   );
+  const [locating, setLocating] = useState(false);
+  const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const selectedRef = useRef(selected);
+  const autoLocatedRef = useRef(false);
 
   useEffect(() => {
     selectedRef.current = value;
@@ -184,8 +187,104 @@ export function ShopLocationEditor({
 
   const chooseSuggestion = (suggestion: LocationSuggestion): void => {
     commit(asShopLocation(suggestion));
+    setLocationMessage(null);
     setSearchText('');
     setDebouncedSearch('');
+  };
+
+  const commitPinnedPoint = (point: { latitude: number; longitude: number }): void => {
+    const current = selectedRef.current;
+    commit({
+      name: current?.name ?? businessName,
+      address: current?.address ?? (details.address || 'Pinned shop location'),
+      city: current?.city ?? details.city,
+      state: current?.state ?? details.state,
+      zipCode: current?.zipCode ?? details.zipCode,
+      country: current?.country ?? 'US',
+      latitude: point.latitude,
+      longitude: point.longitude,
+      formattedAddress:
+        current?.formattedAddress ?? (formattedDetails(details) || 'Pinned shop location'),
+      source: 'pin',
+    });
+  };
+
+  const choosePrecisePoint = (point: { latitude: number; longitude: number }): void => {
+    setSearchText('');
+    setDebouncedSearch('');
+    setPin(point);
+    commitPinnedPoint(point);
+    reverseGeocode.mutate(point);
+  };
+
+  const locatePrecisely = (): void => {
+    if (!('geolocation' in navigator)) {
+      setLocationMessage(
+        'This browser cannot provide a device location. Use search or place the pin manually.',
+      );
+      return;
+    }
+    setLocating(true);
+    setLocationMessage('Getting a fresh, high-accuracy position…');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const point = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+        setLocating(false);
+        setLocationMessage(
+          position.coords.accuracy > 50
+            ? `Location found within about ${Math.round(position.coords.accuracy)} metres. Fine-tune the pin if needed.`
+            : `Precise location found within about ${Math.max(1, Math.round(position.coords.accuracy))} metres.`,
+        );
+        choosePrecisePoint(point);
+      },
+      (error) => {
+        setLocating(false);
+        setLocationMessage(
+          error.code === error.PERMISSION_DENIED
+            ? 'Location permission is off. Allow precise location in your browser settings, or search and place the pin manually.'
+            : 'Your current location could not be read. Search for the address or place the pin manually.',
+        );
+      },
+      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 },
+    );
+  };
+
+  useEffect(() => {
+    if (autoLocatedRef.current || value !== null || navigator.permissions === undefined) return;
+    autoLocatedRef.current = true;
+    void navigator.permissions
+      .query({ name: 'geolocation' })
+      .then((permission) => {
+        if (permission.state === 'granted') locatePrecisely();
+      })
+      .catch(() => undefined);
+  }, [value]);
+
+  const useTypedAddress = (): void => {
+    const manualAddress = searchText.trim();
+    if (manualAddress.length === 0) return;
+    const nextDetails = { ...details, address: manualAddress };
+    setDetails(nextDetails);
+    commit({
+      name: selectedRef.current?.name ?? businessName,
+      address: manualAddress,
+      city: nextDetails.city,
+      state: nextDetails.state,
+      zipCode: nextDetails.zipCode,
+      country: selectedRef.current?.country ?? 'US',
+      latitude: pin.latitude,
+      longitude: pin.longitude,
+      formattedAddress: formattedDetails(nextDetails),
+      source: 'pin',
+    });
+    setSearchText('');
+    setDebouncedSearch('');
+    setLocationMessage(
+      'Manual address selected. Complete the city, state, and ZIP, then confirm the exact map pin.',
+    );
   };
 
   const updateDetail = (key: keyof AddressDetails, nextValue: string): void => {
@@ -285,6 +384,23 @@ export function ShopLocationEditor({
                     <em>{suggestion.source === 'saved' ? 'Saved address' : 'Choose'}</em>
                   </button>
                 ))}
+              {!locationSearch.isFetching && (
+                <button
+                  className="shop-manual-result"
+                  onClick={useTypedAddress}
+                  role="option"
+                  type="button"
+                >
+                  <span className="shop-result-icon">
+                    <MapPin size={17} />
+                  </span>
+                  <span>
+                    <strong>Use “{searchText.trim()}” as typed</strong>
+                    <small>Enter any missing details and confirm the exact pin yourself.</small>
+                  </span>
+                  <em>Manual</em>
+                </button>
+              )}
               {!locationSearch.isFetching &&
                 locationSearch.isSuccess &&
                 suggestions.length === 0 && (
@@ -307,6 +423,21 @@ export function ShopLocationEditor({
           )}
         </div>
 
+        <button
+          className="button button-secondary shop-precise-location"
+          disabled={locating}
+          onClick={locatePrecisely}
+          type="button"
+        >
+          {locating ? <LoaderCircle className="spin" size={17} /> : <LocateFixed size={17} />}
+          {locating ? 'Finding your precise location…' : 'Use my precise location'}
+        </button>
+        {locationMessage !== null && (
+          <div className="shop-preview-note" role="status">
+            <Crosshair size={15} /> {locationMessage}
+          </div>
+        )}
+
         {preview !== null && searchText.trim().length >= 3 && (
           <div className="shop-preview-note" role="status">
             <Crosshair size={15} />
@@ -320,19 +451,8 @@ export function ShopLocationEditor({
             destination={mapPoint}
             markerVariant="store"
             onDestinationChange={(point) => {
-              setSearchText('');
-              setDebouncedSearch('');
-              setPin(point);
-              const current = selectedRef.current;
-              if (current !== null) {
-                commit({
-                  ...current,
-                  latitude: point.latitude,
-                  longitude: point.longitude,
-                  source: 'pin',
-                });
-              }
-              reverseGeocode.mutate(point);
+              setLocationMessage(null);
+              choosePrecisePoint(point);
             }}
             radiusMiles={null}
             zoom={14}

@@ -61,8 +61,8 @@ export default function BusinessHubScreen(): React.ReactElement {
         onPress={() => router.push('/(barber)/business/services')}
       />
       <HubCard
-        title="Mobile service"
-        subtitle="Set your travel area, origin, and fees."
+        title="Service locations"
+        subtitle="Update your precise shop address, mobile origin, travel area, and fees."
         onPress={() => router.push('/(barber)/business/mobile-service')}
       />
       <HubCard

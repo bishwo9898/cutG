@@ -10672,6 +10672,14 @@ input:checked + .toggle-track::after,
   font-weight: 700;
 }
 
+.shop-precise-location {
+  width: fit-content;
+}
+
+.shop-location-results > button.shop-manual-result {
+  background: #fafcfb;
+}
+
 .shop-location-map-frame {
   position: relative;
   overflow: hidden;

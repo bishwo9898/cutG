@@ -186,6 +186,40 @@ export const ShopLocationReverseGeocodeSchema = z.object({
 });
 export type ShopLocationReverseGeocodeRequest = z.infer<typeof ShopLocationReverseGeocodeSchema>;
 
+export type ShopLocationSuggestion = {
+  placeId?: string;
+  name: string;
+  addressLine1: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  formattedAddress: string;
+  source: 'google_places' | 'google_geocoding' | 'saved';
+};
+
+export type ShopLocationSearchResult = {
+  suggestions: ShopLocationSuggestion[];
+  source: 'google_places' | 'google_geocoding' | 'saved' | 'unavailable';
+};
+
+export type ResolvedAddress = {
+  id?: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  formattedAddress: string;
+  source?: 'google' | 'coordinate_fallback';
+  isApproximateAddress?: boolean;
+};
+
 export const CreateServiceSchema = z.object({
   name: z.string().trim().min(1).max(255),
   description: z.string().trim().max(1000).optional(),

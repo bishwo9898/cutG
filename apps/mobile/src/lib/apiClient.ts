@@ -20,7 +20,11 @@ import type {
   UpdateProfileRequest,
   UpdateServiceRequest,
   SaveAddressRequest,
+  ResolvedAddress,
   SetMobileConfigRequest,
+  ShopLocationSearchRequest,
+  ShopLocationSearchResult,
+  ShopLocationReverseGeocodeRequest,
   StartJourneyRequest,
   StartJourneyResponse,
   TravelEstimateRequest,
@@ -235,6 +239,12 @@ export const mobileApi = {
       withAuth((client) => client.patch('/barbers/me/profile', body)),
     updatePhoto: (photoUrl: string): Promise<BarberProfile> =>
       withAuth((client) => client.post('/barbers/me/photo', { photoUrl })),
+    searchShopLocations: (body: ShopLocationSearchRequest): Promise<ShopLocationSearchResult> =>
+      withAuth((client) => mobileBarberApi.searchShopLocations(client, body)),
+    reverseGeocodeShopLocation: (
+      body: ShopLocationReverseGeocodeRequest,
+    ): Promise<ResolvedAddress> =>
+      withAuth((client) => mobileBarberApi.reverseGeocodeShopLocation(client, body)),
     services: (
       params?: Record<string, string | number | boolean | undefined>,
     ): Promise<Paginated<BarberService>> =>

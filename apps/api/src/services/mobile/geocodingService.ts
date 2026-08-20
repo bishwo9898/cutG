@@ -1,9 +1,18 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import type {
   OneTimeAddressRequest,
+  ResolvedAddress,
   SaveAddressRequest,
+  ShopLocationSearchResult,
   ShopLocationSearchRequest,
+  ShopLocationSuggestion,
   UpdateAddressRequest,
+} from '@barber-saas/shared-types';
+
+export type {
+  ResolvedAddress,
+  ShopLocationSearchResult,
+  ShopLocationSuggestion,
 } from '@barber-saas/shared-types';
 
 import { env } from '../../config/env';
@@ -40,40 +49,6 @@ type PlacesTextSearchResponse = {
       types?: string[];
     }>;
   }>;
-};
-
-export type ResolvedAddress = {
-  id?: string;
-  addressLine1: string;
-  addressLine2?: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-  latitude: number;
-  longitude: number;
-  formattedAddress: string;
-  source?: 'google' | 'coordinate_fallback';
-  isApproximateAddress?: boolean;
-};
-
-export type ShopLocationSuggestion = {
-  placeId?: string;
-  name: string;
-  addressLine1: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-  latitude: number;
-  longitude: number;
-  formattedAddress: string;
-  source: 'google_places' | 'google_geocoding' | 'saved';
-};
-
-export type ShopLocationSearchResult = {
-  suggestions: ShopLocationSuggestion[];
-  source: 'google_places' | 'google_geocoding' | 'saved' | 'unavailable';
 };
 
 type ReverseGeocodeOptions = {

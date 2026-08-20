@@ -75,9 +75,10 @@ describe('ShopLocationEditor', () => {
       target: { value: 'CutG Studio' },
     });
 
-    const option = await screen.findByRole('option', { name: /CutG Studio/i });
+    const [option] = await screen.findAllByRole('option');
+    expect(option).toBeDefined();
     expect(screen.getByText(/Map center 37.6467, -84.7729/i)).toBeTruthy();
-    fireEvent.click(option);
+    fireEvent.click(option as HTMLElement);
 
     expect(post).toHaveBeenCalledWith(
       '/barbers/me/shop-location/search',
@@ -164,5 +165,82 @@ describe('ShopLocationEditor', () => {
       }),
     );
     expect(await screen.findByText(/could not read this pin automatically/i)).toBeTruthy();
+  });
+
+  it('uses a fresh precise browser location and reverse geocodes it', async () => {
+    vi.spyOn(browserApi, 'post').mockResolvedValue({
+      addressLine1: '21 Current Place',
+      city: 'Boston',
+      state: 'MA',
+      zipCode: '02108',
+      country: 'US',
+      latitude: 42.361,
+      longitude: -71.057,
+      formattedAddress: '21 Current Place, Boston, MA 02108',
+      source: 'google',
+      isApproximateAddress: false,
+    });
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({
+            coords: {
+              accuracy: 8,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              latitude: 42.361,
+              longitude: -71.057,
+              speed: null,
+              toJSON: () => ({}),
+            },
+            timestamp: Date.now(),
+            toJSON: () => ({}),
+          }),
+      },
+    });
+    const onChange = vi.fn();
+    renderEditor(onChange);
+
+    fireEvent.click(screen.getByRole('button', { name: /use my precise location/i }));
+
+    await waitFor(() =>
+      expect(onChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          address: '21 Current Place',
+          latitude: 42.361,
+          longitude: -71.057,
+        }),
+      ),
+    );
+    expect(screen.getByText(/within about 8 metres/i)).toBeTruthy();
+  });
+
+  it('lets a barber keep an unmapped address exactly as typed', async () => {
+    vi.spyOn(browserApi, 'post').mockResolvedValue({ suggestions: [], source: 'unavailable' });
+    const onChange = vi.fn();
+    renderEditor(onChange);
+
+    fireEvent.change(screen.getByPlaceholderText(/shop name or full street address/i), {
+      target: { value: 'Rear studio beside the blue gate' },
+    });
+    fireEvent.click(
+      await screen.findByRole('option', {
+        name: /use “rear studio beside the blue gate” as typed/i,
+      }),
+    );
+
+    expect(screen.getByLabelText<HTMLInputElement>(/street or suite address/i).value).toBe(
+      'Rear studio beside the blue gate',
+    );
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        address: 'Rear studio beside the blue gate',
+        latitude: 37.6456,
+        longitude: -84.7722,
+        source: 'pin',
+      }),
+    );
   });
 });

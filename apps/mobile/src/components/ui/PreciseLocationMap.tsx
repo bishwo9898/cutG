@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, {
   Circle,
@@ -16,6 +16,7 @@ type PreciseLocationMapProps = {
   place: SelectedPlace;
   onChange: (place: SelectedPlace) => void;
   radiusMiles?: number;
+  autoLocateWhenGranted?: boolean;
 };
 
 const formattedReverseAddress = (address: Location.LocationGeocodedAddress): string =>
@@ -27,11 +28,13 @@ export const PreciseLocationMap = ({
   onChange,
   place,
   radiusMiles,
+  autoLocateWhenGranted = false,
 }: PreciseLocationMapProps): React.ReactElement => {
   const [showArea, setShowArea] = useState(radiusMiles !== undefined);
   const [pin, setPin] = useState({ latitude: place.latitude, longitude: place.longitude });
   const [resolving, setResolving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const autoLocateAttempted = useRef(false);
 
   useEffect(() => {
     setPin({ latitude: place.latitude, longitude: place.longitude });
@@ -44,8 +47,10 @@ export const PreciseLocationMap = ({
     try {
       const result = (await Location.reverseGeocodeAsync({ latitude, longitude }))[0];
       if (result === undefined) {
-        setPin({ latitude: place.latitude, longitude: place.longitude });
-        setMessage('The pin moved, but no street address was found at this point.');
+        onChange({ ...place, latitude, longitude });
+        setMessage(
+          'Exact pin saved. No mapped street address was found, so keep or edit the address manually.',
+        );
         return;
       }
       const addressLine1 = result.name ?? result.street ?? place.addressLine1;
@@ -63,8 +68,8 @@ export const PreciseLocationMap = ({
         formattedAddress: formattedReverseAddress(result) || place.formattedAddress,
       });
     } catch {
-      setPin({ latitude: place.latitude, longitude: place.longitude });
-      setMessage('The exact pin could not be resolved. Check your connection and try again.');
+      onChange({ ...place, latitude, longitude });
+      setMessage('Exact pin saved. Map lookup failed, so keep or edit the address manually.');
     } finally {
       setResolving(false);
     }
@@ -76,16 +81,40 @@ export const PreciseLocationMap = ({
   };
 
   const useCurrentLocation = async (): Promise<void> => {
-    const permission = await Location.requestForegroundPermissionsAsync();
-    if (!permission.granted) {
-      setMessage('Allow location access in your device settings to use your current position.');
-      return;
+    setResolving(true);
+    setMessage('Getting a fresh, high-accuracy device location…');
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) {
+        setMessage(
+          'Allow precise location in device settings, or search and place the pin manually.',
+        );
+        return;
+      }
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Highest,
+        mayShowUserSettingsDialog: true,
+      });
+      setMessage(
+        location.coords.accuracy !== null
+          ? `Location found within about ${Math.max(1, Math.round(location.coords.accuracy))} metres.`
+          : 'Precise device location found.',
+      );
+      await chooseCoordinates(location.coords.latitude, location.coords.longitude);
+    } catch {
+      setMessage('Your current location could not be read. Search or place the pin manually.');
+    } finally {
+      setResolving(false);
     }
-    const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Highest,
-    });
-    await chooseCoordinates(location.coords.latitude, location.coords.longitude);
   };
+
+  useEffect(() => {
+    if (!autoLocateWhenGranted || autoLocateAttempted.current) return;
+    autoLocateAttempted.current = true;
+    void Location.getForegroundPermissionsAsync().then((permission) => {
+      if (permission.granted) void useCurrentLocation();
+    });
+  }, [autoLocateWhenGranted]);
 
   const delta = showArea && radiusMiles !== undefined ? Math.max(0.03, radiusMiles / 30) : 0.006;
 
@@ -108,8 +137,17 @@ export const PreciseLocationMap = ({
             <Text style={styles.modeText}>Service area</Text>
           </Pressable>
         ) : null}
-        <Pressable onPress={() => void useCurrentLocation()} style={styles.locationButton}>
+        <Pressable
+          accessibilityLabel="Use my precise location"
+          accessibilityRole="button"
+          disabled={resolving}
+          onPress={() => void useCurrentLocation()}
+          style={styles.locationButton}
+        >
           <Ionicons color={colors.info} name="navigate-outline" size={17} />
+          <Text style={styles.locationButtonText}>
+            {resolving ? 'Locating…' : 'Use my location'}
+          </Text>
         </Pressable>
       </View>
       <MapView
@@ -170,11 +208,17 @@ const styles = StyleSheet.create({
   hint: { ...typography.caption, color: colors.textMuted },
   locationButton: {
     alignItems: 'center',
-    height: 36,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    minHeight: 36,
     justifyContent: 'center',
     marginLeft: 'auto',
-    width: 36,
+    paddingHorizontal: spacing.sm,
   },
+  locationButtonText: { ...typography.caption, color: colors.info },
   map: { borderRadius: 8, height: 260, overflow: 'hidden' },
   meta: { ...typography.bodySmall, color: colors.textSecondary },
   mode: {

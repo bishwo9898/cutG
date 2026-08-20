@@ -368,6 +368,15 @@
   background: var(--ivory-canvas-pink);
 }
 
+.shop-location-results > button.shop-manual-result {
+  background: var(--ivory-surface-soft);
+}
+
+.shop-location-results > button.shop-manual-result:hover,
+.shop-location-results > button.shop-manual-result:focus-visible {
+  background: var(--ivory-blush-soft);
+}
+
 .shop-location-status,
 .shop-result-icon,
 .public-shop-location-copy > span,

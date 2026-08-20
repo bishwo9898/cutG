@@ -1,5 +1,5 @@
 import Slider from '@react-native-community/slider';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Screen } from '@/components/layout/Screen';
@@ -8,10 +8,11 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete';
-import type { SelectedPlace } from '@/components/ui/PlacesAutocomplete';
+import type { PlaceSearchSuggestion, SelectedPlace } from '@/components/ui/PlacesAutocomplete';
 import { PreciseLocationMap } from '@/components/ui/PreciseLocationMap';
-import { useBarberProfilePrivate } from '@/hooks/useBarberDashboard';
+import { useBarberProfilePrivate, useUpdateBarberProfile } from '@/hooks/useBarberDashboard';
 import { useMobileConfig, useUpdateMobileConfig } from '@/hooks/useMobileBarber';
+import { mobileApi } from '@/lib/apiClient';
 import { errorMessage } from '@/lib/errors';
 import type { FeeStructure } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
@@ -25,6 +26,7 @@ const structures: Array<{ value: FeeStructure; label: string }> = [
 export default function MobileServiceSettingsScreen(): React.ReactElement {
   const config = useMobileConfig();
   const profile = useBarberProfilePrivate();
+  const updateProfile = useUpdateBarberProfile();
   const update = useUpdateMobileConfig();
   const [enabled, setEnabled] = useState(false);
   const [radius, setRadius] = useState(10);
@@ -35,6 +37,8 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
   const [originAddress, setOriginAddress] = useState('');
   const [notes, setNotes] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [shopMessage, setShopMessage] = useState<string | null>(null);
+  const [shopPlace, setShopPlace] = useState<SelectedPlace | null>(null);
 
   useEffect(() => {
     const current = config.data;
@@ -53,6 +57,75 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
     setOriginAddress(current.originAddress ?? profile.data?.address ?? '');
     setNotes(current.mobileServiceNotes ?? '');
   }, [config.data, profile.data]);
+
+  useEffect(() => {
+    const current = profile.data;
+    if (current === undefined) return;
+    setShopPlace({
+      addressLine1: current.address ?? '',
+      city: current.city ?? '',
+      state: current.state ?? '',
+      zipCode: current.zipCode ?? '',
+      latitude: current.latitude ?? 37.6456,
+      longitude: current.longitude ?? -84.7722,
+      formattedAddress:
+        [current.address, current.city, current.state, current.zipCode]
+          .filter((part): part is string => typeof part === 'string' && part.length > 0)
+          .join(', ') || 'Place the exact shop pin',
+    });
+  }, [profile.data]);
+
+  const loadShopSuggestions = useCallback(
+    async (query: string): Promise<PlaceSearchSuggestion[]> => {
+      const result = await mobileApi.barber.searchShopLocations({ query });
+      return result.suggestions.map((suggestion) => ({
+        id: suggestion.placeId ?? `${suggestion.latitude},${suggestion.longitude}`,
+        description: suggestion.formattedAddress,
+        place: {
+          addressLine1: suggestion.addressLine1,
+          city: suggestion.city,
+          state: suggestion.state,
+          zipCode: suggestion.zipCode,
+          latitude: suggestion.latitude,
+          longitude: suggestion.longitude,
+          formattedAddress: suggestion.formattedAddress,
+        },
+      }));
+    },
+    [],
+  );
+
+  const updateShopField = (
+    field: 'addressLine1' | 'city' | 'state' | 'zipCode',
+    value: string,
+  ): void => {
+    if (shopPlace === null) return;
+    const next = { ...shopPlace, [field]: value };
+    setShopPlace({
+      ...next,
+      formattedAddress: [next.addressLine1, next.city, next.state, next.zipCode]
+        .filter((part) => part.trim().length > 0)
+        .join(', '),
+    });
+  };
+
+  const saveShop = async (): Promise<void> => {
+    if (shopPlace === null) return;
+    setShopMessage(null);
+    try {
+      await updateProfile.mutateAsync({
+        address: shopPlace.addressLine1,
+        city: shopPlace.city,
+        state: shopPlace.state,
+        zipCode: shopPlace.zipCode,
+        latitude: shopPlace.latitude,
+        longitude: shopPlace.longitude,
+      });
+      setShopMessage('Shop address and exact map pin saved.');
+    } catch (error) {
+      setShopMessage(errorMessage(error));
+    }
+  };
 
   const save = async (): Promise<void> => {
     setMessage(null);
@@ -86,7 +159,75 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
   };
   return (
     <Screen>
-      <ScreenHeader showBack title="Mobile Barber" subtitle="Set your travel area and fee." />
+      <ScreenHeader
+        showBack
+        title="Service locations"
+        subtitle="Keep your shop pin and mobile origin precise."
+      />
+      <Card>
+        <Text style={styles.title}>Shop address</Text>
+        <Text style={styles.meta}>
+          Search Google locations, use your precise device position, or enter the address manually.
+          This is the client-facing shop location.
+        </Text>
+        <PlacesAutocomplete
+          initialValue={shopPlace?.formattedAddress ?? ''}
+          label="Search shop name or address"
+          loadSuggestions={loadShopSuggestions}
+          onSelect={setShopPlace}
+          onUseManual={(address) => {
+            if (shopPlace === null) return;
+            setShopPlace({ ...shopPlace, addressLine1: address, formattedAddress: address });
+            setShopMessage('Manual address selected. Complete the fields and confirm the pin.');
+          }}
+          placeholder="Start typing a shop or street address"
+        />
+        {shopPlace !== null ? (
+          <>
+            <PreciseLocationMap place={shopPlace} onChange={setShopPlace} />
+            <Input
+              label="Street, building, or suite"
+              onChangeText={(value) => updateShopField('addressLine1', value)}
+              value={shopPlace.addressLine1}
+            />
+            <Input
+              label="City"
+              onChangeText={(value) => updateShopField('city', value)}
+              value={shopPlace.city}
+            />
+            <View style={styles.addressRow}>
+              <View style={styles.flex}>
+                <Input
+                  label="State"
+                  onChangeText={(value) => updateShopField('state', value)}
+                  value={shopPlace.state}
+                />
+              </View>
+              <View style={styles.flex}>
+                <Input
+                  label="ZIP code"
+                  keyboardType="number-pad"
+                  onChangeText={(value) => updateShopField('zipCode', value)}
+                  value={shopPlace.zipCode}
+                />
+              </View>
+            </View>
+            {shopMessage !== null ? <Text style={styles.message}>{shopMessage}</Text> : null}
+            <Button
+              disabled={
+                updateProfile.isPending ||
+                shopPlace.addressLine1.trim().length === 0 ||
+                shopPlace.city.trim().length === 0 ||
+                shopPlace.state.trim().length === 0 ||
+                shopPlace.zipCode.trim().length === 0
+              }
+              title={updateProfile.isPending ? 'Saving shop…' : 'Save shop address'}
+              onPress={() => void saveShop()}
+              variant="secondary"
+            />
+          </>
+        ) : null}
+      </Card>
       <Card style={styles.toggleCard}>
         <View style={styles.flex}>
           <Text style={styles.title}>Offer mobile visits</Text>
@@ -144,13 +285,17 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
           </Card>
           <PlacesAutocomplete
             initialValue={originAddress}
+            label="Mobile-service origin"
+            loadSuggestions={loadShopSuggestions}
             onSelect={(place) => {
               setOriginAddress(place.formattedAddress);
               setLatitude(place.latitude);
               setLongitude(place.longitude);
             }}
+            onUseManual={setOriginAddress}
           />
           <PreciseLocationMap
+            autoLocateWhenGranted
             place={originPlace}
             radiusMiles={radius}
             onChange={(place) => {
@@ -159,6 +304,11 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
               setLongitude(place.longitude);
             }}
           />
+          <Text style={styles.meta}>
+            With precise-location permission, this origin refreshes when you open this screen.
+            During an active client journey, background tracking continues automatically until you
+            arrive.
+          </Text>
           <Card>
             <Text style={styles.title}>Service radius: {radius.toFixed(0)} miles</Text>
             <Slider
@@ -194,6 +344,7 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
+  addressRow: { flexDirection: 'row', gap: spacing.sm },
   flex: { flex: 1 },
   message: { ...typography.bodySmall, color: colors.textSecondary },
   meta: { ...typography.bodySmall, color: colors.textSecondary },

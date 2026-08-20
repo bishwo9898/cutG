@@ -4,7 +4,7 @@ import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 
 import { mobileApi } from '@/lib/apiClient';
 import { queryClient } from '@/lib/queryClient';
-import type { UpdateServiceRequest } from '@barber-saas/shared-types';
+import type { UpdateBarberProfileRequest, UpdateServiceRequest } from '@barber-saas/shared-types';
 
 import type {
   AppointmentSummary,
@@ -52,6 +52,18 @@ export const useBarberSlotsPrivate = (
 
 export const useBarberProfilePrivate = (): UseQueryResult<BarberProfile> =>
   useQuery({ queryKey: ['barber', 'profile'], queryFn: () => mobileApi.barber.profile() });
+
+export const useUpdateBarberProfile = (): UseMutationResult<
+  BarberProfile,
+  Error,
+  UpdateBarberProfileRequest
+> =>
+  useMutation({
+    mutationFn: (body) => mobileApi.barber.updateProfile(body),
+    onSuccess: async (): Promise<void> => {
+      await queryClient.invalidateQueries({ queryKey: ['barber', 'profile'] });
+    },
+  });
 
 export const useBarberServicesPrivate = (): UseQueryResult<Paginated<BarberService>> =>
   useQuery({ queryKey: ['barber', 'services'], queryFn: () => mobileApi.barber.services() });
