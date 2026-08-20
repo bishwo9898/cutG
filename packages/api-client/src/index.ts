@@ -208,6 +208,10 @@ export const mobileBarberApi = {
     client.post<T>('/barbers/me/mobile/estimate', body),
   sendLocationPing: <T>(client: ApiClient, appointmentId: string, body: unknown): Promise<T> =>
     client.post<T>(`/barbers/me/appointments/${appointmentId}/location`, body),
+  appointment: <T>(client: ApiClient, appointmentId: string): Promise<T> =>
+    client.get<T>(`/barbers/me/appointments/${appointmentId}`),
+  startJourney: <T>(client: ApiClient, appointmentId: string, body: unknown): Promise<T> =>
+    client.post<T>(`/barbers/me/appointments/${appointmentId}/journey/start`, body),
 };
 
 export const paymentApi = {

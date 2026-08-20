@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
 import type { AuthUser } from '@/lib/types';
+import { stopBackgroundLocationTracking } from '@/services/locationTrackingStorage';
 
 const ACCESS_TOKEN_KEY = 'cutg.accessToken';
 const REFRESH_TOKEN_KEY = 'cutg.refreshToken';
@@ -31,6 +32,7 @@ const parseStoredUser = (value: string | null): AuthUser | null => {
 export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: null,
   clearAuth: async (): Promise<void> => {
+    await stopBackgroundLocationTracking();
     await Promise.all([
       SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY),
       SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),

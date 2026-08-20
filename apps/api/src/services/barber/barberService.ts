@@ -640,6 +640,128 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
   };
 };
 
+export const getAppointment = async (userId: string, appointmentId: string) => {
+  const rows = await query<Row>(
+    `SELECT a.*,s.name AS service_name,u.first_name,u.last_name,u.phone,
+      bp.address AS shop_address,bp.city AS shop_city,bp.state AS shop_state,
+      bp.zip_code AS shop_zip,bp.latitude AS shop_latitude,bp.longitude AS shop_longitude,
+      hd.id AS style_design_id,hd.style_name,hd.description AS style_description,
+      hd.generated_preview_url,hd.generated_asset_key,hd.source_photo_url,hd.source_asset_key
+     FROM appointments a
+     JOIN services s ON s.id=a.service_id
+     JOIN users u ON u.id=a.client_id
+     JOIN barber_profiles bp ON bp.id=a.barber_id AND bp.user_id=$2
+     LEFT JOIN client_hair_designs hd
+       ON hd.id=a.style_reference_id
+      AND hd.client_id=a.client_id
+      AND hd.deleted_at IS NULL
+     WHERE a.id=$1`,
+    [appointmentId, userId],
+  );
+  const row = rows[0];
+  if (row === undefined) {
+    throw new AppError(404, 'Appointment not found.', 'APPOINTMENT_NOT_FOUND');
+  }
+  const serviceFee = Number(row.price_quoted);
+  const travelFee = Number(row.travel_fee_cents ?? 0) / 100;
+  const isMobileService = row.is_mobile_service === true;
+  const mobileLocation = isMobileService
+    ? {
+        kind: 'MOBILE' as const,
+        addressLine1: row.service_address_line1 === null ? null : String(row.service_address_line1),
+        city: row.service_address_city === null ? null : String(row.service_address_city),
+        state: row.service_address_state === null ? null : String(row.service_address_state),
+        zipCode: row.service_address_zip === null ? null : String(row.service_address_zip),
+        formattedAddress:
+          row.service_address_formatted === null ? null : String(row.service_address_formatted),
+        latitude: numberOrNull(row.service_latitude),
+        longitude: numberOrNull(row.service_longitude),
+        isApproximateAddress: row.service_address_is_approximate === true,
+      }
+    : null;
+  const shopLocation =
+    !isMobileService &&
+    (row.shop_address !== null || (row.shop_latitude !== null && row.shop_longitude !== null))
+      ? {
+          kind: 'SHOP' as const,
+          addressLine1: row.shop_address === null ? null : String(row.shop_address),
+          city: row.shop_city === null ? null : String(row.shop_city),
+          state: row.shop_state === null ? null : String(row.shop_state),
+          zipCode: row.shop_zip === null ? null : String(row.shop_zip),
+          formattedAddress: row.shop_address === null ? null : String(row.shop_address),
+          latitude: numberOrNull(row.shop_latitude),
+          longitude: numberOrNull(row.shop_longitude),
+          isApproximateAddress: false,
+        }
+      : null;
+  const styleReference =
+    row.style_design_id === null || row.style_design_id === undefined
+      ? null
+      : {
+          id: String(row.style_design_id),
+          styleName: row.style_name === null ? null : String(row.style_name),
+          description: row.style_description === null ? null : String(row.style_description),
+          previewImageUrl:
+            typeof row.generated_asset_key === 'string'
+              ? await createPresignedDownloadUrl(row.generated_asset_key)
+              : row.generated_preview_url === null
+                ? null
+                : String(row.generated_preview_url),
+          sourcePhotoUrl:
+            typeof row.source_asset_key === 'string'
+              ? await createPresignedDownloadUrl(row.source_asset_key)
+              : row.source_photo_url === null
+                ? null
+                : String(row.source_photo_url),
+        };
+  const scheduledAt = dateTime(row.scheduled_at);
+  return {
+    id: row.id,
+    barberId: row.barber_id,
+    clientId: row.client_id,
+    serviceId: row.service_id,
+    serviceName: row.service_name,
+    clientName: `${String(row.first_name)} ${String(row.last_name)}`,
+    clientPhone: row.phone,
+    scheduledAt,
+    scheduledDate: scheduledAt.slice(0, 10),
+    startTime: scheduledAt.slice(11, 16),
+    durationMinutes: Number(row.duration_minutes),
+    status: row.status,
+    paymentStatus: row.payment_status,
+    paymentMethod: row.payment_method ?? 'CASH',
+    priceQuoted: serviceFee,
+    price: serviceFee,
+    service: { id: row.service_id, name: row.service_name },
+    client: {
+      id: row.client_id,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      phone: row.phone,
+    },
+    isMobileService,
+    serviceAddress: mobileLocation,
+    pricing: { serviceFee, travelFee, total: serviceFee + travelFee, currency: 'USD' as const },
+    location: mobileLocation ?? shopLocation,
+    distanceMiles: numberOrNull(row.distance_miles),
+    estimatedTravelMinutes:
+      row.estimated_travel_minutes === null ? null : Number(row.estimated_travel_minutes),
+    travelFee,
+    travelFeeCents: Number(row.travel_fee_cents ?? 0),
+    clientNotes: row.client_notes,
+    barberNotes: row.barber_notes,
+    styleNotes: row.style_notes,
+    styleReference,
+    barberDepartedAt: row.barber_departed_at === null ? null : dateTime(row.barber_departed_at),
+    barberArrivedAt: row.barber_arrived_at === null ? null : dateTime(row.barber_arrived_at),
+    journey: {
+      departedAt: row.barber_departed_at === null ? null : dateTime(row.barber_departed_at),
+      arrivedAt: row.barber_arrived_at === null ? null : dateTime(row.barber_arrived_at),
+      isTracking: row.status === 'ON_THE_WAY',
+    },
+  };
+};
+
 export const updateAppointmentStatus = async (
   userId: string,
   appointmentId: string,

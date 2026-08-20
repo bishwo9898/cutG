@@ -11,7 +11,16 @@ import { useBarberAppointments } from '@/hooks/useBarberDashboard';
 import { listFromResponse } from '@/lib/types';
 import { spacing } from '@/theme';
 
-const statuses = ['All', 'PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] as const;
+const statuses = [
+  'All',
+  'PENDING',
+  'CONFIRMED',
+  'ON_THE_WAY',
+  'ARRIVED',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+] as const;
 
 export default function BarberAppointmentListScreen(): React.ReactElement {
   const [status, setStatus] = useState<(typeof statuses)[number]>('All');
@@ -28,7 +37,7 @@ export default function BarberAppointmentListScreen(): React.ReactElement {
         void appointments.refetch();
       }}
     >
-      <ScreenHeader title="Clients" subtitle="All appointment activity." />
+      <ScreenHeader title="Appointments" subtitle="Review every client booking and its progress." />
       <Input label="Search client" value={search} onChangeText={setSearch} />
       <View style={styles.chips}>
         {statuses.map((item) => (

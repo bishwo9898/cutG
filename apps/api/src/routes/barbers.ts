@@ -57,6 +57,7 @@ import {
   deactivateOffering,
   generateSlots,
   getMyProfile,
+  getAppointment,
   getOffering,
   getPublicOfferings,
   getPublicProfile,
@@ -94,7 +95,10 @@ import {
   uploadProfilePhoto,
 } from '../services/barber/portfolioService';
 import { listPublicReviews, searchBarbers } from '../services/discovery/barberSearchService';
-import { recordBarberLocation } from '../services/location/locationTrackingService';
+import {
+  recordBarberLocation,
+  startBarberJourney,
+} from '../services/location/locationTrackingService';
 import {
   reverseGeocodeShopCoordinates,
   searchShopLocations,
@@ -519,6 +523,13 @@ barberRouter.get(
     );
   }),
 );
+barberRouter.get(
+  '/me/appointments/:appointmentId',
+  asyncHandler(async (request, response) => {
+    const { appointmentId } = AppointmentParamsSchema.parse(request.params);
+    response.json(await getAppointment(userId(request), appointmentId));
+  }),
+);
 barberRouter.patch(
   '/me/appointments/:appointmentId/status',
   asyncHandler(async (request, response) => {
@@ -526,6 +537,19 @@ barberRouter.patch(
     const input = UpdateAppointmentStatusSchema.parse(request.body);
     response.json(
       await updateAppointmentStatus(userId(request), appointmentId, input.status, input.notes),
+    );
+  }),
+);
+barberRouter.post(
+  '/me/appointments/:appointmentId/journey/start',
+  asyncHandler(async (request, response) => {
+    const { appointmentId } = TrackingAppointmentParamsSchema.parse(request.params);
+    response.json(
+      await startBarberJourney(
+        userId(request),
+        appointmentId,
+        LocationPingSchema.parse(request.body),
+      ),
     );
   }),
 );

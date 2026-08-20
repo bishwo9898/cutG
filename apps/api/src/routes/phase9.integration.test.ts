@@ -10,6 +10,7 @@ import {
 } from '../test/fixtures';
 
 let barberToken = '';
+let otherBarberToken = '';
 let clientToken = '';
 let barberId = '';
 let appointmentId = '';
@@ -23,8 +24,10 @@ type BarberAppointmentsBody = {
 beforeAll(async () => {
   await resetTestDatabase();
   const barber = await createVerifiedUser('BARBER', 'phase9.barber@example.com');
+  const otherBarber = await createVerifiedUser('BARBER', 'phase9.other-barber@example.com');
   const client = await createVerifiedUser('CLIENT', 'phase9.client@example.com');
   barberId = await createBarberProfileFixture(barber.id);
+  await createBarberProfileFixture(otherBarber.id);
   const service = await pool.query<{ id: string }>(
     `INSERT INTO services (barber_id,name,price,duration_minutes,category)
      VALUES ($1,'Tracking Cut',32,30,'haircut') RETURNING id`,
@@ -47,6 +50,12 @@ beforeAll(async () => {
       .send({ email: 'phase9.barber@example.com', password: 'strong-password-123' })
       .then((response) => response.body as LoginBody)
   ).accessToken;
+  otherBarberToken = (
+    await request(app)
+      .post('/auth/login')
+      .send({ email: 'phase9.other-barber@example.com', password: 'strong-password-123' })
+      .then((response) => response.body as LoginBody)
+  ).accessToken;
   clientToken = (
     await request(app)
       .post('/auth/login')
@@ -58,7 +67,24 @@ beforeAll(async () => {
 afterAll(async () => closeDatabase());
 
 describe('Phase 9 GPS tracking and hair designs', () => {
-  it('only records owned location pings while tracking is active', async () => {
+  it('returns an owned booking detail and starts the journey idempotently', async () => {
+    const detail = await request(app)
+      .get(`/barbers/me/appointments/${appointmentId}`)
+      .set('Authorization', `Bearer ${barberToken}`);
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({
+      id: appointmentId,
+      isMobileService: true,
+      location: { kind: 'MOBILE', addressLine1: '10 Client St' },
+      pricing: { serviceFee: 32, travelFee: 0, total: 32, currency: 'USD' },
+      journey: { isTracking: false },
+    });
+
+    await request(app)
+      .get(`/barbers/me/appointments/${appointmentId}`)
+      .set('Authorization', `Bearer ${otherBarberToken}`)
+      .expect(404);
+
     const inactive = await request(app)
       .post(`/barbers/me/appointments/${appointmentId}/location`)
       .set('Authorization', `Bearer ${barberToken}`)
@@ -66,12 +92,8 @@ describe('Phase 9 GPS tracking and hair designs', () => {
     expect(inactive.status).toBe(400);
     expect(inactive.body).toHaveProperty('error', 'TRACKING_NOT_ACTIVE');
 
-    await pool.query(
-      "UPDATE appointments SET status='ON_THE_WAY',barber_departed_at=CURRENT_TIMESTAMP WHERE id=$1",
-      [appointmentId],
-    );
-    const recorded = await request(app)
-      .post(`/barbers/me/appointments/${appointmentId}/location`)
+    const started = await request(app)
+      .post(`/barbers/me/appointments/${appointmentId}/journey/start`)
       .set('Authorization', `Bearer ${barberToken}`)
       .send({
         latitude: 37.6467,
@@ -79,8 +101,25 @@ describe('Phase 9 GPS tracking and hair designs', () => {
         accuracyMeters: 4.2,
         headingDegrees: 180,
       });
-    expect(recorded.status).toBe(200);
-    expect(recorded.body).toHaveProperty('recorded', true);
+    expect(started.status).toBe(200);
+    expect(started.body).toMatchObject({
+      appointment: { id: appointmentId, status: 'ON_THE_WAY' },
+      tracking: { active: true },
+    });
+
+    await request(app)
+      .post(`/barbers/me/appointments/${appointmentId}/journey/start`)
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({ latitude: 37.6468, longitude: -84.7728 })
+      .expect(200);
+
+    const notificationCount = await pool.query<{ count: number }>(
+      `SELECT COUNT(*)::int AS count
+       FROM notifications
+       WHERE related_data->>'appointmentId'=$1 AND message='Your barber is on the way!'`,
+      [appointmentId],
+    );
+    expect(notificationCount.rows[0]?.count).toBe(1);
 
     const location = await request(app)
       .get(`/clients/me/appointments/${appointmentId}/barber-location`)
@@ -92,6 +131,18 @@ describe('Phase 9 GPS tracking and hair designs', () => {
       lastPing: { latitude: 37.6467, longitude: -84.7729 },
     });
     expect((location.body as LocationBody).distanceRemainingMiles).toBeGreaterThanOrEqual(0);
+
+    await request(app)
+      .patch(`/barbers/me/appointments/${appointmentId}/status`)
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({ status: 'ARRIVED' })
+      .expect(200);
+    const afterArrival = await request(app)
+      .post(`/barbers/me/appointments/${appointmentId}/location`)
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({ latitude: 37.6469, longitude: -84.7727 });
+    expect(afterArrival.status).toBe(400);
+    expect(afterArrival.body).toHaveProperty('error', 'TRACKING_NOT_ACTIVE');
   });
 
   it('creates, lists, and attaches an owned placeholder design', async () => {

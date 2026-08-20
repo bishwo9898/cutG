@@ -1,11 +1,25 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronLeft, ChevronRight, Play, UserX, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  CalendarDays,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  MapPin,
+  Play,
+  Scissors,
+  UserX,
+  X,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
 
 import { Notice } from '@/components/notice';
 import { EmptyState, ErrorState, LoadingState } from '@/components/query-states';
+import { useBarberJourney } from '@/hooks/use-barber-journey';
+import { appointmentStatusClass } from '@/lib/appointment-ui';
 import { browserApi } from '@/lib/browser-api';
 import type { Appointment } from '@/lib/contracts';
 import { errorMessage } from '@/lib/errors';
@@ -14,13 +28,6 @@ type Response = {
   appointments: Appointment[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
 };
-type LocationPingBody = {
-  latitude: number;
-  longitude: number;
-  accuracyMeters?: number;
-  headingDegrees?: number;
-  speedMs?: number;
-};
 
 const transitions: Record<string, Array<{ status: string; label: string; icon: typeof Check }>> = {
   PENDING: [
@@ -28,54 +35,37 @@ const transitions: Record<string, Array<{ status: string; label: string; icon: t
     { status: 'CANCELLED', label: 'Cancel', icon: X },
   ],
   CONFIRMED: [
-    { status: 'IN_PROGRESS', label: 'Start', icon: Play },
+    { status: 'IN_PROGRESS', label: 'Begin service', icon: Play },
     { status: 'NO_SHOW', label: 'No show', icon: UserX },
     { status: 'CANCELLED', label: 'Cancel', icon: X },
   ],
-  ON_THE_WAY: [{ status: 'ARRIVED', label: 'Arrived', icon: Check }],
-  ARRIVED: [{ status: 'IN_PROGRESS', label: 'Start service', icon: Play }],
+  ON_THE_WAY: [{ status: 'ARRIVED', label: "I've arrived", icon: MapPin }],
+  ARRIVED: [{ status: 'IN_PROGRESS', label: 'Begin service', icon: Scissors }],
   IN_PROGRESS: [{ status: 'COMPLETED', label: 'Complete', icon: Check }],
 };
 
-const badgeTone = (status: string): string => {
-  if (status === 'COMPLETED' || status === 'CONFIRMED') return 'badge-success';
-  if (status === 'CANCELLED' || status === 'NO_SHOW') return 'badge-danger';
-  if (status === 'PENDING') return 'badge-warning';
-  return '';
-};
+const stopStatuses = ['ARRIVED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'];
 
-const trackingActiveStatuses = ['ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'];
-const trackingStopStatuses = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
+const actionList = (
+  appointment: Appointment,
+): Array<{ status: string; label: string; icon: typeof Check }> =>
+  appointment.status === 'CONFIRMED' && appointment.isMobileService === true
+    ? [
+        { status: 'ON_THE_WAY', label: 'Start journey', icon: Play },
+        ...(transitions.CONFIRMED ?? []).slice(1),
+      ]
+    : (transitions[appointment.status] ?? []);
 
-const distanceMeters = (
-  left: { latitude: number; longitude: number },
-  right: { latitude: number; longitude: number },
-): number => {
-  const radius = 6_371_000;
-  const leftLat = (left.latitude * Math.PI) / 180;
-  const rightLat = (right.latitude * Math.PI) / 180;
-  const deltaLat = ((right.latitude - left.latitude) * Math.PI) / 180;
-  const deltaLon = ((right.longitude - left.longitude) * Math.PI) / 180;
-  const value =
-    Math.sin(deltaLat / 2) ** 2 +
-    Math.cos(leftLat) * Math.cos(rightLat) * Math.sin(deltaLon / 2) ** 2;
-  return radius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
-};
+const totalPrice = (appointment: Appointment): number =>
+  appointment.priceQuoted + (appointment.travelFee ?? 0);
 
 export default function AppointmentsPage(): React.ReactElement {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
   const [date, setDate] = useState('');
   const [page, setPage] = useState(1);
-  const [startingTrackingId, setStartingTrackingId] = useState<string | null>(null);
-  const [trackingState, setTrackingState] = useState<{
-    appointmentId: string;
-    lastPingAt: string | null;
-    warning: string | null;
-  } | null>(null);
-  const watchId = useRef<number | null>(null);
-  const activeTrackingId = useRef<string | null>(null);
-  const lastPing = useRef<{ at: number; latitude: number; longitude: number } | null>(null);
+  const { resumeTracking, startJourney, startingId, stopTracking, trackingState } =
+    useBarberJourney();
   const params = new URLSearchParams({ page: String(page), limit: '20' });
   if (status !== '') params.set('status', status);
   if (date !== '') params.set('date', date);
@@ -87,162 +77,71 @@ export default function AppointmentsPage(): React.ReactElement {
   const updateStatus = useMutation({
     mutationFn: ({ id, nextStatus }: { id: string; nextStatus: string }) =>
       browserApi.patch(`/barbers/me/appointments/${id}/status`, { status: nextStatus }),
-    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+    onSuccess: async (_data, variables) => {
+      if (stopStatuses.includes(variables.nextStatus)) stopTracking(variables.id);
+      await queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    },
   });
 
-  const stopTracking = useCallback((appointmentId?: string): void => {
-    if (
-      appointmentId !== undefined &&
-      activeTrackingId.current !== null &&
-      activeTrackingId.current !== appointmentId
-    ) {
-      return;
-    }
-    if (watchId.current !== null) {
-      window.navigator.geolocation.clearWatch(watchId.current);
-      watchId.current = null;
-    }
-    activeTrackingId.current = null;
-    lastPing.current = null;
-    setTrackingState(null);
-  }, []);
-
-  const sendLocationPing = useCallback(
-    async (appointmentId: string, coordinates: GeolocationCoordinates): Promise<void> => {
-      const body: LocationPingBody = {
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude,
-        accuracyMeters: coordinates.accuracy,
-        ...(coordinates.heading === null ? {} : { headingDegrees: coordinates.heading }),
-        ...(coordinates.speed === null ? {} : { speedMs: coordinates.speed }),
-      };
-      await browserApi.post(`/barbers/me/appointments/${appointmentId}/location`, body);
-      const pingAt = new Date().toISOString();
-      lastPing.current = {
-        at: Date.now(),
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude,
-      };
-      setTrackingState({ appointmentId, lastPingAt: pingAt, warning: null });
-    },
-    [],
-  );
-
-  const startTracking = useCallback(
-    (appointment: Appointment, coordinates: GeolocationCoordinates): void => {
-      if (!('geolocation' in window.navigator)) {
-        setTrackingState({
-          appointmentId: appointment.id,
-          lastPingAt: null,
-          warning: 'Live location unavailable. Your browser does not support location sharing.',
-        });
-        return;
-      }
-      stopTracking();
-      activeTrackingId.current = appointment.id;
-      void sendLocationPing(appointment.id, coordinates).catch(() => {
-        setTrackingState({
-          appointmentId: appointment.id,
-          lastPingAt: null,
-          warning: 'Live location could not be sent. Check browser location permission.',
-        });
-      });
-      watchId.current = window.navigator.geolocation.watchPosition(
-        (position) => {
-          const previous = lastPing.current;
-          const next = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          };
-          const shouldSend =
-            previous === null ||
-            Date.now() - previous.at >= 5_000 ||
-            distanceMeters(previous, next) >= 20;
-          if (!shouldSend) return;
-          void sendLocationPing(appointment.id, position.coords).catch(() => {
-            setTrackingState((current) =>
-              current?.appointmentId === appointment.id
-                ? {
-                    ...current,
-                    warning: 'Live location could not be sent. Retrying with the next update.',
-                  }
-                : current,
-            );
-          });
-        },
-        () => {
-          setTrackingState((current) =>
-            current?.appointmentId === appointment.id
-              ? {
-                  ...current,
-                  warning: 'Live location unavailable. Check browser location permission.',
-                }
-              : current,
-          );
-        },
-        { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 },
-      );
-    },
-    [sendLocationPing, stopTracking],
-  );
-
-  useEffect((): (() => void) => {
-    return () => stopTracking();
-  }, [stopTracking]);
-
   const handleStatusAction = (appointment: Appointment, nextStatus: string): void => {
-    if (nextStatus === 'ON_THE_WAY' && appointment.isMobileService === true) {
-      if (!('geolocation' in window.navigator)) {
-        setTrackingState({
-          appointmentId: appointment.id,
-          lastPingAt: null,
-          warning:
-            'Journey not started. This browser does not support the live location required for the test.',
-        });
-        return;
-      }
-      setStartingTrackingId(appointment.id);
-      window.navigator.geolocation.getCurrentPosition(
-        (position) => {
-          updateStatus.mutate(
-            { id: appointment.id, nextStatus },
-            {
-              onSettled: () => setStartingTrackingId(null),
-              onSuccess: () => startTracking(appointment, position.coords),
-            },
-          );
-        },
-        () => {
-          setTrackingState({
-            appointmentId: appointment.id,
-            lastPingAt: null,
-            warning:
-              'Journey not started. Allow precise location in your browser, then press Start journey again.',
-          });
-          setStartingTrackingId(null);
-        },
-        { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 },
-      );
+    if (nextStatus === 'ON_THE_WAY') {
+      void startJourney(appointment.id);
       return;
     }
-    updateStatus.mutate(
-      { id: appointment.id, nextStatus },
-      {
-        onSuccess: () => {
-          if (trackingStopStatuses.includes(nextStatus)) stopTracking(appointment.id);
-        },
-      },
-    );
+    updateStatus.mutate({ id: appointment.id, nextStatus });
   };
 
+  const renderActions = (appointment: Appointment): React.ReactElement => (
+    <div className="appointment-actions">
+      <Link
+        aria-label={`Review booking for ${appointment.client.firstName} ${appointment.client.lastName}`}
+        className="button button-secondary appointment-review-link"
+        href={`/barber/dashboard/appointments/${appointment.id}`}
+      >
+        <Eye size={15} /> Review booking
+      </Link>
+      {actionList(appointment).map((action) => {
+        const Icon = action.icon;
+        return (
+          <button
+            className="button button-secondary"
+            disabled={updateStatus.isPending || startingId === appointment.id}
+            key={action.status}
+            onClick={() => handleStatusAction(appointment, action.status)}
+            type="button"
+          >
+            <Icon size={14} />
+            {startingId === appointment.id && action.status === 'ON_THE_WAY'
+              ? 'Starting GPS…'
+              : action.label}
+          </button>
+        );
+      })}
+      {appointment.isMobileService === true &&
+        appointment.status === 'ON_THE_WAY' &&
+        trackingState?.appointmentId !== appointment.id && (
+          <button
+            className="button button-secondary"
+            disabled={startingId === appointment.id}
+            onClick={() => void resumeTracking(appointment.id)}
+            type="button"
+          >
+            <MapPin size={14} /> Resume sharing
+          </button>
+        )}
+    </div>
+  );
+
+  const list = appointments.data?.appointments ?? [];
   return (
-    <main className="page">
+    <main className="page barber-appointments-page">
       <div className="page-header">
         <div>
+          <p className="eyebrow">Schedule</p>
           <h1>Appointments</h1>
-          <p>Keep every visit moving through the right stage.</p>
+          <p>Review each booking clearly and move it through the right stage.</p>
         </div>
-        <div className="toolbar">
+        <div className="toolbar appointment-filters">
           <select
             aria-label="Filter by status"
             className="select"
@@ -264,7 +163,7 @@ export default function AppointmentsPage(): React.ReactElement {
               'NO_SHOW',
             ].map((value) => (
               <option key={value} value={value}>
-                {value.replace('_', ' ')}
+                {value.replaceAll('_', ' ')}
               </option>
             ))}
           </select>
@@ -280,27 +179,28 @@ export default function AppointmentsPage(): React.ReactElement {
           />
         </div>
       </div>
+
       {updateStatus.isError && <Notice>{errorMessage(updateStatus.error)}</Notice>}
-      {trackingState?.warning !== null && trackingState?.warning !== undefined && (
-        <Notice tone="warning">{trackingState.warning}</Notice>
-      )}
+      {trackingState?.warning != null && <Notice tone="warning">{trackingState.warning}</Notice>}
       {trackingState?.warning === null && trackingState.lastPingAt !== null && (
         <Notice tone="success">
-          Live location sharing is active. Last update{' '}
+          Foreground location sharing is active. Keep this browser tab open while traveling. Last
+          update{' '}
           {new Date(trackingState.lastPingAt).toLocaleTimeString([], {
             hour: 'numeric',
             minute: '2-digit',
             second: '2-digit',
           })}
-          .
+          . Use the cutG mobile app for background sharing.
         </Notice>
       )}
-      <section className="panel">
+
+      <section className="panel appointments-panel">
         {appointments.isPending ? (
           <LoadingState />
         ) : appointments.isError ? (
           <ErrorState message={errorMessage(appointments.error)} />
-        ) : appointments.data.appointments.length === 0 ? (
+        ) : list.length === 0 ? (
           <EmptyState
             title="No appointments found"
             detail={
@@ -311,185 +211,135 @@ export default function AppointmentsPage(): React.ReactElement {
           />
         ) : (
           <>
-            <div className="table-wrap">
-              <table className="table">
+            <div className="table-wrap appointments-table-wrap">
+              <table className="table appointments-table">
                 <thead>
                   <tr>
                     <th>Client</th>
                     <th>Service</th>
-                    <th>Date and time</th>
-                    <th>Price</th>
+                    <th>Schedule</th>
+                    <th>Type</th>
+                    <th>Total</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {appointments.data.appointments.map((appointment) => (
-                    <tr key={appointment.id}>
+                  {list.map((appointment) => (
+                    <tr className="appointment-row" key={appointment.id}>
                       <td>
                         <strong>
                           {appointment.client.firstName} {appointment.client.lastName}
                         </strong>
                         {appointment.client.phone !== null && (
-                          <small style={{ display: 'block' }}>{appointment.client.phone}</small>
+                          <small>{appointment.client.phone}</small>
                         )}
                       </td>
                       <td>
-                        {appointment.service.name}
-                        {appointment.clientNotes !== null && (
-                          <small style={{ display: 'block' }}>
-                            Client: {appointment.clientNotes}
-                          </small>
-                        )}
-                        {appointment.barberNotes !== null && (
-                          <small style={{ display: 'block' }}>
-                            My note: {appointment.barberNotes}
-                          </small>
-                        )}
-                        {appointment.styleReference != null && (
-                          <div className="appointment-style-inline">
-                            <strong>
-                              {appointment.styleReference.styleName ?? 'Style reference'}
-                            </strong>
-                            <span>{appointment.styleReference.description}</span>
-                            {(appointment.styleReference.previewImageUrl ??
-                              appointment.styleReference.sourcePhotoUrl) !== null && (
-                              <a
-                                href={
-                                  appointment.styleReference.previewImageUrl ??
-                                  appointment.styleReference.sourcePhotoUrl ??
-                                  undefined
-                                }
-                                rel="noreferrer"
-                                target="_blank"
-                              >
-                                View selected look
-                              </a>
-                            )}
-                          </div>
-                        )}
-                        {appointment.styleReference == null && appointment.styleNotes != null && (
-                          <div className="appointment-style-inline">
-                            <strong>New style request</strong>
-                            <span>{appointment.styleNotes}</span>
-                          </div>
-                        )}
-                        {appointment.isMobileService === true && (
-                          <small style={{ display: 'block' }}>
-                            Mobile · {appointment.serviceAddress?.addressLine1},{' '}
-                            {appointment.serviceAddress?.city}
-                          </small>
-                        )}
-                      </td>
-                      <td>{new Date(appointment.scheduledAt).toLocaleString()}</td>
-                      <td>
-                        ${(appointment.priceQuoted + (appointment.travelFee ?? 0)).toFixed(2)}
+                        <strong>{appointment.service.name}</strong>
+                        <small>{appointment.durationMinutes} minutes</small>
                       </td>
                       <td>
-                        <span className={`badge ${badgeTone(appointment.status)}`}>
-                          {appointment.status.replace('_', ' ')}
+                        {new Date(appointment.scheduledAt).toLocaleDateString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                        <small>
+                          {new Date(appointment.scheduledAt).toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </small>
+                      </td>
+                      <td>
+                        <span className="appointment-type-label">
+                          {appointment.isMobileService === true ? (
+                            <MapPin size={14} />
+                          ) : (
+                            <Scissors size={14} />
+                          )}
+                          {appointment.isMobileService === true ? 'Mobile' : 'Shop'}
                         </span>
                       </td>
                       <td>
-                        <div className="toolbar">
-                          {(appointment.status === 'CONFIRMED' &&
-                          appointment.isMobileService === true
-                            ? [
-                                { status: 'ON_THE_WAY', label: 'Start journey', icon: Play },
-                                ...(transitions.CONFIRMED ?? []).slice(1),
-                              ]
-                            : (transitions[appointment.status] ?? [])
-                          ).map((action) => {
-                            const Icon = action.icon;
-                            return (
-                              <button
-                                className="button button-secondary"
-                                disabled={
-                                  updateStatus.isPending || startingTrackingId === appointment.id
-                                }
-                                key={action.status}
-                                onClick={() => handleStatusAction(appointment, action.status)}
-                                type="button"
-                              >
-                                <Icon size={14} />
-                                {startingTrackingId === appointment.id &&
-                                action.status === 'ON_THE_WAY'
-                                  ? 'Starting GPS...'
-                                  : action.label}
-                              </button>
-                            );
-                          })}
-                          {appointment.isMobileService === true &&
-                            trackingActiveStatuses.includes(appointment.status) &&
-                            activeTrackingId.current !== appointment.id && (
-                              <button
-                                className="button button-secondary"
-                                disabled={startingTrackingId === appointment.id}
-                                onClick={() => {
-                                  if (!('geolocation' in window.navigator)) {
-                                    setTrackingState({
-                                      appointmentId: appointment.id,
-                                      lastPingAt: null,
-                                      warning:
-                                        'Live location unavailable. Your browser does not support location sharing.',
-                                    });
-                                    return;
-                                  }
-                                  setStartingTrackingId(appointment.id);
-                                  window.navigator.geolocation.getCurrentPosition(
-                                    (position) => {
-                                      setStartingTrackingId(null);
-                                      startTracking(appointment, position.coords);
-                                    },
-                                    () => {
-                                      setStartingTrackingId(null);
-                                      setTrackingState({
-                                        appointmentId: appointment.id,
-                                        lastPingAt: null,
-                                        warning:
-                                          'Live location unavailable. Check browser location permission.',
-                                      });
-                                    },
-                                    {
-                                      enableHighAccuracy: true,
-                                      maximumAge: 5_000,
-                                      timeout: 15_000,
-                                    },
-                                  );
-                                }}
-                                type="button"
-                              >
-                                <Play size={14} />
-                                Share location
-                              </button>
-                            )}
-                        </div>
+                        <strong>${totalPrice(appointment).toFixed(2)}</strong>
                       </td>
+                      <td>
+                        <span
+                          className={`status-badge ${appointmentStatusClass(appointment.status)}`}
+                        >
+                          {appointment.status.replaceAll('_', ' ')}
+                        </span>
+                      </td>
+                      <td>{renderActions(appointment)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="panel-header">
+
+            <div className="appointment-card-list">
+              {list.map((appointment) => (
+                <article className="appointment-list-card" key={appointment.id}>
+                  <header>
+                    <div>
+                      <strong>
+                        {appointment.client.firstName} {appointment.client.lastName}
+                      </strong>
+                      <span>{appointment.service.name}</span>
+                    </div>
+                    <span className={`status-badge ${appointmentStatusClass(appointment.status)}`}>
+                      {appointment.status.replaceAll('_', ' ')}
+                    </span>
+                  </header>
+                  <div className="appointment-card-facts">
+                    <span>
+                      <CalendarDays size={15} />
+                      {new Date(appointment.scheduledAt).toLocaleString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                    <span>
+                      {appointment.isMobileService === true ? (
+                        <MapPin size={15} />
+                      ) : (
+                        <Scissors size={15} />
+                      )}
+                      {appointment.isMobileService === true
+                        ? 'Mobile appointment'
+                        : 'Shop appointment'}
+                    </span>
+                    <strong>${totalPrice(appointment).toFixed(2)}</strong>
+                  </div>
+                  {renderActions(appointment)}
+                </article>
+              ))}
+            </div>
+
+            <div className="panel-header appointment-pagination">
               <span className="topbar-label">
-                Page {appointments.data.pagination.page} of{' '}
-                {Math.max(1, appointments.data.pagination.totalPages)}
+                Page {appointments.data?.pagination.page} of{' '}
+                {Math.max(1, appointments.data?.pagination.totalPages ?? 1)}
               </span>
               <div className="toolbar">
                 <button
+                  aria-label="Previous page"
                   className="icon-button"
                   disabled={page <= 1}
                   onClick={() => setPage((current) => current - 1)}
-                  title="Previous page"
                   type="button"
                 >
                   <ChevronLeft size={17} />
                 </button>
                 <button
+                  aria-label="Next page"
                   className="icon-button"
-                  disabled={page >= appointments.data.pagination.totalPages}
+                  disabled={page >= (appointments.data?.pagination.totalPages ?? 1)}
                   onClick={() => setPage((current) => current + 1)}
-                  title="Next page"
                   type="button"
                 >
                   <ChevronRight size={17} />

@@ -9,6 +9,7 @@ import {
 } from '@barber-saas/api-client';
 import type {
   BookAppointmentRequest,
+  BarberAppointmentDetail,
   CreateBarberProfileRequest,
   CreateReviewRequest,
   CreateServiceRequest,
@@ -20,6 +21,8 @@ import type {
   UpdateServiceRequest,
   SaveAddressRequest,
   SetMobileConfigRequest,
+  StartJourneyRequest,
+  StartJourneyResponse,
   TravelEstimateRequest,
   UpdateAddressRequest,
 } from '@barber-saas/shared-types';
@@ -254,6 +257,8 @@ export const mobileApi = {
       params?: Record<string, string | number | boolean | undefined>,
     ): Promise<Paginated<AppointmentSummary>> =>
       withAuth((client) => client.get('/barbers/me/appointments' + paramsToQuery(params))),
+    appointment: (appointmentId: string): Promise<BarberAppointmentDetail> =>
+      withAuth((client) => mobileBarberApi.appointment(client, appointmentId)),
     updateAppointmentStatus: (
       appointmentId: string,
       body: { status: string; notes?: string },
@@ -294,6 +299,11 @@ export const mobileApi = {
       },
     ): Promise<{ recorded: boolean }> =>
       withAuth((client) => mobileBarberApi.sendLocationPing(client, appointmentId, body)),
+    startJourney: (
+      appointmentId: string,
+      body: StartJourneyRequest,
+    ): Promise<StartJourneyResponse> =>
+      withAuth((client) => mobileBarberApi.startJourney(client, appointmentId, body)),
   },
 };
 

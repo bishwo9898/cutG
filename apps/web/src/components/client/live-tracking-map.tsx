@@ -6,6 +6,7 @@ import { Car, Scissors } from 'lucide-react';
 
 import { ClientMap } from '@/components/client/client-map';
 import { StaticMap } from '@/components/client/static-map';
+import { locationFreshness } from '@/lib/appointment-ui';
 import { browserApi } from '@/lib/browser-api';
 import type { BarberLocation } from '@/lib/contracts';
 
@@ -39,6 +40,7 @@ export function LiveTrackingMap({
     ? location.data
     : null;
   const ping = tracking?.lastPing ?? null;
+  const freshness = ping === null ? null : locationFreshness(ping.secondsAgo);
 
   if (status !== 'ON_THE_WAY' || ping === null) {
     return (
@@ -76,10 +78,16 @@ export function LiveTrackingMap({
       <div className="live-tracking-map">
         <ClientMap center={barber} destination={client} origin={barber} zoom={13} />
       </div>
-      <div className="tracking-banner">
+      <div className={`tracking-banner tracking-${freshness ?? 'reconnecting'}`}>
         <Car size={19} />
         <div>
-          <strong>{tracking?.barberName ?? 'Your barber'} is on the way</strong>
+          <strong>
+            {freshness === 'live'
+              ? `${tracking?.barberName ?? 'Your barber'} is on the way`
+              : freshness === 'delayed'
+                ? 'Location update delayed'
+                : 'Reconnecting to live location'}
+          </strong>
           <span>
             About {tracking?.estimatedArrivalMinutes} min ·{' '}
             {tracking?.distanceRemainingMiles.toFixed(1)} miles away · updated {ping.secondsAgo}s

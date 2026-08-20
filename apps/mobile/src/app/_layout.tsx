@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { queryClient } from '@/lib/queryClient';
+import { reconcileBackgroundLocation } from '@/services/backgroundLocation';
 import { useAuthStore } from '@/store/authStore';
 import { colors } from '@/theme';
 
@@ -17,7 +18,7 @@ export default function RootLayout(): React.ReactElement {
   const loadStoredAuth = useAuthStore((state) => state.loadStoredAuth);
 
   useEffect(() => {
-    void loadStoredAuth();
+    void loadStoredAuth().then(() => reconcileBackgroundLocation());
   }, [loadStoredAuth]);
 
   return (

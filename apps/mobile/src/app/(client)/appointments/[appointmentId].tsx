@@ -69,6 +69,14 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
   const item = appointment.data;
   const timeline = statusUpdates.data;
   const barberLocation = useBarberLocation(appointmentId, timeline?.currentStatus === 'ON_THE_WAY');
+  const locationFreshness =
+    barberLocation.data?.isTracking !== true
+      ? null
+      : barberLocation.data.lastPing.secondsAgo < 30
+        ? 'Live'
+        : barberLocation.data.lastPing.secondsAgo <= 60
+          ? 'Delayed'
+          : 'Reconnecting';
 
   useEffect(() => {
     if (
@@ -229,11 +237,23 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
                 </MapView>
               ) : null}
               {barberLocation.data?.isTracking === true ? (
-                <Text style={styles.meta}>
-                  About {barberLocation.data.estimatedArrivalMinutes} min ·{' '}
-                  {barberLocation.data.distanceRemainingMiles.toFixed(1)} miles away · updated{' '}
-                  {barberLocation.data.lastPing.secondsAgo}s ago
-                </Text>
+                <View style={styles.locationHealth}>
+                  <Badge
+                    label={locationFreshness ?? 'Reconnecting'}
+                    tone={
+                      locationFreshness === 'Live'
+                        ? 'success'
+                        : locationFreshness === 'Delayed'
+                          ? 'warning'
+                          : 'error'
+                    }
+                  />
+                  <Text style={styles.meta}>
+                    About {barberLocation.data.estimatedArrivalMinutes} min ·{' '}
+                    {barberLocation.data.distanceRemainingMiles.toFixed(1)} miles away · updated{' '}
+                    {barberLocation.data.lastPing.secondsAgo}s ago
+                  </Text>
+                </View>
               ) : null}
               <Text style={styles.meta}>
                 Service: ${(item.pricing?.serviceFee ?? item.price).toFixed(2)}
@@ -324,6 +344,7 @@ const styles = StyleSheet.create({
     color: colors.gold,
     marginTop: spacing.sm,
   },
+  locationHealth: { gap: spacing.xs, marginTop: spacing.md },
   row: {
     alignItems: 'center',
     flexDirection: 'row',

@@ -64,8 +64,12 @@
   font-size: 13px;
   font-weight: 750;
   letter-spacing: 0.01em;
-  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease,
-    box-shadow 160ms ease, transform 160ms ease;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .button-primary,
@@ -204,6 +208,13 @@
   background: var(--ivory-canvas-pink);
 }
 
+.app-shell .table tr:hover td,
+.app-shell .table tr:focus-within td {
+  border-color: var(--ivory-line-strong);
+  color: var(--ivory-ink);
+  background: var(--ivory-blush-soft);
+}
+
 .badge,
 .status-badge,
 .mobile-badge,
@@ -230,6 +241,59 @@
   border-color: #dfd0b6;
   color: var(--ivory-warning);
   background: #faf5e9;
+}
+
+.status-badge {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.status-badge.status-pending {
+  border-color: var(--status-pending-line);
+  color: var(--status-pending-ink);
+  background: var(--status-pending-bg);
+}
+
+.status-badge.status-confirmed {
+  border-color: var(--status-confirmed-line);
+  color: var(--status-confirmed-ink);
+  background: var(--status-confirmed-bg);
+}
+
+.status-badge.status-on_the_way {
+  border-color: var(--status-travel-line);
+  color: var(--status-travel-ink);
+  background: var(--status-travel-bg);
+}
+
+.status-badge.status-arrived {
+  border-color: var(--status-arrived-line);
+  color: var(--status-arrived-ink);
+  background: var(--status-arrived-bg);
+}
+
+.status-badge.status-in_progress {
+  border-color: var(--status-progress-line);
+  color: var(--status-progress-ink);
+  background: var(--status-progress-bg);
+}
+
+.status-badge.status-completed {
+  border-color: var(--status-complete-line);
+  color: var(--status-complete-ink);
+  background: var(--status-complete-bg);
+}
+
+.status-badge.status-cancelled,
+.status-badge.status-no_show {
+  border-color: var(--status-closed-line);
+  color: var(--status-closed-ink);
+  background: var(--status-closed-bg);
 }
 
 .badge-danger,

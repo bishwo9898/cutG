@@ -36,7 +36,13 @@ export const AppointmentCard = ({
     mode === 'client' ? (appointment.barberName ?? 'Barber') : (appointment.clientName ?? 'Client');
 
   return (
-    <Pressable onPress={() => router.push(route)}>
+    <Pressable
+      accessibilityHint="Opens the complete booking review"
+      accessibilityLabel={`Review ${name}'s ${appointment.serviceName} booking`}
+      accessibilityRole="button"
+      onPress={() => router.push(route)}
+      style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
+    >
       <Card>
         <View style={styles.row}>
           <Avatar imageUrl={appointment.barberPhotoUrl} name={name} />
@@ -58,8 +64,12 @@ export const AppointmentCard = ({
               {formatDate(appointment.scheduledDate)} at {appointment.startTime}
             </Text>
             <Text style={styles.price}>
-              {'$' + appointment.price.toFixed(2) + ' · ' + appointment.paymentStatus}
+              {'$' +
+                (appointment.price + (appointment.travelFee ?? 0)).toFixed(2) +
+                ' · ' +
+                appointment.paymentStatus}
             </Text>
+            {mode === 'barber' ? <Text style={styles.review}>Review booking →</Text> : null}
             {onPrimaryAction !== undefined ? (
               <Button title="Navigate" onPress={onPrimaryAction} variant="secondary" />
             ) : null}
@@ -83,6 +93,9 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.gold,
   },
+  pressable: { borderRadius: 12 },
+  pressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
+  review: { ...typography.label, color: colors.statusOnTheWay, marginTop: spacing.xs },
   row: {
     flexDirection: 'row',
     gap: spacing.md,

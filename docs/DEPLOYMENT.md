@@ -117,3 +117,19 @@ Next.js route handler.
 - Keep Preview and Production secrets separate.
 - Ship API and AI logs to the hosting provider's log collector.
 - Retain enough API shutdown time for in-flight requests and database connections to close.
+
+## Native journey-tracking builds
+
+Barber background location requires a native iOS or Android build; Expo Go cannot exercise this
+flow. Set `EXPO_PUBLIC_API_URL` to the deployed Render API origin before creating the build, then
+verify the resolved native permissions:
+
+```bash
+pnpm --filter @barber-saas/mobile exec expo config --type public
+```
+
+The resolved Android configuration must include precise/background location and the location
+foreground-service permissions. The iOS build must include the location background mode. Test on a
+physical device by starting a mobile appointment journey, minimizing and locking the phone, and
+confirming that the client map continues updating. Mark **I've arrived** and confirm that the
+Android foreground-service notification or iOS background indicator stops immediately.

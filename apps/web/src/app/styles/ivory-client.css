@@ -96,7 +96,12 @@
   min-height: 460px;
   border-bottom: 1px solid var(--ivory-line);
   background:
-    linear-gradient(90deg, rgba(250, 247, 241, 0.97) 0%, rgba(250, 247, 241, 0.84) 54%, rgba(250, 247, 241, 0.28) 100%),
+    linear-gradient(
+      90deg,
+      rgba(250, 247, 241, 0.97) 0%,
+      rgba(250, 247, 241, 0.84) 54%,
+      rgba(250, 247, 241, 0.28) 100%
+    ),
     url('/images/barbers/barber-1.webp') center 28% / cover;
 }
 
@@ -261,6 +266,94 @@
   border-color: var(--ivory-line);
   color: var(--ivory-ink);
   background: var(--ivory-surface);
+}
+
+.booking-progress {
+  gap: 0;
+  border-color: var(--ivory-line);
+  scrollbar-width: thin;
+}
+
+.booking-progress span {
+  position: relative;
+  min-width: max-content;
+  flex: 1 0 auto;
+  gap: 9px;
+  border: 0;
+  padding: 0 22px 0 0;
+  color: var(--ivory-muted);
+  background: transparent;
+}
+
+.booking-progress span::after {
+  width: 28px;
+  height: 1px;
+  margin-left: 13px;
+  background: var(--ivory-line-strong);
+  content: '';
+}
+
+.booking-progress span:last-child::after {
+  display: none;
+}
+
+.booking-progress span b {
+  border-color: var(--ivory-line-strong);
+  color: var(--ivory-muted);
+  background: var(--ivory-surface-raised);
+}
+
+.booking-progress span.is-current {
+  color: var(--ivory-ink);
+}
+
+.booking-progress span.is-current b {
+  border-color: var(--ivory-ink);
+  color: var(--ivory-on-ink);
+  background: var(--ivory-ink);
+  box-shadow: 0 0 0 4px rgba(23, 21, 19, 0.08);
+}
+
+.booking-progress span.is-completed {
+  color: var(--ivory-success);
+}
+
+.booking-progress span.is-completed b {
+  border-color: var(--status-complete-line);
+  color: var(--status-complete-ink);
+  background: var(--status-complete-bg);
+}
+
+.booking-progress span.is-completed::after {
+  background: var(--status-complete-line);
+}
+
+.client-map-origin {
+  transition: transform 500ms linear;
+}
+
+.tracking-banner.tracking-live {
+  border-color: var(--status-complete-line);
+  color: var(--status-complete-ink);
+  background: var(--status-complete-bg);
+}
+
+.tracking-banner.tracking-delayed {
+  border-color: var(--status-pending-line);
+  color: var(--status-pending-ink);
+  background: var(--status-pending-bg);
+}
+
+.tracking-banner.tracking-reconnecting {
+  border-color: var(--status-closed-line);
+  color: var(--status-closed-ink);
+  background: var(--status-closed-bg);
+}
+
+.tracking-banner.tracking-live *,
+.tracking-banner.tracking-delayed *,
+.tracking-banner.tracking-reconnecting * {
+  color: inherit;
 }
 
 .booking-service-option:hover,

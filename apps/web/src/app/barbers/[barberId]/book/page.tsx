@@ -31,6 +31,7 @@ import { SlotPicker, TravelEstimateCard } from '@/components/client-ui';
 import { Notice } from '@/components/notice';
 import { useSavedHairDesigns } from '@/hooks/use-saved-hair-designs';
 import { useUser } from '@/hooks/use-user';
+import { bookingStepState } from '@/lib/appointment-ui';
 import {
   appointmentEndsAt,
   formatClockTime,
@@ -347,13 +348,21 @@ export default function BookBarberPage(): React.ReactElement {
         </header>
 
         <nav className="booking-progress" aria-label="Booking progress">
-          {visibleSteps.map((item, index) => (
-            <span className={index <= currentStep ? 'is-active' : ''} key={item}>
-              <b>{index < currentStep ? <Check size={13} /> : index + 1}</b>
-              {item[0]?.toUpperCase()}
-              {item.slice(1)}
-            </span>
-          ))}
+          {visibleSteps.map((item, index) => {
+            const stepState = bookingStepState(index, currentStep);
+            return (
+              <span
+                aria-current={index === currentStep ? 'step' : undefined}
+                className={`is-${stepState}`}
+                data-state={stepState}
+                key={item}
+              >
+                <b>{index < currentStep ? <Check size={13} /> : index + 1}</b>
+                {item[0]?.toUpperCase()}
+                {item.slice(1)}
+              </span>
+            );
+          })}
         </nav>
 
         {user?.userType !== 'CLIENT' && (

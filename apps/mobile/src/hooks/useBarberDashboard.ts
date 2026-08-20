@@ -13,6 +13,7 @@ import type {
   BarberService,
   Paginated,
 } from '@/lib/types';
+import type { BarberAppointmentDetail } from '@barber-saas/shared-types';
 
 export const todayDate = (): string => format(new Date(), 'yyyy-MM-dd');
 
@@ -29,6 +30,15 @@ export const useBarberAppointments = (
   useQuery({
     queryKey: ['barber', 'appointments', filters],
     queryFn: () => mobileApi.barber.appointments(filters),
+  });
+
+export const useBarberAppointment = (
+  appointmentId: string,
+): UseQueryResult<BarberAppointmentDetail> =>
+  useQuery({
+    queryKey: ['barber', 'appointments', 'detail', appointmentId],
+    queryFn: () => mobileApi.barber.appointment(appointmentId),
+    enabled: appointmentId.length > 0,
   });
 
 export const useBarberSlotsPrivate = (

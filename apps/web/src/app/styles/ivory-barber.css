@@ -235,8 +235,8 @@
 }
 
 .portfolio-completion-card {
-  background: linear-gradient(115deg, rgba(234, 215, 211, 0.7), transparent 54%),
-    var(--ivory-surface);
+  background:
+    linear-gradient(115deg, rgba(234, 215, 211, 0.7), transparent 54%), var(--ivory-surface);
 }
 
 .portfolio-completion-score strong,
@@ -467,4 +467,338 @@
   border: 1px solid var(--ivory-line);
   color: var(--ivory-ink);
   background: var(--ivory-blush-soft);
+}
+
+/* Appointment operations */
+.barber-appointments-page .appointments-panel {
+  overflow: hidden;
+}
+.appointments-table-wrap {
+  overflow-x: auto;
+}
+.appointments-table {
+  min-width: 1080px;
+}
+.appointments-table td {
+  vertical-align: middle;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+.appointments-table td > small,
+.appointments-table td > strong + small {
+  display: block;
+  margin-top: 5px;
+  color: var(--ivory-muted);
+}
+.appointment-row:hover td,
+.appointment-row:focus-within td {
+  color: var(--ivory-ink);
+  background: var(--ivory-blush-soft);
+}
+.appointment-row:hover td:first-child,
+.appointment-row:focus-within td:first-child {
+  box-shadow: inset 3px 0 var(--ivory-champagne);
+}
+.appointment-row:hover small,
+.appointment-row:focus-within small {
+  color: var(--ivory-ink-soft);
+}
+.appointment-type-label,
+.appointment-card-facts span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ivory-ink-soft);
+}
+.appointment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.appointment-actions .button {
+  min-height: 38px;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+.appointment-review-link {
+  border-color: var(--ivory-ink);
+  color: var(--ivory-ink);
+}
+.appointment-card-list {
+  display: none;
+}
+.appointment-pagination {
+  border-top: 1px solid var(--ivory-line);
+}
+
+.appointment-review-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 24px;
+  color: var(--ivory-ink-soft);
+  font-weight: 700;
+}
+.appointment-review-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+.appointment-review-header h1 {
+  margin: 7px 0 8px;
+  color: var(--ivory-ink);
+  font-family: var(--font-display);
+  font-size: clamp(38px, 5vw, 58px);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 0.98;
+}
+.appointment-review-header p:last-child {
+  color: var(--ivory-muted);
+}
+.appointment-review-status {
+  padding: 9px 13px;
+}
+.appointment-review-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: 22px;
+  align-items: start;
+}
+.appointment-review-main,
+.appointment-review-aside {
+  display: grid;
+  gap: 18px;
+}
+.appointment-review-aside {
+  position: sticky;
+  top: 96px;
+}
+.appointment-detail-card {
+  padding: 24px;
+}
+.appointment-detail-card h2,
+.appointment-detail-card h3,
+.appointment-detail-card p {
+  color: var(--ivory-ink);
+}
+.appointment-detail-card h2 {
+  font-size: 19px;
+}
+.appointment-detail-heading,
+.appointment-detail-heading > div,
+.appointment-detail-section-title,
+.appointment-detail-section-title > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 13px;
+}
+.appointment-detail-heading > div,
+.appointment-detail-section-title > div {
+  justify-content: flex-start;
+}
+.appointment-detail-heading > strong {
+  color: var(--ivory-ink);
+  font-family: var(--font-display);
+  font-size: 28px;
+}
+.appointment-detail-heading small,
+.appointment-client-card > small,
+.appointment-notes-review-grid small,
+.appointment-style-review small {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ivory-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.appointment-detail-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ivory-line);
+  border-radius: 50%;
+  color: var(--ivory-ink);
+  background: var(--ivory-blush-soft);
+}
+.appointment-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 22px;
+}
+.appointment-detail-facts span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-top: 1px solid var(--ivory-line);
+  padding-top: 12px;
+  color: var(--ivory-ink-soft);
+  font-size: 13px;
+}
+.appointment-location-address {
+  margin: 16px 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.appointment-travel-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.appointment-travel-facts span {
+  border: 1px solid var(--ivory-line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--ivory-ink-soft);
+  background: var(--ivory-surface-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+.appointment-review-map {
+  height: 330px;
+  overflow: hidden;
+  border: 1px solid var(--ivory-line);
+  border-radius: 14px;
+  background: #e8e0d6;
+}
+.appointment-review-map .client-map-canvas {
+  height: 100%;
+}
+.appointment-notes-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.appointment-notes-review-grid > div,
+.appointment-style-review {
+  border: 1px solid var(--ivory-line);
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--ivory-surface-soft);
+}
+.appointment-notes-review-grid p,
+.appointment-style-review p {
+  margin: 0;
+  color: var(--ivory-ink-soft);
+  line-height: 1.6;
+}
+.appointment-style-review {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 18px;
+  margin-top: 12px;
+}
+.appointment-style-review.is-text-only {
+  grid-template-columns: 1fr;
+}
+.appointment-style-review img {
+  width: 120px;
+  height: 120px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+.appointment-client-card .text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+}
+.appointment-price-list {
+  display: grid;
+  gap: 10px;
+  margin: 17px 0 0;
+}
+.appointment-price-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  color: var(--ivory-ink-soft);
+}
+.appointment-price-list dd {
+  margin: 0;
+  font-weight: 750;
+}
+.appointment-price-list .is-total {
+  border-top: 1px solid var(--ivory-line);
+  padding-top: 12px;
+  color: var(--ivory-ink);
+  font-size: 17px;
+}
+.barber-appointment-timeline {
+  display: grid;
+  gap: 0;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.barber-appointment-timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 52px;
+  color: var(--ivory-muted);
+}
+.barber-appointment-timeline li > span {
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ivory-line-strong);
+  border-radius: 50%;
+  background: var(--ivory-surface);
+}
+.barber-appointment-timeline li:not(:last-child)::after {
+  position: absolute;
+  top: 22px;
+  bottom: 0;
+  left: 10px;
+  width: 1px;
+  background: var(--ivory-line);
+  content: '';
+}
+.barber-appointment-timeline li.is-complete,
+.barber-appointment-timeline li.is-current {
+  color: var(--ivory-ink);
+}
+.barber-appointment-timeline li.is-complete > span {
+  border-color: var(--status-complete-line);
+  color: var(--status-complete-ink);
+  background: var(--status-complete-bg);
+}
+.barber-appointment-timeline li.is-current > span {
+  border: 5px solid var(--status-travel-bg);
+  background: var(--status-travel-ink);
+}
+.barber-appointment-timeline li.is-terminal > span {
+  border-color: var(--status-closed-line);
+  color: var(--status-closed-ink);
+  background: var(--status-closed-bg);
+}
+.barber-appointment-timeline small {
+  display: block;
+  margin-top: 3px;
+  color: var(--ivory-muted);
+}
+.appointment-next-actions {
+  display: grid;
+  gap: 9px;
+}
+.appointment-next-actions h2 {
+  margin-bottom: 6px;
+}
+.appointment-next-actions .button {
+  width: 100%;
 }

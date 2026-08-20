@@ -20,7 +20,16 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-location",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow cutG to use your precise location while you travel to a client.",
+          "locationAlwaysAndWhenInUsePermission": "Allow cutG to share your journey with the client, including while the app is in the background.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
       [
         "expo-image-picker",
         {

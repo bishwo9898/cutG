@@ -84,7 +84,12 @@
 
   .landing-cinematic-hero-backdrop-wash {
     background:
-      linear-gradient(0deg, rgba(250, 247, 241, 0.96) 0%, rgba(250, 247, 241, 0.66) 70%, rgba(250, 247, 241, 0.25) 100%),
+      linear-gradient(
+        0deg,
+        rgba(250, 247, 241, 0.96) 0%,
+        rgba(250, 247, 241, 0.66) 70%,
+        rgba(250, 247, 241, 0.25) 100%
+      ),
       linear-gradient(90deg, rgba(250, 247, 241, 0.72), transparent);
   }
 
@@ -109,7 +114,12 @@
     min-height: 560px;
     align-items: flex-end;
     background:
-      linear-gradient(0deg, rgba(250, 247, 241, 0.98) 0%, rgba(250, 247, 241, 0.72) 68%, rgba(250, 247, 241, 0.24) 100%),
+      linear-gradient(
+        0deg,
+        rgba(250, 247, 241, 0.98) 0%,
+        rgba(250, 247, 241, 0.72) 68%,
+        rgba(250, 247, 241, 0.24) 100%
+      ),
       url('/images/barbers/barber-1.webp') 64% center / cover;
   }
 
@@ -225,6 +235,102 @@
   .table th,
   .table td {
     padding-inline: 13px;
+  }
+}
+
+@media (max-width: 980px) {
+  .appointment-review-grid {
+    grid-template-columns: 1fr;
+  }
+  .appointment-review-aside {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .appointment-next-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 860px) {
+  .appointments-table-wrap {
+    display: none;
+  }
+  .appointment-card-list {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+  }
+  .appointment-list-card {
+    border: 1px solid var(--ivory-line);
+    border-radius: 16px;
+    padding: 17px;
+    color: var(--ivory-ink);
+    background: var(--ivory-surface);
+    transition:
+      border-color 160ms ease,
+      background-color 160ms ease,
+      box-shadow 160ms ease;
+  }
+  .appointment-list-card:hover,
+  .appointment-list-card:focus-within {
+    border-color: var(--ivory-line-strong);
+    color: var(--ivory-ink);
+    background: var(--ivory-blush-soft);
+    box-shadow: var(--ivory-shadow-sm);
+  }
+  .appointment-list-card header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+  .appointment-list-card header > div {
+    display: grid;
+    gap: 4px;
+  }
+  .appointment-list-card header span:not(.status-badge) {
+    color: var(--ivory-muted);
+  }
+  .appointment-card-facts {
+    display: grid;
+    gap: 9px;
+    margin: 15px 0;
+    border-block: 1px solid var(--ivory-line);
+    padding: 13px 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .appointment-review-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .appointment-review-aside,
+  .appointment-detail-facts,
+  .appointment-notes-review-grid {
+    grid-template-columns: 1fr;
+  }
+  .appointment-detail-card {
+    padding: 18px;
+  }
+  .appointment-detail-heading,
+  .appointment-detail-section-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .appointment-style-review {
+    grid-template-columns: 86px minmax(0, 1fr);
+  }
+  .appointment-style-review img {
+    width: 86px;
+    height: 86px;
+  }
+  .appointment-review-map {
+    height: 260px;
+  }
+  .appointment-actions .button,
+  .appointment-actions .appointment-review-link {
+    flex: 1 1 145px;
   }
 }
 
