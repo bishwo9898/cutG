@@ -83,9 +83,25 @@ export default function AppointmentsPage(): React.ReactElement {
     },
   });
 
-  const handleStatusAction = (appointment: Appointment, nextStatus: string): void => {
+  const handleStatusAction = async (
+    appointment: Appointment,
+    nextStatus: string,
+  ): Promise<void> => {
     if (nextStatus === 'ON_THE_WAY') {
-      void startJourney(appointment.id);
+      const destination = appointment.serviceAddress;
+      const hasDestination = destination?.latitude != null && destination.longitude != null;
+      const navigationTab = hasDestination ? window.open('about:blank', '_blank') : null;
+      if (navigationTab !== null) navigationTab.opener = null;
+      const startPosition = await startJourney(appointment.id);
+      if (startPosition === null) {
+        navigationTab?.close();
+        return;
+      }
+      if (hasDestination) {
+        const navigationUrl = `https://www.google.com/maps/dir/?api=1&origin=${startPosition.latitude},${startPosition.longitude}&destination=${destination.latitude},${destination.longitude}&travelmode=driving&dir_action=navigate`;
+        if (navigationTab !== null) navigationTab.location.assign(navigationUrl);
+        else window.open(navigationUrl, '_blank', 'noopener,noreferrer');
+      }
       return;
     }
     updateStatus.mutate({ id: appointment.id, nextStatus });
@@ -107,7 +123,7 @@ export default function AppointmentsPage(): React.ReactElement {
             className="button button-secondary"
             disabled={updateStatus.isPending || startingId === appointment.id}
             key={action.status}
-            onClick={() => handleStatusAction(appointment, action.status)}
+            onClick={() => void handleStatusAction(appointment, action.status)}
             type="button"
           >
             <Icon size={14} />
@@ -215,7 +231,7 @@ export default function AppointmentsPage(): React.ReactElement {
               <table className="table appointments-table">
                 <thead>
                   <tr>
-                    <th>Client</th>
+                    <th>Customer</th>
                     <th>Service</th>
                     <th>Schedule</th>
                     <th>Type</th>

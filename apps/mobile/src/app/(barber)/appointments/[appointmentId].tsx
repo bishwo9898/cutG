@@ -1,8 +1,8 @@
 import * as Location from 'expo-location';
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Image, Linking, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -37,7 +37,7 @@ const explainBackgroundPermission = (): Promise<boolean> =>
   new Promise((resolve) => {
     Alert.alert(
       'Share your journey',
-      'cutG needs precise background location only while you travel to this client. Sharing stops as soon as you mark that you have arrived.',
+      'cutG needs precise background location only while you travel to this customer. Sharing stops as soon as you mark that you have arrived.',
       [
         {
           style: 'cancel',
@@ -50,6 +50,36 @@ const explainBackgroundPermission = (): Promise<boolean> =>
     );
   });
 
+type RouteCoordinate = { latitude: number; longitude: number };
+type RouteAlternative = {
+  distance?: unknown;
+  geometry?: { coordinates?: unknown };
+};
+
+const shortestRouteCoordinates = (payload: unknown): RouteCoordinate[] => {
+  if (payload === null || typeof payload !== 'object') return [];
+  const routes = (payload as { routes?: RouteAlternative[] }).routes;
+  if (!Array.isArray(routes)) return [];
+  const selected = routes
+    .filter(
+      (route) =>
+        typeof route.distance === 'number' &&
+        Number.isFinite(route.distance) &&
+        Array.isArray(route.geometry?.coordinates),
+    )
+    .sort((left, right) => Number(left.distance) - Number(right.distance))[0];
+  if (!Array.isArray(selected?.geometry?.coordinates)) return [];
+  return selected.geometry.coordinates.flatMap((point) =>
+    Array.isArray(point) &&
+    typeof point[0] === 'number' &&
+    typeof point[1] === 'number' &&
+    Number.isFinite(point[0]) &&
+    Number.isFinite(point[1])
+      ? [{ latitude: point[1], longitude: point[0] }]
+      : [],
+  );
+};
+
 export default function BarberAppointmentDetailScreen(): React.ReactElement {
   const { appointmentId = '' } = useLocalSearchParams<{ appointmentId?: string }>();
   const appointment = useBarberAppointment(appointmentId);
@@ -57,9 +87,45 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
   const [notes, setNotes] = useState('');
   const [journeyError, setJourneyError] = useState<string | null>(null);
   const [startingJourney, setStartingJourney] = useState(false);
+  const [routeCoordinates, setRouteCoordinates] = useState<RouteCoordinate[]>([]);
+  const mapRef = useRef<MapView | null>(null);
   const item = appointment.data;
   const status = nextStatus(item?.status, item?.isMobileService === true);
   const locationBroadcast = useLocationBroadcast(appointmentId, item?.status);
+
+  useEffect(() => {
+    const origin = item?.journey.routeOrigin;
+    const destination = item?.location;
+    if (origin == null || destination?.latitude == null || destination.longitude == null) {
+      setRouteCoordinates([]);
+      return;
+    }
+    const controller = new AbortController();
+    const url = `https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?alternatives=true&overview=full&geometries=geojson&steps=false`;
+    void fetch(url, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Route request failed with ${response.status}`);
+        return response.json() as Promise<unknown>;
+      })
+      .then((payload) => setRouteCoordinates(shortestRouteCoordinates(payload)))
+      .catch((error: unknown) => {
+        if (!(error instanceof Error && error.name === 'AbortError')) setRouteCoordinates([]);
+      });
+    return (): void => controller.abort();
+  }, [
+    item?.journey.routeOrigin?.latitude,
+    item?.journey.routeOrigin?.longitude,
+    item?.location?.latitude,
+    item?.location?.longitude,
+  ]);
+
+  useEffect(() => {
+    if (routeCoordinates.length < 2) return;
+    mapRef.current?.fitToCoordinates(routeCoordinates, {
+      animated: true,
+      edgePadding: { bottom: 36, left: 36, right: 36, top: 36 },
+    });
+  }, [routeCoordinates]);
 
   const startJourney = async (): Promise<void> => {
     if (item === undefined || !(await explainBackgroundPermission())) return;
@@ -83,6 +149,23 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
       });
       await startBackgroundJourney(item.id, initialLocation);
       await queryClient.invalidateQueries({ queryKey: ['barber', 'appointments'] });
+      if (item.location?.latitude != null && item.location.longitude != null) {
+        const destinationLabel =
+          item.location.formattedAddress ??
+          [
+            item.location.addressLine1,
+            item.location.city,
+            item.location.state,
+            item.location.zipCode,
+          ]
+            .filter(Boolean)
+            .join(', ');
+        await openNavigation(
+          item.location.latitude,
+          item.location.longitude,
+          destinationLabel || 'Customer address',
+        );
+      }
     } catch (error) {
       setJourneyError(errorMessage(error));
     } finally {
@@ -141,13 +224,13 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
       <ScreenHeader
         showBack
         title="Review booking"
-        subtitle="Client, service, pricing, location, and progress."
+        subtitle="Customer, service, pricing, location, and progress."
       />
 
       <Card>
         <View style={styles.titleRow}>
           <View style={styles.flex}>
-            <Text style={styles.eyebrow}>CLIENT</Text>
+            <Text style={styles.eyebrow}>CUSTOMER</Text>
             <Text style={styles.heroTitle}>
               {item.client.firstName} {item.client.lastName}
             </Text>
@@ -210,16 +293,30 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
           {coordinates !== null ? (
             <>
               <MapView
+                ref={mapRef}
                 style={styles.map}
-                region={{
+                initialRegion={{
                   latitude: coordinates.latitude,
                   longitude: coordinates.longitude,
                   latitudeDelta: 0.06,
                   longitudeDelta: 0.06,
                 }}
               >
-                <Marker coordinate={coordinates} />
+                {item.journey.routeOrigin != null ? (
+                  <Marker coordinate={item.journey.routeOrigin} pinColor={colors.statusOnTheWay} />
+                ) : null}
+                <Marker coordinate={coordinates} pinColor={colors.statusArrived} />
+                {routeCoordinates.length >= 2 ? (
+                  <Polyline
+                    coordinates={routeCoordinates}
+                    strokeColor={colors.statusOnTheWay}
+                    strokeWidth={5}
+                  />
+                ) : null}
               </MapView>
+              {routeCoordinates.length >= 2 ? (
+                <Text style={styles.meta}>Shortest available driving route shown.</Text>
+              ) : null}
               <Button
                 title="Open directions"
                 variant="secondary"
@@ -281,8 +378,8 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
 
       <Card>
         <Text style={styles.title}>Style and notes</Text>
-        <Text style={styles.label}>CLIENT NOTE</Text>
-        <Text style={styles.meta}>{item.clientNotes ?? 'No client note was added.'}</Text>
+        <Text style={styles.label}>CUSTOMER NOTE</Text>
+        <Text style={styles.meta}>{item.clientNotes ?? 'No customer note was added.'}</Text>
         <Text style={styles.label}>SAVED BARBER NOTE</Text>
         <Text style={styles.meta}>{item.barberNotes ?? 'No barber note has been saved.'}</Text>
         {item.styleReference !== null ? (

@@ -39,7 +39,7 @@ export default function LoginScreen(): React.ReactElement {
         setError('root', {
           message:
             expectedRole === 'BARBER'
-              ? 'This is a client account. Use client sign in instead.'
+              ? 'This is a customer account. Use customer sign in instead.'
               : 'This is a barber account. Use barber sign in instead.',
         });
         return;
@@ -57,7 +57,7 @@ export default function LoginScreen(): React.ReactElement {
     <Screen>
       <ScreenHeader
         showBack
-        title={expectedRole === 'BARBER' ? 'Barber sign in' : 'Client sign in'}
+        title={expectedRole === 'BARBER' ? 'Barber sign in' : 'Customer sign in'}
         subtitle={
           expectedRole === 'BARBER' ? 'Open your business workspace.' : 'Manage your bookings.'
         }
@@ -105,12 +105,12 @@ export default function LoginScreen(): React.ReactElement {
         variant="ghost"
       />
       <Button
-        title={`Create ${expectedRole === 'BARBER' ? 'barber' : 'client'} account`}
+        title={`Create ${expectedRole === 'BARBER' ? 'barber' : 'customer'} account`}
         onPress={() => router.push('/(auth)/register?role=' + expectedRole)}
         variant="secondary"
       />
       <Button
-        title={expectedRole === 'BARBER' ? 'Client sign in' : 'Barber sign in'}
+        title={expectedRole === 'BARBER' ? 'Customer sign in' : 'Barber sign in'}
         onPress={() =>
           router.replace('/(auth)/login?role=' + (expectedRole === 'BARBER' ? 'CLIENT' : 'BARBER'))
         }

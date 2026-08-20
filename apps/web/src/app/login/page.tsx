@@ -15,7 +15,7 @@ export default function LoginPage(): React.ReactElement {
             <span className="auth-role-card-icon">
               <Search size={22} />
             </span>
-            <strong>I'm a client</strong>
+            <strong>I&apos;m a customer</strong>
             <span>Book and manage appointments</span>
           </Link>
           <Link className="auth-role-card" href="/barber/login">

@@ -325,7 +325,7 @@ export function ShopLocationEditor({
     <section className="panel shop-location-editor">
       <div className="panel-header service-panel-header">
         <div>
-          <span className="eyebrow">Client-facing location</span>
+          <span className="eyebrow">Customer-facing location</span>
           <h2>Shop address</h2>
           <p className="panel-description">
             Search by shop name or street address, then confirm the exact entrance.
@@ -479,7 +479,7 @@ export function ShopLocationEditor({
           <div className="shop-address-heading">
             <div>
               <strong>Address details</strong>
-              <small>These are shown to clients after you save.</small>
+              <small>These are shown to customers after you save.</small>
             </div>
             {selected !== null && (
               <span>

@@ -41,7 +41,7 @@ export default function ClientProfilePage(): React.ReactElement {
     <main className="market-page narrow-page">
       <ClientHeader />
       <section className="summary-panel">
-        <p className="eyebrow">Client profile</p>
+        <p className="eyebrow">Customer profile</p>
         <div className="client-profile-identity">
           <span className="client-profile-avatar">{initials}</span>
           <div>

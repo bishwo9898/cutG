@@ -421,7 +421,7 @@ function PortfolioEditorContent(): React.ReactElement {
               <div className="portfolio-preview-toolbar">
                 <div>
                   <span className="portfolio-preview-status" />
-                  <strong>Live client view</strong>
+                  <strong>Live customer view</strong>
                   <small>Updates appear after each save.</small>
                 </div>
                 <a
@@ -551,7 +551,7 @@ function PortfolioEditorContent(): React.ReactElement {
                   value={identity.headline}
                 />
                 <span className="field-help">
-                  The one line clients remember after leaving your page.
+                  The one line customers remember after leaving your page.
                 </span>
               </div>
               <div className="field">
@@ -563,7 +563,7 @@ function PortfolioEditorContent(): React.ReactElement {
                   onChange={(event) =>
                     setIdentity((value) => ({ ...value, bio: event.target.value }))
                   }
-                  placeholder="Tell clients who you serve, what you specialize in, and how you want them to feel."
+                  placeholder="Tell customers who you serve, what you specialize in, and how you want them to feel."
                   rows={5}
                   value={identity.bio}
                 />
@@ -746,7 +746,7 @@ function PortfolioEditorContent(): React.ReactElement {
               </span>
               <div>
                 <h2>Add before-and-after work</h2>
-                <p>Metadata helps the right client recognize their hair in your work.</p>
+                <p>Metadata helps the right customer recognize their hair in your work.</p>
               </div>
             </div>
             {addGalleryWork.error !== null && <Notice>{errorMessage(addGalleryWork.error)}</Notice>}
@@ -1201,7 +1201,7 @@ function PortfolioEditorContent(): React.ReactElement {
                 </span>
                 <div>
                   <h2>Licenses & certifications</h2>
-                  <p>Add credentials clients can understand at a glance.</p>
+                  <p>Add credentials customers can understand at a glance.</p>
                 </div>
               </div>
               {addCertification.error !== null && (
@@ -1341,11 +1341,11 @@ function PortfolioEditorContent(): React.ReactElement {
                 <BarChart3 size={18} />
               </span>
               <div>
-                <p className="eyebrow">Client loyalty</p>
+                <p className="eyebrow">Customer loyalty</p>
                 <h2>Retention builds automatically</h2>
                 <p>
                   Completed appointments power this private preview and the public trust signal. No
-                  client identities are shown.
+                  customer identities are shown.
                 </p>
               </div>
             </div>
@@ -1356,7 +1356,7 @@ function PortfolioEditorContent(): React.ReactElement {
                 : `${portfolio.data.trust.repeatClientPercentage}%`}
               <span>return within 60 days</span>
             </strong>
-            <div className="portfolio-mini-chart" aria-label="Monthly repeat clients">
+            <div className="portfolio-mini-chart" aria-label="Monthly repeat customers">
               {portfolio.data?.trust.monthlyRepeatClients.map((item) => (
                 <div key={item.month}>
                   <span

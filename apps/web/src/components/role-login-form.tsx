@@ -67,8 +67,8 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
         <span className="auth-role-icon" aria-hidden="true">
           {isBarber ? <BriefcaseBusiness size={20} /> : <Search size={20} />}
         </span>
-        <span className="eyebrow">{isBarber ? 'Barber workspace' : 'Client booking'}</span>
-        <h1>{isBarber ? 'Barber sign in' : 'Client sign in'}</h1>
+        <span className="eyebrow">{isBarber ? 'Barber workspace' : 'Customer booking'}</span>
+        <h1>{isBarber ? 'Barber sign in' : 'Customer sign in'}</h1>
         <p className="subtitle">
           {isBarber ? 'Manage your schedule and business.' : 'Find and manage your appointments.'}
         </p>
@@ -119,13 +119,13 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
             type="submit"
           >
             <LogIn size={17} />
-            {isSubmitting ? 'Signing in...' : `Sign in as ${isBarber ? 'barber' : 'client'}`}
+            {isSubmitting ? 'Signing in...' : `Sign in as ${isBarber ? 'barber' : 'customer'}`}
           </button>
         </form>
         <div className="auth-switcher">
           <span>{isBarber ? 'Looking for a barber?' : 'Running a barber business?'}</span>
           <Link className="text-link" href={isBarber ? '/client/login' : '/barber/login'}>
-            {isBarber ? 'Client sign in' : 'Barber sign in'}
+            {isBarber ? 'Customer sign in' : 'Barber sign in'}
           </Link>
         </div>
         <p className="auth-footer">

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useState } from 'react';
 
 import { ClientMap } from '@/components/client/client-map';
 import { Notice } from '@/components/notice';
@@ -26,6 +27,7 @@ import { ErrorState, LoadingState } from '@/components/query-states';
 import { useBarberJourney } from '@/hooks/use-barber-journey';
 import { appointmentStatusClass } from '@/lib/appointment-ui';
 import { browserApi } from '@/lib/browser-api';
+import type { DrivingRoute } from '@/lib/driving-route';
 import { errorMessage } from '@/lib/errors';
 
 const transitions: Record<string, Array<{ status: string; label: string; icon: typeof Check }>> = {
@@ -60,6 +62,7 @@ export default function AppointmentReviewPage(): React.ReactElement {
   const params = useParams<{ appointmentId: string }>();
   const appointmentId = params.appointmentId;
   const queryClient = useQueryClient();
+  const [drivingRoute, setDrivingRoute] = useState<DrivingRoute | null>(null);
   const { resumeTracking, startJourney, startingId, stopTracking, trackingState } =
     useBarberJourney();
   const appointment = useQuery({
@@ -111,12 +114,32 @@ export default function AppointmentReviewPage(): React.ReactElement {
       ? { latitude: location.latitude, longitude: location.longitude }
       : null;
   const currentIndex = statusOrder.indexOf(item.status);
+  const routeOrigin =
+    trackingState?.appointmentId === item.id && trackingState.position !== null
+      ? trackingState.position
+      : (item.journey.routeOrigin ?? null);
   const directionUrl =
     coordinates !== null
-      ? `https://www.google.com/maps/dir/?api=1&destination=${coordinates.latitude},${coordinates.longitude}`
+      ? `https://www.google.com/maps/dir/?api=1${
+          routeOrigin === null ? '' : `&origin=${routeOrigin.latitude},${routeOrigin.longitude}`
+        }&destination=${coordinates.latitude},${coordinates.longitude}&travelmode=driving&dir_action=navigate`
       : null;
   const selectedStyleImage =
     item.styleReference?.previewImageUrl ?? item.styleReference?.sourcePhotoUrl ?? null;
+  const startJourneyAndNavigate = async (): Promise<void> => {
+    const navigationTab = directionUrl === null ? null : window.open('about:blank', '_blank');
+    if (navigationTab !== null) navigationTab.opener = null;
+    const startPosition = await startJourney(item.id);
+    if (startPosition === null) {
+      navigationTab?.close();
+      return;
+    }
+    if (coordinates !== null) {
+      const preciseNavigationUrl = `https://www.google.com/maps/dir/?api=1&origin=${startPosition.latitude},${startPosition.longitude}&destination=${coordinates.latitude},${coordinates.longitude}&travelmode=driving&dir_action=navigate`;
+      if (navigationTab !== null) navigationTab.location.assign(preciseNavigationUrl);
+      else window.open(preciseNavigationUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   return (
     <main className="page appointment-review-page">
@@ -204,7 +227,7 @@ export default function AppointmentReviewPage(): React.ReactElement {
                   rel="noreferrer"
                   target="_blank"
                 >
-                  Directions <ExternalLink size={14} />
+                  Start in Google Maps <ExternalLink size={14} />
                 </a>
               )}
             </div>
@@ -223,10 +246,29 @@ export default function AppointmentReviewPage(): React.ReactElement {
               )}
             {coordinates !== null ? (
               <div className="appointment-review-map">
-                <ClientMap center={coordinates} destination={coordinates} interactive zoom={14} />
+                <ClientMap
+                  center={coordinates}
+                  destination={coordinates}
+                  interactive
+                  onRouteChange={setDrivingRoute}
+                  origin={item.isMobileService ? routeOrigin : null}
+                  zoom={14}
+                />
               </div>
             ) : (
               <Notice tone="warning">Map coordinates are not available for this booking.</Notice>
+            )}
+            {coordinates !== null && item.isMobileService && (
+              <p className="muted">
+                {routeOrigin === null
+                  ? 'Save your shop or mobile-service origin to preview the driving route. Google Maps will use your current position when the journey starts.'
+                  : drivingRoute === null
+                    ? 'Showing the best available path from your saved origin. Google Maps will recalculate from your precise position when you start.'
+                    : `${(drivingRoute.distanceMeters / 1609.344).toFixed(1)} miles · about ${Math.max(
+                        1,
+                        Math.round(drivingRoute.durationSeconds / 60),
+                      )} minutes on the shortest available route.`}
+              </p>
             )}
           </article>
 
@@ -239,8 +281,8 @@ export default function AppointmentReviewPage(): React.ReactElement {
             </div>
             <div className="appointment-notes-review-grid">
               <div>
-                <small>Client note</small>
-                <p>{item.clientNotes ?? 'No client note was added.'}</p>
+                <small>Customer note</small>
+                <p>{item.clientNotes ?? 'No customer note was added.'}</p>
               </div>
               <div>
                 <small>Your note</small>
@@ -274,7 +316,7 @@ export default function AppointmentReviewPage(): React.ReactElement {
 
         <aside className="appointment-review-aside">
           <article className="panel appointment-detail-card appointment-client-card">
-            <small>Client</small>
+            <small>Customer</small>
             <h2>
               {item.client.firstName} {item.client.lastName}
             </h2>
@@ -354,7 +396,7 @@ export default function AppointmentReviewPage(): React.ReactElement {
                     disabled={updateStatus.isPending || startingId === item.id}
                     key={action.status}
                     onClick={() => {
-                      if (action.status === 'ON_THE_WAY') void startJourney(item.id);
+                      if (action.status === 'ON_THE_WAY') void startJourneyAndNavigate();
                       else updateStatus.mutate(action.status);
                     }}
                     type="button"

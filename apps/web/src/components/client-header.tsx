@@ -77,7 +77,7 @@ export function ClientHeader(): React.ReactElement {
             onChange={(event) => setQuery(event.target.value)}
           />
         </form>
-        <nav className="client-primary-nav" aria-label="Client portal">
+        <nav className="client-primary-nav" aria-label="Customer portal">
           {clientLinks.slice(0, 4).map((item) => (
             <Link
               className={active(pathname, item.href) ? 'client-nav-active' : ''}
@@ -133,7 +133,7 @@ export function ClientHeader(): React.ReactElement {
           <BackButton fallbackHref="/client" />
         </div>
       )}
-      <nav className="client-mobile-nav" aria-label="Client mobile navigation">
+      <nav className="client-mobile-nav" aria-label="Customer mobile navigation">
         {(client === null && !user.isLoading ? clientLinks.slice(0, 2) : clientLinks).map(
           (item) => {
             const Icon = item.icon;

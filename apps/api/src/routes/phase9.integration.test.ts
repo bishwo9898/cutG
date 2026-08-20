@@ -28,6 +28,12 @@ beforeAll(async () => {
   const client = await createVerifiedUser('CLIENT', 'phase9.client@example.com');
   barberId = await createBarberProfileFixture(barber.id);
   await createBarberProfileFixture(otherBarber.id);
+  await pool.query(
+    `INSERT INTO mobile_barber_config
+      (barber_id,is_enabled,origin_latitude,origin_longitude,origin_address)
+     VALUES ($1,true,37.6467,-84.7729,'120 N 3rd St, Danville, KY')`,
+    [barberId],
+  );
   const service = await pool.query<{ id: string }>(
     `INSERT INTO services (barber_id,name,price,duration_minutes,category)
      VALUES ($1,'Tracking Cut',32,30,'haircut') RETURNING id`,
@@ -77,7 +83,10 @@ describe('Phase 9 GPS tracking and hair designs', () => {
       isMobileService: true,
       location: { kind: 'MOBILE', addressLine1: '10 Client St' },
       pricing: { serviceFee: 32, travelFee: 0, total: 32, currency: 'USD' },
-      journey: { isTracking: false },
+      journey: {
+        isTracking: false,
+        routeOrigin: { latitude: 37.6467, longitude: -84.7729 },
+      },
     });
 
     await request(app)
@@ -128,7 +137,7 @@ describe('Phase 9 GPS tracking and hair designs', () => {
     expect(location.body).toMatchObject({
       isTracking: true,
       appointmentId,
-      lastPing: { latitude: 37.6467, longitude: -84.7729 },
+      lastPing: { latitude: 37.6468, longitude: -84.7728 },
     });
     expect((location.body as LocationBody).distanceRemainingMiles).toBeGreaterThanOrEqual(0);
 

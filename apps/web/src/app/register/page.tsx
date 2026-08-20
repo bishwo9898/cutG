@@ -15,7 +15,7 @@ export default function RegisterPage(): React.ReactElement {
             <span className="auth-role-card-icon">
               <Search size={22} />
             </span>
-            <strong>Client account</strong>
+            <strong>Customer account</strong>
             <span>Discover, save, and book barbers</span>
           </Link>
           <Link className="auth-role-card" href="/barber/register">
@@ -23,7 +23,7 @@ export default function RegisterPage(): React.ReactElement {
               <BriefcaseBusiness size={22} />
             </span>
             <strong>Barber account</strong>
-            <span>Manage your business and clients</span>
+            <span>Manage your business and customers</span>
           </Link>
         </div>
         <p className="auth-footer">

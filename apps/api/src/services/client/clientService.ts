@@ -194,7 +194,7 @@ export const getClientProfile = async (clientId: string) => {
     [clientId],
   );
   const user = rows[0];
-  if (user === undefined) throw new AppError(404, 'Client not found.', 'CLIENT_NOT_FOUND');
+  if (user === undefined) throw new AppError(404, 'Customer not found.', 'CLIENT_NOT_FOUND');
   return {
     id: user.id,
     email: user.email,

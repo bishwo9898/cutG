@@ -17,6 +17,7 @@ type LocationPingBody = {
 type JourneyState = {
   appointmentId: string;
   lastPingAt: string | null;
+  position: { latitude: number; longitude: number } | null;
   warning: string | null;
 };
 
@@ -55,7 +56,7 @@ const currentPosition = (): Promise<GeolocationPosition> =>
 export const useBarberJourney = (): {
   startingId: string | null;
   trackingState: JourneyState | null;
-  startJourney: (appointmentId: string) => Promise<boolean>;
+  startJourney: (appointmentId: string) => Promise<{ latitude: number; longitude: number } | null>;
   resumeTracking: (appointmentId: string) => Promise<boolean>;
   stopTracking: (appointmentId?: string) => void;
 } => {
@@ -95,7 +96,12 @@ export const useBarberJourney = (): {
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
       };
-      setTrackingState({ appointmentId, lastPingAt: pingAt, warning: null });
+      setTrackingState({
+        appointmentId,
+        lastPingAt: pingAt,
+        position: { latitude: coordinates.latitude, longitude: coordinates.longitude },
+        warning: null,
+      });
     },
     [],
   );
@@ -112,6 +118,7 @@ export const useBarberJourney = (): {
       setTrackingState({
         appointmentId,
         lastPingAt: new Date().toISOString(),
+        position: { latitude: coordinates.latitude, longitude: coordinates.longitude },
         warning: null,
       });
       if (sendInitial) {
@@ -119,6 +126,7 @@ export const useBarberJourney = (): {
           setTrackingState({
             appointmentId,
             lastPingAt: null,
+            position: { latitude: coordinates.latitude, longitude: coordinates.longitude },
             warning: errorMessage(error),
           });
         });
@@ -142,7 +150,8 @@ export const useBarberJourney = (): {
               current?.appointmentId === appointmentId
                 ? {
                     ...current,
-                    warning: 'Location could not reach the client. Retrying automatically.',
+                    position: next,
+                    warning: 'Location could not reach the customer. Retrying automatically.',
                   }
                 : current,
             );
@@ -170,6 +179,7 @@ export const useBarberJourney = (): {
         setTrackingState({
           appointmentId,
           lastPingAt: null,
+          position: null,
           warning: 'This browser does not support live location.',
         });
         return null;
@@ -181,6 +191,7 @@ export const useBarberJourney = (): {
         setTrackingState({
           appointmentId,
           lastPingAt: null,
+          position: null,
           warning: 'Allow precise browser location, then try again.',
         });
         return null;
@@ -192,9 +203,9 @@ export const useBarberJourney = (): {
   );
 
   const startJourney = useCallback(
-    async (appointmentId: string): Promise<boolean> => {
+    async (appointmentId: string): Promise<{ latitude: number; longitude: number } | null> => {
       const position = await prepare(appointmentId);
-      if (position === null) return false;
+      if (position === null) return null;
       setStartingId(appointmentId);
       try {
         await browserApi.post(
@@ -203,10 +214,18 @@ export const useBarberJourney = (): {
         );
         watch(appointmentId, position.coords, false);
         await queryClient.invalidateQueries({ queryKey: ['appointments'] });
-        return true;
+        return {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
       } catch (error) {
-        setTrackingState({ appointmentId, lastPingAt: null, warning: errorMessage(error) });
-        return false;
+        setTrackingState({
+          appointmentId,
+          lastPingAt: null,
+          position: { latitude: position.coords.latitude, longitude: position.coords.longitude },
+          warning: errorMessage(error),
+        });
+        return null;
       } finally {
         setStartingId(null);
       }

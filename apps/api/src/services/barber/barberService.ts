@@ -645,12 +645,15 @@ export const getAppointment = async (userId: string, appointmentId: string) => {
     `SELECT a.*,s.name AS service_name,u.first_name,u.last_name,u.phone,
       bp.address AS shop_address,bp.city AS shop_city,bp.state AS shop_state,
       bp.zip_code AS shop_zip,bp.latitude AS shop_latitude,bp.longitude AS shop_longitude,
+      mbc.origin_latitude AS mobile_origin_latitude,
+      mbc.origin_longitude AS mobile_origin_longitude,
       hd.id AS style_design_id,hd.style_name,hd.description AS style_description,
       hd.generated_preview_url,hd.generated_asset_key,hd.source_photo_url,hd.source_asset_key
      FROM appointments a
      JOIN services s ON s.id=a.service_id
      JOIN users u ON u.id=a.client_id
      JOIN barber_profiles bp ON bp.id=a.barber_id AND bp.user_id=$2
+     LEFT JOIN mobile_barber_config mbc ON mbc.barber_id=bp.id
      LEFT JOIN client_hair_designs hd
        ON hd.id=a.style_reference_id
       AND hd.client_id=a.client_id
@@ -715,6 +718,14 @@ export const getAppointment = async (userId: string, appointmentId: string) => {
                 : String(row.source_photo_url),
         };
   const scheduledAt = dateTime(row.scheduled_at);
+  const routeOriginLatitude =
+    numberOrNull(row.mobile_origin_latitude) ?? numberOrNull(row.shop_latitude);
+  const routeOriginLongitude =
+    numberOrNull(row.mobile_origin_longitude) ?? numberOrNull(row.shop_longitude);
+  const routeOrigin =
+    routeOriginLatitude !== null && routeOriginLongitude !== null
+      ? { latitude: routeOriginLatitude, longitude: routeOriginLongitude }
+      : null;
   return {
     id: row.id,
     barberId: row.barber_id,
@@ -758,6 +769,7 @@ export const getAppointment = async (userId: string, appointmentId: string) => {
       departedAt: row.barber_departed_at === null ? null : dateTime(row.barber_departed_at),
       arrivedAt: row.barber_arrived_at === null ? null : dateTime(row.barber_arrived_at),
       isTracking: row.status === 'ON_THE_WAY',
+      routeOrigin,
     },
   };
 };

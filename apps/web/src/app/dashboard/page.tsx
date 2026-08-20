@@ -43,7 +43,7 @@ export default function DashboardPage(): React.ReactElement {
         <div className="page-header">
           <div>
             <h1>Welcome to your workspace</h1>
-            <p>Start with the details clients need before you open your calendar.</p>
+            <p>Start with the details customers need before you open your calendar.</p>
           </div>
         </div>
         <section className="panel">
@@ -105,7 +105,7 @@ export default function DashboardPage(): React.ReactElement {
             <Star size={18} />
           </div>
           <div className="stat-value">{profile.data.averageRating.toFixed(1)}</div>
-          <div className="stat-label">{profile.data.totalReviews} client reviews</div>
+          <div className="stat-label">{profile.data.totalReviews} customer reviews</div>
         </div>
       </section>
       <section className="two-column">
@@ -125,7 +125,7 @@ export default function DashboardPage(): React.ReactElement {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Client</th>
+                    <th>Customer</th>
                     <th>Service</th>
                     <th>Time</th>
                     <th>Status</th>

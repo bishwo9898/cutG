@@ -12,7 +12,7 @@ type ReviewCardProps = {
 export const ReviewCard = ({ review }: ReviewCardProps): React.ReactElement => (
   <Card>
     <View style={styles.header}>
-      <Text style={styles.name}>{review.clientName ?? 'Client'}</Text>
+      <Text style={styles.name}>{review.clientName ?? 'Customer'}</Text>
       <StarRating value={review.rating} />
     </View>
     {review.title !== undefined && review.title !== null ? (

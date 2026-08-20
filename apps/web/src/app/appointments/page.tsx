@@ -26,7 +26,7 @@ export default function ClientAppointmentsPage(): React.ReactElement {
   if (!userLoading && user?.userType !== 'CLIENT') {
     return (
       <main className="market-page narrow-page">
-        <Notice>Sign in with a client account to view appointments.</Notice>
+        <Notice>Sign in with a customer account to view appointments.</Notice>
         <Link className="button button-primary" href="/client/login">
           Sign in
         </Link>
@@ -40,7 +40,7 @@ export default function ClientAppointmentsPage(): React.ReactElement {
       <section className="market-section">
         <div className="section-title">
           <div>
-            <p className="eyebrow">Client</p>
+            <p className="eyebrow">Customer</p>
             <h1>Your appointments</h1>
           </div>
           <div className="segmented">

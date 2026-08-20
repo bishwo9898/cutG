@@ -100,7 +100,7 @@ export default function AppointmentDetailPage(): React.ReactElement {
     },
   });
   const refund = useMutation({
-    mutationFn: () => paymentApi.refund(browserApi, appointmentId, 'Client requested refund'),
+    mutationFn: () => paymentApi.refund(browserApi, appointmentId, 'Customer requested refund'),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['appointment-payment', appointmentId] });
       await queryClient.invalidateQueries({ queryKey: ['client-appointment', appointmentId] });

@@ -11,6 +11,8 @@ import {
 } from 'maplibre-gl';
 import { useEffect, useRef } from 'react';
 
+import { drivingRouteUrl, shortestDrivingRoute, type DrivingRoute } from '@/lib/driving-route';
+
 const clientMapStyle =
   process.env.NEXT_PUBLIC_MAP_STYLE_URL ??
   'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
@@ -25,6 +27,7 @@ type ClientMapProps = {
   interactive?: boolean;
   zoom?: number;
   onDestinationChange?: (point: MapPoint) => void;
+  onRouteChange?: (route: DrivingRoute | null) => void;
 };
 
 export function ClientMap({
@@ -33,6 +36,7 @@ export function ClientMap({
   draggable = false,
   interactive = true,
   onDestinationChange,
+  onRouteChange,
   origin = null,
   zoom = 15,
 }: ClientMapProps): React.ReactElement {
@@ -41,6 +45,7 @@ export function ClientMap({
   const destinationMarker = useRef<Marker | null>(null);
   const originMarker = useRef<Marker | null>(null);
   const onChange = useRef(onDestinationChange);
+  const onRoute = useRef(onRouteChange);
   const observer = useRef<ResizeObserver | null>(null);
   type RouteData = {
     type: 'Feature';
@@ -51,6 +56,10 @@ export function ClientMap({
   useEffect(() => {
     onChange.current = onDestinationChange;
   }, [onDestinationChange]);
+
+  useEffect(() => {
+    onRoute.current = onRouteChange;
+  }, [onRouteChange]);
 
   useEffect(() => {
     if (container.current === null) return;
@@ -129,19 +138,23 @@ export function ClientMap({
 
   useEffect(() => {
     const instance = map.current;
-    if (instance === null || origin === null || destination === null) return;
-    const sourceData: RouteData = {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'LineString',
-        coordinates: [
-          [origin.longitude, origin.latitude],
-          [destination.longitude, destination.latitude],
-        ],
-      },
-    };
-    const drawRoute = (): void => {
+    if (instance === null || origin === null || destination === null) {
+      onRoute.current?.(null);
+      return;
+    }
+    let active = true;
+    const controller = new AbortController();
+    const fallbackCoordinates: [number, number][] = [
+      [origin.longitude, origin.latitude],
+      [destination.longitude, destination.latitude],
+    ];
+    const drawRoute = (coordinates: [number, number][]): void => {
+      if (!active || map.current !== instance) return;
+      const sourceData: RouteData = {
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'LineString', coordinates },
+      };
       if (instance.getSource('client-route') === undefined) {
         instance.addSource('client-route', { type: 'geojson', data: sourceData as never });
         instance.addLayer({
@@ -159,8 +172,32 @@ export function ClientMap({
       );
       instance.fitBounds(bounds, { padding: 56, maxZoom: 15, duration: 500 });
     };
-    if (instance.loaded()) drawRoute();
-    else void instance.once('load', drawRoute);
+    const drawWhenReady = (routeCoordinates: [number, number][]): void => {
+      if (instance.loaded()) drawRoute(routeCoordinates);
+      else void instance.once('load', () => drawRoute(routeCoordinates));
+    };
+
+    drawWhenReady(fallbackCoordinates);
+    void fetch(drivingRouteUrl(origin, destination), { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Route request failed with ${response.status}`);
+        return response.json() as Promise<unknown>;
+      })
+      .then((payload) => {
+        if (!active) return;
+        const route = shortestDrivingRoute(payload);
+        onRoute.current?.(route);
+        if (route !== null) drawWhenReady(route.coordinates);
+      })
+      .catch((error: unknown) => {
+        if (!active || (error instanceof DOMException && error.name === 'AbortError')) return;
+        onRoute.current?.(null);
+      });
+
+    return (): void => {
+      active = false;
+      controller.abort();
+    };
   }, [destination?.latitude, destination?.longitude, origin?.latitude, origin?.longitude]);
 
   useEffect(() => {

@@ -77,7 +77,7 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
     <AuthShell audience={role}>
       <div className="auth-form">
         <span className="eyebrow">{isBarber ? 'Build your business' : 'Start booking'}</span>
-        <h1>{isBarber ? 'Create a barber account' : 'Create a client account'}</h1>
+        <h1>{isBarber ? 'Create a barber account' : 'Create a customer account'}</h1>
         <p className="subtitle">
           {isBarber ? 'Set up your workspace and services.' : 'Save barbers and book appointments.'}
         </p>
@@ -167,12 +167,12 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
           >
             {isSubmitting
               ? 'Creating account...'
-              : `Create ${isBarber ? 'barber' : 'client'} account`}
+              : `Create ${isBarber ? 'barber' : 'customer'} account`}
             <ArrowRight size={17} />
           </button>
         </form>
         <div className="auth-switcher">
-          <span>{isBarber ? 'Need a client account?' : 'Joining as a barber?'}</span>
+          <span>{isBarber ? 'Need a customer account?' : 'Joining as a barber?'}</span>
           <Link className="text-link" href={isBarber ? '/client/register' : '/barber/register'}>
             Switch account type
           </Link>

@@ -27,7 +27,7 @@ export default function RoleSelectScreen(): React.ReactElement {
       <ScreenHeader
         showBack
         title="Choose your side"
-        subtitle="cutG is built for clients and barbers."
+        subtitle="cutG is built for customers and barbers."
       />
       <View style={styles.cards}>
         <RoleCard

@@ -33,7 +33,7 @@ export default function BarberLayout(): React.ReactElement {
       />
       <Tabs.Screen
         name="appointments"
-        options={{ title: 'Clients', tabBarIcon: tabIcon('people') }}
+        options={{ title: 'Customers', tabBarIcon: tabIcon('people') }}
       />
       <Tabs.Screen
         name="business"

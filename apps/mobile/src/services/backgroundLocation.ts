@@ -108,7 +108,7 @@ const registerTask = async (appointmentId: string): Promise<void> => {
       showsBackgroundLocationIndicator: true,
       foregroundService: {
         notificationTitle: 'cutG journey sharing',
-        notificationBody: 'Your live location is being shared with your client until arrival.',
+        notificationBody: 'Your live location is being shared with your customer until arrival.',
         notificationColor: '#315D7A',
       },
     });

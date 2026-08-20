@@ -52,11 +52,17 @@ export function LandingNav(): React.ReactElement {
         </nav>
 
         <div className="landing-cinematic-nav-actions">
-          <Link className="landing-cinematic-button landing-cinematic-button-ghost" href="/barber/register">
+          <Link
+            className="landing-cinematic-button landing-cinematic-button-ghost"
+            href="/barber/register"
+          >
             I&apos;m a barber
           </Link>
-          <Link className="landing-cinematic-button landing-cinematic-button-primary" href="/client/register">
-            Get started
+          <Link
+            className="landing-cinematic-button landing-cinematic-button-primary"
+            href="/client/barbers"
+          >
+            Find your barber
           </Link>
           <button
             aria-expanded={menuOpen}
@@ -89,10 +95,10 @@ export function LandingNav(): React.ReactElement {
           </Link>
           <Link
             className="landing-cinematic-button landing-cinematic-button-primary"
-            href="/client/register"
+            href="/client/barbers"
             onClick={() => setMenuOpen(false)}
           >
-            Get started
+            Find your barber
           </Link>
         </div>
       </div>

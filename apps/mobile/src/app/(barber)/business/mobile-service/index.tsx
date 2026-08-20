@@ -168,7 +168,7 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
         <Text style={styles.title}>Shop address</Text>
         <Text style={styles.meta}>
           Search Google locations, use your precise device position, or enter the address manually.
-          This is the client-facing shop location.
+          This is the customer-facing shop location.
         </Text>
         <PlacesAutocomplete
           initialValue={shopPlace?.formattedAddress ?? ''}
@@ -306,7 +306,7 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
           />
           <Text style={styles.meta}>
             With precise-location permission, this origin refreshes when you open this screen.
-            During an active client journey, background tracking continues automatically until you
+            During an active customer journey, background tracking continues automatically until you
             arrive.
           </Text>
           <Card>
@@ -323,7 +323,7 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
             />
           </Card>
           <Input
-            label="Notes for clients"
+            label="Notes for customers"
             value={notes}
             onChangeText={setNotes}
             multiline
@@ -333,7 +333,7 @@ export default function MobileServiceSettingsScreen(): React.ReactElement {
       ) : (
         <Card>
           <Text style={styles.meta}>
-            Enable mobile visits when you are ready to travel to clients.
+            Enable mobile visits when you are ready to travel to customers.
           </Text>
         </Card>
       )}

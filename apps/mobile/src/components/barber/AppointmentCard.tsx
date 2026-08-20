@@ -33,7 +33,9 @@ export const AppointmentCard = ({
       ? '/(client)/appointments/' + appointment.id
       : '/(barber)/appointments/' + appointment.id;
   const name =
-    mode === 'client' ? (appointment.barberName ?? 'Barber') : (appointment.clientName ?? 'Client');
+    mode === 'client'
+      ? (appointment.barberName ?? 'Barber')
+      : (appointment.clientName ?? 'Customer');
 
   return (
     <Pressable

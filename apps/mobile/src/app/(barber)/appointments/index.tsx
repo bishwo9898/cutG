@@ -37,8 +37,11 @@ export default function BarberAppointmentListScreen(): React.ReactElement {
         void appointments.refetch();
       }}
     >
-      <ScreenHeader title="Appointments" subtitle="Review every client booking and its progress." />
-      <Input label="Search client" value={search} onChangeText={setSearch} />
+      <ScreenHeader
+        title="Appointments"
+        subtitle="Review every customer booking and its progress."
+      />
+      <Input label="Search customer" value={search} onChangeText={setSearch} />
       <View style={styles.chips}>
         {statuses.map((item) => (
           <Button

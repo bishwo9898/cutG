@@ -94,7 +94,7 @@ export const createSession = async (
           code: 'ACCOUNT_TYPE_MISMATCH',
           message:
             expectedUserType === 'BARBER'
-              ? 'This is a client account. Use client sign in instead.'
+              ? 'This is a customer account. Use customer sign in instead.'
               : 'This is a barber account. Use barber sign in instead.',
         },
       };

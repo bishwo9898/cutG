@@ -227,7 +227,7 @@ export default function ServicesPage(): React.ReactElement {
         <section className="panel">
           <EmptyState
             title="Your service menu is empty"
-            detail="Add the cuts and treatments clients can book."
+            detail="Add the cuts and treatments customers can book."
             action={
               <button className="button button-primary" onClick={() => openCreate()} type="button">
                 <Plus size={17} />
@@ -325,7 +325,7 @@ export default function ServicesPage(): React.ReactElement {
                         onClick={() => {
                           if (
                             window.confirm(
-                              `Archive ${service.name}? Clients will no longer be able to book it.`,
+                              `Archive ${service.name}? Customers will no longer be able to book it.`,
                             )
                           ) {
                             deactivate.mutate(service.id);
@@ -384,7 +384,7 @@ export default function ServicesPage(): React.ReactElement {
                   <label className="service-image-picker">
                     <ImagePlus size={24} />
                     <strong>Add a service photo</strong>
-                    <span>Help clients understand the result at a glance.</span>
+                    <span>Help customers understand the result at a glance.</span>
                     <input
                       accept="image/jpeg,image/png,image/webp"
                       onChange={(event) => selectImage(event.target.files?.[0])}
@@ -481,7 +481,7 @@ export default function ServicesPage(): React.ReactElement {
                   />
                   <span>
                     <strong>Active and bookable</strong>
-                    <small>Turn this on to show the service to clients.</small>
+                    <small>Turn this on to show the service to customers.</small>
                   </span>
                 </label>
               )}

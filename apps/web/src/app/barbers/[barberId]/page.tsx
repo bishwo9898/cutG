@@ -360,7 +360,7 @@ export default function BarberProfilePage(): React.ReactElement {
 
       <nav className="portfolio-section-nav" aria-label="Barber profile sections">
         <a href="#work">Work</a>
-        <a href="#trust">Client loyalty</a>
+        <a href="#trust">Customer loyalty</a>
         <a href="#experience">Experience</a>
         <a href="#book">Services & booking</a>
       </nav>
@@ -472,7 +472,7 @@ export default function BarberProfilePage(): React.ReactElement {
             <h3>
               {portfolio.data?.trust.repeatClientPercentage === null ||
               portfolio.data?.trust.repeatClientPercentage === undefined
-                ? 'Client history is building'
+                ? 'Customer history is building'
                 : 'return within 60 days'}
             </h3>
             <p>
@@ -487,11 +487,11 @@ export default function BarberProfilePage(): React.ReactElement {
                 <BarChart3 size={18} />
               </span>
               <div>
-                <h3>Monthly repeat clients</h3>
+                <h3>Monthly repeat customers</h3>
                 <p>Last six months</p>
               </div>
             </div>
-            <div className="portfolio-chart-bars" aria-label="Monthly repeat clients graph">
+            <div className="portfolio-chart-bars" aria-label="Monthly repeat customers graph">
               {portfolio.data?.trust.monthlyRepeatClients.map((item) => (
                 <div key={item.month}>
                   <span>{item.repeatClients}</span>
@@ -673,7 +673,7 @@ export default function BarberProfilePage(): React.ReactElement {
         {tab === 'reviews' && (
           <div className="portfolio-tab-panel">
             <div className="section-title">
-              <h3>Client reviews</h3>
+              <h3>Customer reviews</h3>
               <p className="muted">{reviews.data?.summary.totalReviews ?? 0} total</p>
             </div>
             <div className="review-grid">

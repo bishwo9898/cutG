@@ -39,7 +39,7 @@ export default function SavedBarbersPage(): React.ReactElement {
   if (!userLoading && user?.userType !== 'CLIENT') {
     return (
       <main className="market-page narrow-page">
-        <Notice>Sign in with a client account to view saved barbers.</Notice>
+        <Notice>Sign in with a customer account to view saved barbers.</Notice>
         <Link className="button button-primary" href="/client/login">
           Sign in
         </Link>

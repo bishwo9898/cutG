@@ -41,11 +41,11 @@ const barberPlans = [
     name: 'Free',
     subtitle: 'Just getting started',
     price: '—',
-    features: ['Up to 5 services', '14-day calendar horizon', 'Client bookings'],
+    features: ['Up to 5 services', '14-day calendar horizon', 'Customer bookings'],
   },
   {
     name: 'Basic',
-    subtitle: 'Growing your clientele',
+    subtitle: 'Growing your customer base',
     price: '$9/mo',
     features: ['Up to 20 services', 'Priority in search', '60-day slot generation'],
   },
@@ -186,7 +186,7 @@ export default function LandingPage(): React.ReactElement {
                 {[
                   ['Booked', 'Service and travel fee locked in', true],
                   ['Confirmed', 'Barber accepted the appointment', true],
-                  ['Travel set', 'Arrival window shared with the client', true],
+                  ['Travel set', 'Arrival window shared with the customer', true],
                   ['En route', 'Headed to the location'],
                   ['At your door', 'Service begins on arrival'],
                 ].map(([label, copy, active]) => (
@@ -235,7 +235,7 @@ export default function LandingPage(): React.ReactElement {
           <div className="landing-cinematic-section-heading">
             <div>
               <p className="landing-cinematic-eyebrow">For barbers</p>
-              <h2>Your shop. Your rules. Your clients.</h2>
+              <h2>Your shop. Your rules. Your customers.</h2>
             </div>
             <p>
               cutG helps barbers get discovered, manage the book, and run mobile service without
@@ -248,7 +248,7 @@ export default function LandingPage(): React.ReactElement {
               [
                 Search,
                 'Get discovered',
-                'Clients search by style, rating, and location. Show up where they are already looking.',
+                'Customers search by style, rating, and location. Show up where they are already looking.',
               ],
               [
                 Calendar,
@@ -293,7 +293,7 @@ export default function LandingPage(): React.ReactElement {
           </div>
 
           <div className="landing-cinematic-pricing-footer">
-            <p>Clients always book free. No contracts. Cancel anytime.</p>
+            <p>Customers always book free. No contracts. Cancel anytime.</p>
             <Link
               className="landing-cinematic-button landing-cinematic-button-primary"
               href="/barber/register"
@@ -315,7 +315,7 @@ export default function LandingPage(): React.ReactElement {
           </div>
           <div className="landing-cinematic-final-grid">
             <article>
-              <small>For clients</small>
+              <small>For customers</small>
               <h3>Find a barber</h3>
               <p>Browse, book, and manage the visit in one place.</p>
               <Link
@@ -328,7 +328,7 @@ export default function LandingPage(): React.ReactElement {
             <article>
               <small>For barbers</small>
               <h3>Grow your business</h3>
-              <p>Your schedule. Your clients. Your terms.</p>
+              <p>Your schedule. Your customers. Your terms.</p>
               <Link
                 className="landing-cinematic-button landing-cinematic-button-ghost"
                 href="/barber/register"
@@ -351,7 +351,7 @@ export default function LandingPage(): React.ReactElement {
               <p>The modern barbershop experience.</p>
             </div>
             <nav>
-              <Link href="/client">For clients</Link>
+              <Link href="/client">For customers</Link>
               <Link href="/barber/register">For barbers</Link>
               <span>Privacy</span>
               <span>Terms</span>

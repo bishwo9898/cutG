@@ -57,7 +57,7 @@ export default function RegisterScreen(): React.ReactElement {
       <ScreenHeader
         showBack
         title="Create account"
-        subtitle={userType === 'BARBER' ? 'Barber workspace' : 'Client booking'}
+        subtitle={userType === 'BARBER' ? 'Barber workspace' : 'Customer booking'}
       />
       {(['firstName', 'lastName', 'email', 'password', 'confirmPassword'] as const).map((name) => (
         <Controller

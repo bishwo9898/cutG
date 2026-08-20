@@ -273,11 +273,12 @@ describe('Phase 6 mobile barber API', () => {
       .set('Authorization', `Bearer ${barberToken}`)
       .send({ status: 'ARRIVED' });
     expect((arrived.body as AppointmentBody).status).toBe('ARRIVED');
-    await request(app)
+    const stalePing = await request(app)
       .post(`/barbers/me/appointments/${appointmentId}/location`)
       .set('Authorization', `Bearer ${barberToken}`)
-      .send({ latitude: 40.6892, longitude: -73.9851 })
-      .expect(200);
+      .send({ latitude: 40.6892, longitude: -73.9851 });
+    expect(stalePing.status).toBe(400);
+    expect(stalePing.body).toHaveProperty('error', 'TRACKING_NOT_ACTIVE');
 
     const timeline = await request(app)
       .get(`/clients/me/appointments/${appointmentId}/status-updates`)
@@ -292,11 +293,12 @@ describe('Phase 6 mobile barber API', () => {
       .set('Authorization', `Bearer ${barberToken}`)
       .send({ status: 'IN_PROGRESS' });
     expect((inProgress.body as AppointmentBody).status).toBe('IN_PROGRESS');
-    await request(app)
+    const inProgressPing = await request(app)
       .post(`/barbers/me/appointments/${appointmentId}/location`)
       .set('Authorization', `Bearer ${barberToken}`)
-      .send({ latitude: 40.68925, longitude: -73.98512 })
-      .expect(200);
+      .send({ latitude: 40.68925, longitude: -73.98512 });
+    expect(inProgressPing.status).toBe(400);
+    expect(inProgressPing.body).toHaveProperty('error', 'TRACKING_NOT_ACTIVE');
     await request(app)
       .patch(`/barbers/me/appointments/${appointmentId}/status`)
       .set('Authorization', `Bearer ${barberToken}`)

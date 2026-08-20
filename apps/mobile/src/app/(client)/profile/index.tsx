@@ -42,9 +42,12 @@ export default function ClientProfileScreen(): React.ReactElement {
 
   return (
     <Screen>
-      <ScreenHeader title="Profile" subtitle="Client account settings." />
+      <ScreenHeader title="Profile" subtitle="Customer account settings." />
       <Card>
-        <Avatar name={(user?.firstName ?? 'cutG') + ' ' + (user?.lastName ?? 'Client')} size={72} />
+        <Avatar
+          name={(user?.firstName ?? 'cutG') + ' ' + (user?.lastName ?? 'Customer')}
+          size={72}
+        />
         <Text style={styles.title}>
           {user?.firstName} {user?.lastName}
         </Text>

@@ -9,7 +9,7 @@ const copy: Record<AuthAudience, { heading: string; body: string }> = {
   },
   BARBER: {
     heading: 'More time behind the chair. Less time behind a screen.',
-    body: 'Keep your services, schedule, clients, and daily appointments in one calm workspace.',
+    body: 'Keep your services, schedule, customers, and daily appointments in one calm workspace.',
   },
   GENERAL: {
     heading: 'One platform. Two focused experiences.',

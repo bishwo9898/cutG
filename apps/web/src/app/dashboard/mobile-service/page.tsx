@@ -166,7 +166,7 @@ export default function MobileServicePage(): React.ReactElement {
         <div>
           <span className="eyebrow">Business settings</span>
           <h1>Service locations</h1>
-          <p>Set up mobile visits and the shop address clients can visit.</p>
+          <p>Set up mobile visits and the shop address customers can visit.</p>
         </div>
         {activeTab === 'mobile' && (
           <label className="service-toggle">
@@ -216,7 +216,7 @@ export default function MobileServicePage(): React.ReactElement {
         <Notice>{errorMessage(shopMutation.error)}</Notice>
       )}
       {activeTab === 'shop' && shopSaved && (
-        <Notice tone="success">Shop address saved and is now visible to clients.</Notice>
+        <Notice tone="success">Shop address saved and is now visible to customers.</Notice>
       )}
 
       {activeTab === 'mobile' && (
@@ -379,8 +379,8 @@ export default function MobileServicePage(): React.ReactElement {
             <section className="panel">
               <div className="panel-header service-panel-header">
                 <div>
-                  <h2>Client notes</h2>
-                  <p className="panel-description">Shown before clients confirm.</p>
+                  <h2>Customer notes</h2>
+                  <p className="panel-description">Shown before customers confirm.</p>
                 </div>
               </div>
               <div className="panel-body form-stack">
@@ -432,7 +432,7 @@ export default function MobileServicePage(): React.ReactElement {
                 <h3>Your in-shop location</h3>
                 <p>
                   This exact business address and map pin appear on your public barber profile so
-                  clients know where to arrive.
+                  customers know where to arrive.
                 </p>
                 {shopLocation !== null && (
                   <p>

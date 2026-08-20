@@ -88,7 +88,7 @@ export default function EarningsPage(): React.ReactElement {
           <table className="table">
             <thead>
               <tr>
-                <th>Client</th>
+                <th>Customer</th>
                 <th>Service</th>
                 <th>Gross</th>
                 <th>Earned</th>

@@ -38,7 +38,7 @@ export const useLocationBroadcast = (
         setBroadcast({
           state: 'active',
           lastPingAt: snapshot.lastPingAt,
-          message: 'Live location is reaching the client, including in the background.',
+          message: 'Live location is reaching the customer, including in the background.',
         });
       }
     };

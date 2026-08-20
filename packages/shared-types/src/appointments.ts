@@ -57,6 +57,7 @@ export type BarberAppointmentDetail = {
     departedAt: string | null;
     arrivedAt: string | null;
     isTracking: boolean;
+    routeOrigin: { latitude: number; longitude: number } | null;
   };
 };
 

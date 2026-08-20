@@ -367,7 +367,7 @@ export default function BookBarberPage(): React.ReactElement {
 
         {user?.userType !== 'CLIENT' && (
           <Notice tone="warning">
-            Sign in with a client account before confirming your booking.
+            Sign in with a customer account before confirming your booking.
           </Notice>
         )}
 

@@ -79,7 +79,7 @@ export default function BarberProfileScreen(): React.ReactElement {
         value={bio}
         onChangeText={setBio}
         multiline
-        placeholder={profile.data?.bio ?? 'Tell clients about your shop'}
+        placeholder={profile.data?.bio ?? 'Tell customers about your shop'}
       />
       <Input
         label="Photo URL"

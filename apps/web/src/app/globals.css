@@ -5803,7 +5803,7 @@ input:checked + .toggle-track::after,
   color: var(--muted);
 }
 
-/* Client experience: matte black, warm cream, and stable interaction states. */
+/* Customer experience: matte black, warm cream, and stable interaction states. */
 .market-page {
   --client-bg: #0b0b09;
   --client-surface: #151512;
