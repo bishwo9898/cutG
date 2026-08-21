@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
 import { BackButton } from '@/components/back-button';
+import { BarberLocationAccess } from '@/components/barber-location-access';
 import { useUser } from '@/hooks/use-user';
 
 const navItems = [
@@ -29,6 +30,14 @@ const navItems = [
   { href: '/barber/dashboard/earnings', label: 'Earnings', icon: DollarSign },
   { href: '/barber/dashboard/subscription', label: 'Subscription', icon: BadgeCheck },
 ];
+
+const mobileNavItems = [
+  navItems[0],
+  navItems[5],
+  navItems[3],
+  navItems[2],
+  navItems[4],
+].filter((item): item is (typeof navItems)[number] => item !== undefined);
 
 const isActive = (pathname: string, href: string): boolean =>
   href === '/barber/dashboard' ? pathname === href : pathname.startsWith(href);
@@ -102,10 +111,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }): Rea
             <BackButton fallbackHref="/barber/dashboard" />
           </div>
         )}
+        {(pathname.startsWith('/barber/dashboard/appointments') ||
+          pathname.startsWith('/barber/dashboard/mobile-service')) && <BarberLocationAccess />}
         {children}
       </div>
       <nav className="mobile-nav" aria-label="Mobile dashboard">
-        {navItems.slice(0, 5).map((item) => {
+        {mobileNavItems.map((item) => {
           const Icon = item.icon;
           return (
             <Link

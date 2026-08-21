@@ -58,6 +58,10 @@
     display: grid;
   }
 
+  .barber-location-access {
+    display: grid;
+  }
+
   .page {
     padding-inline: 22px;
   }
@@ -154,6 +158,17 @@
   .client-mobile-nav,
   .mobile-nav {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .barber-location-access {
+    width: calc(100% - 32px);
+    grid-template-columns: auto minmax(0, 1fr);
+    margin-top: 10px;
+  }
+
+  .barber-location-access .button {
+    width: 100%;
+    grid-column: 1 / -1;
   }
 
   .page {
