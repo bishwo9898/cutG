@@ -43,14 +43,19 @@ describe('dual portal proxy', () => {
     ).toBe('http://localhost:3000/barber/dashboard');
   });
 
-  it('allows public discovery and matching protected sessions', () => {
-    expect(proxy(request('/client/barbers')).status).toBe(200);
+  it('requires an account for discovery and allows matching protected sessions', () => {
+    expect(proxy(request('/client/barbers')).headers.get('location')).toBe(
+      'http://localhost:3000/client/login?next=%2Fclient%2Fbarbers',
+    );
     expect(
       proxy(request('/barber/dashboard/mobile-service', 'barber_access=token; cutg_role=BARBER'))
         .status,
     ).toBe(200);
     expect(
       proxy(request('/client/design/look-id', 'barber_access=token; cutg_role=CLIENT')).status,
+    ).toBe(200);
+    expect(
+      proxy(request('/client/barbers', 'barber_access=token; cutg_role=CLIENT')).status,
     ).toBe(200);
   });
 

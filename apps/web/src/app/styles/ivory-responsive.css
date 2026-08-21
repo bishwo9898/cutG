@@ -334,6 +334,65 @@
   }
 }
 
+@media (max-width: 1180px) {
+  .marketplace-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 272px));
+  }
+  .availability-slot-grid {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .marketplace-discovery-shell {
+    width: min(100% - 28px, 620px);
+    padding-top: 28px;
+  }
+  .location-search-panel {
+    grid-template-columns: 1fr;
+  }
+  .location-search-panel > .button {
+    width: 100%;
+  }
+  .marketplace-filter-trigger {
+    display: inline-flex;
+  }
+  .marketplace-filter-bar {
+    display: none;
+    grid-template-columns: 1fr;
+  }
+  .marketplace-filter-bar.is-open {
+    display: grid;
+  }
+  .marketplace-results-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .marketplace-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .marketplace-card-grid .market-card {
+    width: 100%;
+    min-height: 0;
+  }
+  .availability-day {
+    grid-template-columns: 1fr;
+  }
+  .availability-slot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 440px) {
+  .availability-slot-grid {
+    grid-template-columns: 1fr;
+  }
+  .availability-legend {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

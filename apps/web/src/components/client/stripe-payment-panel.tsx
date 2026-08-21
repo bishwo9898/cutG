@@ -93,7 +93,7 @@ export function StripePaymentPanel({
         <CreditCard size={20} />
         <div>
           <strong>Secure card payment</strong>
-          <span>Payment details are handled by Stripe and are never stored by cutG.</span>
+          <span>Your card details are encrypted and are never stored by cutG.</span>
         </div>
       </div>
       <Elements

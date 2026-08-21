@@ -1,8 +1,13 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-import type { BarberSearchQuery, ReviewQuery } from '@barber-saas/shared-types';
+import type {
+  BarberSearchQuery,
+  MarketplaceSearchRequest,
+  ReviewQuery,
+} from '@barber-saas/shared-types';
 
 import { query } from '../../db/queries/barber.queries';
 import { AppError } from '../../middleware/errorHandler';
+import { stripePaymentsConfigured } from '../payment/stripeService';
 
 type Row = Record<string, unknown>;
 
@@ -19,6 +24,110 @@ const pagination = (page: number, limit: number, total: number) => ({
   total,
   totalPages: Math.ceil(total / limit),
 });
+
+const distanceMiles = (
+  origin: MarketplaceSearchRequest['location'],
+  latitude: unknown,
+  longitude: unknown,
+): number | null => {
+  if (origin === undefined || latitude === null || longitude === null) return null;
+  const toRadians = (value: number): number => (value * Math.PI) / 180;
+  const lat1 = toRadians(origin.latitude);
+  const lat2 = toRadians(Number(latitude));
+  const deltaLat = toRadians(Number(latitude) - origin.latitude);
+  const deltaLon = toRadians(Number(longitude) - origin.longitude);
+  const a =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) ** 2;
+  return Number((3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(1));
+};
+
+export const searchMarketplaceBarbers = async (filters: MarketplaceSearchRequest) => {
+  const values: unknown[] = [filters.category ?? null, filters.maxPrice ?? null];
+  const rows = await query<Row>(
+    `SELECT
+       bp.id,bp.business_name,bp.bio,bp.profile_photo_url,bp.city,bp.state,
+       bp.latitude,bp.longitude,bp.average_rating,bp.total_reviews,bp.is_verified,
+       bp.online_payments_enabled,bp.stripe_onboarding_complete,bp.stripe_charges_enabled,
+       bp.stripe_payouts_enabled,mc.is_enabled AS mobile_enabled,
+       matching.lowest_matching_price,
+       COALESCE(matching.service_categories, ARRAY[]::text[]) AS service_categories,
+       next_slot.next_available_slot
+     FROM barber_profiles bp
+     JOIN users u ON u.id=bp.user_id
+     LEFT JOIN mobile_barber_config mc ON mc.barber_id=bp.id
+     LEFT JOIN LATERAL (
+       SELECT MIN(s.price)::numeric AS lowest_matching_price,
+              ARRAY_AGG(DISTINCT s.category ORDER BY s.category) AS service_categories
+       FROM services s
+       WHERE s.barber_id=bp.id AND s.is_active=true
+         AND ($1::text IS NULL OR s.category=$1)
+         AND ($2::numeric IS NULL OR s.price <= $2)
+     ) matching ON true
+     LEFT JOIN LATERAL (
+       SELECT (a.slot_date::timestamp+a.start_time)::timestamp AS next_available_slot
+       FROM availability_slots a
+       WHERE a.barber_id=bp.id AND a.status='AVAILABLE'
+         AND (a.slot_date::timestamp+a.start_time)>CURRENT_TIMESTAMP
+       ORDER BY a.slot_date,a.start_time LIMIT 1
+     ) next_slot ON true
+     WHERE u.is_active=true AND u.deleted_at IS NULL AND u.user_type='BARBER'
+       AND (($1::text IS NULL AND $2::numeric IS NULL) OR matching.lowest_matching_price IS NOT NULL)`,
+    values,
+  );
+
+  const mapped = rows
+    .map((row) => {
+      const distance = distanceMiles(filters.location, row.latitude, row.longitude);
+      return {
+        id: String(row.id),
+        businessName: String(row.business_name),
+        bio: row.bio === null ? null : String(row.bio),
+        profilePhotoUrl: row.profile_photo_url === null ? null : String(row.profile_photo_url),
+        city: row.city === null ? null : String(row.city),
+        state: row.state === null ? null : String(row.state),
+        averageRating: Number(row.average_rating),
+        totalReviews: Number(row.total_reviews),
+        lowestMatchingPrice:
+          row.lowest_matching_price === null ? null : Number(row.lowest_matching_price),
+        serviceCategories: row.service_categories as string[],
+        nextAvailableSlot: dateTime(row.next_available_slot),
+        distanceMiles: distance,
+        capabilities: {
+          mobileVisits: row.mobile_enabled === true,
+          onlinePayments:
+            row.online_payments_enabled === true &&
+            row.stripe_onboarding_complete === true &&
+            row.stripe_charges_enabled === true &&
+            row.stripe_payouts_enabled === true &&
+            stripePaymentsConfigured(),
+          verified: row.is_verified === true,
+        },
+      };
+    })
+    .filter(
+      (barber) =>
+        filters.maxDistanceMiles === undefined ||
+        (barber.distanceMiles !== null && barber.distanceMiles <= filters.maxDistanceMiles),
+    )
+    .sort((left, right) => {
+      if (filters.location !== undefined) {
+        if (left.distanceMiles === null) return 1;
+        if (right.distanceMiles === null) return -1;
+        if (left.distanceMiles !== right.distanceMiles)
+          return left.distanceMiles - right.distanceMiles;
+      }
+      if (left.averageRating !== right.averageRating)
+        return right.averageRating - left.averageRating;
+      return right.totalReviews - left.totalReviews;
+    });
+
+  const start = (filters.page - 1) * filters.limit;
+  return {
+    barbers: mapped.slice(start, start + filters.limit),
+    pagination: pagination(filters.page, filters.limit, mapped.length),
+  };
+};
 
 export const searchBarbers = async (filters: BarberSearchQuery) => {
   const values: unknown[] = [];
@@ -85,6 +194,10 @@ export const searchBarbers = async (filters: BarberSearchQuery) => {
        bp.total_reviews,
        bp.is_verified,
        bp.subscription_tier,
+       bp.online_payments_enabled,
+       bp.stripe_onboarding_complete,
+       bp.stripe_charges_enabled,
+       bp.stripe_payouts_enabled,
        mc.is_enabled AS mobile_enabled,
        mc.service_radius_miles,
        mc.fee_structure,
@@ -135,6 +248,12 @@ export const searchBarbers = async (filters: BarberSearchQuery) => {
         row.lowest_service_price === null ? null : Number(row.lowest_service_price),
       serviceCategories: row.service_categories,
       nextAvailableSlot: dateTime(row.next_available_slot),
+      onlinePaymentsAvailable:
+        row.online_payments_enabled === true &&
+        row.stripe_onboarding_complete === true &&
+        row.stripe_charges_enabled === true &&
+        row.stripe_payouts_enabled === true &&
+        stripePaymentsConfigured(),
       mobileService:
         row.mobile_enabled === true
           ? {

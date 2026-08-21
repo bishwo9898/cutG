@@ -125,6 +125,7 @@ export type PublicBarber = {
   serviceCategories: string[];
   nextAvailableSlot: string | null;
   onlinePaymentsAvailable?: boolean;
+  distanceMiles?: number | null;
   mobileService?: PublicMobileService | null;
 };
 

@@ -106,21 +106,25 @@ export function BarberCard({
           <div className="card-title-row">
             <h3>{barber.businessName}</h3>
             <span className="card-title-actions">
-              {barber.mobileService?.isEnabled === true && (
-                <span className="mobile-badge">
-                  <Car size={13} /> Mobile
-                </span>
-              )}
               {barber.isVerified && <ShieldCheck className="verified-icon" size={17} />}
             </span>
           </div>
           <p className="muted">
             {[barber.city, barber.state].filter(Boolean).join(', ') || 'Location coming soon'}
+            {barber.distanceMiles !== null && barber.distanceMiles !== undefined
+              ? ` · ${barber.distanceMiles.toFixed(1)} mi`
+              : ''}
           </p>
           <div className="rating-row">
-            <StarRating value={Math.round(barber.averageRating)} />
-            <span>{barber.averageRating.toFixed(1)}</span>
-            <span className="muted">({barber.totalReviews})</span>
+            {barber.totalReviews > 0 ? (
+              <>
+                <StarRating value={Math.round(barber.averageRating)} />
+                <span>{barber.averageRating.toFixed(1)}</span>
+                <span className="muted">({barber.totalReviews})</span>
+              </>
+            ) : (
+              <span className="new-barber-label">New</span>
+            )}
           </div>
           <p className="card-meta">
             {barber.lowestServicePrice === null
@@ -135,6 +139,18 @@ export function BarberCard({
           <p className={`availability-label${nextSlot !== null ? ' has-slots' : ''}`}>
             {availabilityLabel}
           </p>
+          <div className="barber-capability-badges">
+            {barber.mobileService?.isEnabled === true && (
+              <span className="capability-badge is-mobile">
+                <CheckCircle2 size={13} /> Mobile visits
+              </span>
+            )}
+            {barber.onlinePaymentsAvailable === true && (
+              <span className="capability-badge is-payment">
+                <CheckCircle2 size={13} /> Online payments
+              </span>
+            )}
+          </div>
         </div>
       </Link>
       <div className="market-card-actions">

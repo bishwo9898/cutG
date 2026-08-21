@@ -309,7 +309,7 @@ export default function AppointmentDetailPage(): React.ReactElement {
                 <p className="appointment-payment-note">
                   {data.paymentMethod === 'CASH'
                     ? 'You will pay your barber at the appointment.'
-                    : 'Online payment is handled securely through Stripe.'}
+                    : 'Online payment is handled through secure card processing.'}
                 </p>
                 <div className="button-row">
                   {canPay && (

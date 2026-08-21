@@ -38,12 +38,12 @@ export default function PaymentScreen(): React.ReactElement {
 
   return (
     <Screen>
-      <ScreenHeader showBack title="Payment" subtitle="Use Stripe test card 4242 4242 4242 4242." />
+      <ScreenHeader showBack title="Payment" subtitle="Enter your test card details securely." />
       <Card>
         <Text style={styles.title}>Secure card payment</Text>
         {total !== undefined ? <Text style={styles.amount}>Total ${total}</Text> : null}
         <Text style={styles.meta}>
-          Payment state is finalized by Stripe webhooks after confirmation.
+          Your payment status will update automatically after confirmation.
         </Text>
       </Card>
       <CardField

@@ -19,6 +19,7 @@ import {
   getTravelBufferSlotTimes,
 } from '../../utils/travelBuffer';
 import { releaseTravelBufferSlots } from '../mobile/bufferSlotService';
+import { stripePaymentsConfigured } from '../payment/stripeService';
 import {
   createPublicCloudinaryUrl,
   deletePublicCloudinaryImage,
@@ -446,14 +447,28 @@ const mapPrivateSlot = (row: Row) => ({
   startTime: time(row.start_time),
   endTime: time(row.end_time),
   status: row.status,
+  appointmentSummary:
+    row.appointment_id === null || row.appointment_id === undefined
+      ? undefined
+      : {
+          appointmentId: row.appointment_id,
+          customerName: `${String(row.client_first_name)} ${String(row.client_last_name)}`,
+          serviceName: row.service_name,
+          status: row.appointment_status,
+        },
 });
 
 export const listSlots = async (userId: string, startDate: string, endDate: string) => {
   const profile = await requireProfile(userId);
   const rows = await query<Row>(
-    `SELECT * FROM availability_slots
-     WHERE barber_id = $1 AND slot_date BETWEEN $2 AND $3
-     ORDER BY slot_date,start_time`,
+    `SELECT sl.*,a.status AS appointment_status,s.name AS service_name,
+            u.first_name AS client_first_name,u.last_name AS client_last_name
+     FROM availability_slots sl
+     LEFT JOIN appointments a ON a.id=sl.appointment_id AND a.barber_id=sl.barber_id
+     LEFT JOIN services s ON s.id=a.service_id
+     LEFT JOIN users u ON u.id=a.client_id
+     WHERE sl.barber_id = $1 AND sl.slot_date BETWEEN $2 AND $3
+     ORDER BY sl.slot_date,sl.start_time`,
     [profile.id, startDate, endDate],
   );
   const count = (status: string) => rows.filter((row) => row.status === status).length;
@@ -466,6 +481,35 @@ export const listSlots = async (userId: string, startDate: string, endDate: stri
       blocked: count('BLOCKED'),
     },
   };
+};
+
+export const getPaymentPreferences = async (userId: string) => {
+  const profile = await requireProfile(userId);
+  const rows = await query<Row>(
+    `SELECT online_payments_enabled,stripe_onboarding_complete,
+            stripe_charges_enabled,stripe_payouts_enabled
+     FROM barber_profiles WHERE id=$1`,
+    [profile.id],
+  );
+  const row = rows[0] as Row;
+  return {
+    onlinePaymentsEnabled: row.online_payments_enabled === true,
+    onlinePaymentsReady:
+      row.online_payments_enabled === true &&
+      row.stripe_onboarding_complete === true &&
+      row.stripe_charges_enabled === true &&
+      row.stripe_payouts_enabled === true &&
+      stripePaymentsConfigured(),
+  };
+};
+
+export const updatePaymentPreferences = async (userId: string, enabled: boolean) => {
+  const profile = await requireProfile(userId);
+  await query('UPDATE barber_profiles SET online_payments_enabled=$2 WHERE id=$1', [
+    profile.id,
+    enabled,
+  ]);
+  return getPaymentPreferences(userId);
 };
 
 export const blockDate = async (userId: string, blockedDate: string, reason?: string) =>
@@ -897,7 +941,12 @@ export const getPublicProfile = async (barberId: string) => {
     state: row.state,
     subscriptionTier: row.subscription_tier,
     isVerified: row.is_verified,
-    onlinePaymentsAvailable: row.stripe_charges_enabled === true,
+    onlinePaymentsAvailable:
+      row.online_payments_enabled === true &&
+      row.stripe_onboarding_complete === true &&
+      row.stripe_charges_enabled === true &&
+      row.stripe_payouts_enabled === true &&
+      stripePaymentsConfigured(),
     shopLocation: hasShopLocation
       ? {
           address: row.address,

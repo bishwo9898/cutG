@@ -48,7 +48,7 @@ export default function EarningsScreen(): React.ReactElement {
       </Card>
       {stripe.data?.payoutsEnabled !== true ? (
         <Button
-          title="Set up Stripe payouts"
+          title="Set up online payouts"
           onPress={() => {
             void connect.mutateAsync();
           }}

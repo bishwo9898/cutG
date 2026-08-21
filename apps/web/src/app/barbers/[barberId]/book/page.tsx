@@ -856,7 +856,7 @@ export default function BookBarberPage(): React.ReactElement {
                       <strong>Pay online</strong>
                       <small>
                         {cardAvailable
-                          ? 'Secure card payment with Stripe'
+                          ? 'Secure card payment'
                           : 'Unavailable for this barber'}
                       </small>
                     </span>
@@ -1026,7 +1026,7 @@ export default function BookBarberPage(): React.ReactElement {
                 <strong>${total.toFixed(2)}</strong>
               </p>
             </div>
-            <small>Card payments are charged only after you confirm with Stripe.</small>
+            <small>Card payments are charged only after you confirm your booking.</small>
           </aside>
         </div>
       </section>

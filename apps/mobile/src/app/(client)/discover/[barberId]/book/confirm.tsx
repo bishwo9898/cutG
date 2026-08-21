@@ -181,7 +181,7 @@ export default function ConfirmBookingScreen(): React.ReactElement {
           <Text style={styles.meta}>
             {canPayOnline
               ? 'Skip card payment for now.'
-              : 'Required until this barber enables Stripe.'}
+              : 'Required until this barber completes online payment setup.'}
           </Text>
         </View>
         <Switch

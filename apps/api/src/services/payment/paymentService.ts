@@ -57,6 +57,9 @@ export const createAppointmentPaymentIntent = async (clientId: string, appointme
          a.*,
          bp.stripe_account_id,
          bp.stripe_onboarding_complete,
+         bp.online_payments_enabled,
+         bp.stripe_charges_enabled,
+         bp.stripe_payouts_enabled,
          bp.user_id AS barber_user_id
        FROM appointments a
        JOIN barber_profiles bp ON bp.id = a.barber_id
@@ -79,12 +82,15 @@ export const createAppointmentPaymentIntent = async (clientId: string, appointme
       throw new AppError(409, 'This appointment has already been paid.', 'ALREADY_PAID');
     }
     if (
+      appointment.online_payments_enabled !== true ||
       appointment.stripe_onboarding_complete !== true ||
+      appointment.stripe_charges_enabled !== true ||
+      appointment.stripe_payouts_enabled !== true ||
       typeof appointment.stripe_account_id !== 'string'
     ) {
       throw new AppError(
         402,
-        'This barber has not completed payment setup. Please contact them directly.',
+        'Online payment is not available for this appointment. Choose pay in person instead.',
         'BARBER_NOT_ONBOARDED',
       );
     }

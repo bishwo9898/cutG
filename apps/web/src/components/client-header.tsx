@@ -34,18 +34,9 @@ export function ClientHeader(): React.ReactElement {
   const router = useRouter();
   const queryClient = useQueryClient();
   const user = useUser();
-  const [query, setQuery] = useState('');
   const [signingOut, setSigningOut] = useState(false);
   const client = user.data?.userType === 'CLIENT' ? user.data : null;
   const initials = client === null ? '' : `${client.firstName[0] ?? ''}${client.lastName[0] ?? ''}`;
-
-  const search = (event: React.FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    const value = query.trim();
-    router.push(
-      value.length === 0 ? '/client/barbers' : `/client/barbers?q=${encodeURIComponent(value)}`,
-    );
-  };
 
   const signOut = async (): Promise<void> => {
     setSigningOut(true);
@@ -68,15 +59,10 @@ export function ClientHeader(): React.ReactElement {
           </span>
           cutG
         </Link>
-        <form className="client-header-search" onSubmit={search}>
+        <Link className="client-header-search" href="/client/barbers">
           <Search size={16} />
-          <input
-            aria-label="Search barbers"
-            placeholder="Search barbers in Danville, KY..."
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </form>
+          <span>Search by location</span>
+        </Link>
         <nav className="client-primary-nav" aria-label="Customer portal">
           {clientLinks.slice(0, 4).map((item) => (
             <Link

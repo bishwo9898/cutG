@@ -19,6 +19,10 @@ type LoginBody = { accessToken: string };
 type SearchBody = {
   barbers: Array<{ mobileService: { baseFee: number } | null; nextAvailableSlot: string | null }>;
 };
+type MarketplaceSearchBody = {
+  barbers: Array<Record<string, unknown>>;
+  pagination: { total: number };
+};
 type AddressBody = { id: string; label: string; latitude: number; longitude: number };
 type AddressListBody = { addresses: unknown[] };
 type EstimateBody = { travelFee: number };
@@ -89,6 +93,21 @@ describe('Phase 6 mobile barber API', () => {
     expect(searchAlias.status).toBe(200);
     expect((searchAlias.body as SearchBody).barbers).toHaveLength(1);
 
+    const marketplace = await request(app)
+      .post('/barbers/search')
+      .send({
+        location: { label: 'Boston, MA', latitude: 42.36, longitude: -71.06 },
+        category: 'haircut',
+        maxPrice: 30,
+      });
+    expect(marketplace.status).toBe(200);
+    const marketplaceBody = marketplace.body as MarketplaceSearchBody;
+    expect(marketplaceBody.pagination.total).toBe(1);
+    expect(marketplaceBody.barbers[0]).toHaveProperty('distanceMiles');
+    expect(marketplaceBody.barbers[0]).toHaveProperty('lowestMatchingPrice', 25);
+    expect(marketplaceBody.barbers[0]).not.toHaveProperty('latitude');
+    expect(marketplaceBody.barbers[0]).not.toHaveProperty('longitude');
+
     const publicConfig = await request(app).get(`/barbers/${barberId}/mobile`);
     expect(publicConfig.status).toBe(200);
     expect(publicConfig.body as MobileConfigBody).toMatchObject({
@@ -100,6 +119,13 @@ describe('Phase 6 mobile barber API', () => {
   });
 
   it('geocodes, defaults, lists, and updates owned client addresses', async () => {
+    await request(app).post('/clients/me/locations/search').send({ query: 'Danville, KY' }).expect(401);
+    const locationSearch = await request(app)
+      .post('/clients/me/locations/search')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ query: 'Danville, KY' });
+    expect(locationSearch.status).toBe(200);
+    expect(locationSearch.body).toHaveProperty('suggestions');
     await request(app)
       .post('/clients/me/locations/reverse-geocode')
       .send({ latitude: 37.6454, longitude: -84.7739 })
@@ -229,6 +255,30 @@ describe('Phase 6 mobile barber API', () => {
       },
     });
     const appointmentId = (booked.body as AppointmentBody).id;
+
+    const privateSchedule = await request(app)
+      .get('/barbers/me/slots?startDate=2026-08-03&endDate=2026-08-03')
+      .set('Authorization', `Bearer ${barberToken}`);
+    expect(privateSchedule.status).toBe(200);
+    expect(privateSchedule.body.slots).toContainEqual(
+      expect.objectContaining({
+        id: slotId,
+        status: 'BOOKED',
+        appointmentSummary: expect.objectContaining({
+          appointmentId,
+          customerName: expect.any(String),
+          serviceName: 'Mobile Fade',
+        }),
+      }),
+    );
+    const safePublicSchedule = await request(app).get(
+      `/barbers/${barberId}/slots?date=2026-08-03&days=1`,
+    );
+    expect(
+      (safePublicSchedule.body as PublicSlotsBody).slots.every(
+        (slot) => !Object.prototype.hasOwnProperty.call(slot, 'appointmentSummary'),
+      ),
+    ).toBe(true);
 
     const buffer = await pool.query<{ count: number; travel_buffer_kind: string }>(
       `SELECT COUNT(*)::int AS count, travel_buffer_kind

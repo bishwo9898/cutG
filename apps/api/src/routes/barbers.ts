@@ -2,6 +2,7 @@ import {
   AppointmentFilterSchema,
   AppointmentParamsSchema,
   BarberSearchQuerySchema,
+  MarketplaceSearchSchema,
   BlockDateSchema,
   BlockedDateParamsSchema,
   CertificationParamsSchema,
@@ -33,6 +34,7 @@ import {
   UpdatePortfolioItemSchema,
   UpdateServiceSchema,
   UpdateWorkExperienceSchema,
+  UpdatePaymentPreferencesSchema,
   WorkExperienceParamsSchema,
   TrackingAppointmentParamsSchema,
   UuidParamsSchema,
@@ -63,6 +65,7 @@ import {
   getPublicProfile,
   getPublicSlots,
   getSchedule,
+  getPaymentPreferences,
   listAppointments,
   listBlockedDates,
   listOfferings,
@@ -75,6 +78,7 @@ import {
   uploadOfferingImage,
   updatePhoto,
   updateProfile,
+  updatePaymentPreferences,
 } from '../services/barber/barberService';
 import {
   completePortfolioOnboarding,
@@ -94,7 +98,11 @@ import {
   uploadProfileBanner,
   uploadProfilePhoto,
 } from '../services/barber/portfolioService';
-import { listPublicReviews, searchBarbers } from '../services/discovery/barberSearchService';
+import {
+  listPublicReviews,
+  searchBarbers,
+  searchMarketplaceBarbers,
+} from '../services/discovery/barberSearchService';
 import {
   recordBarberLocation,
   startBarberJourney,
@@ -141,6 +149,13 @@ barberRouter.get(
   '/search',
   asyncHandler(async (request, response) => {
     response.json(await searchBarbers(BarberSearchQuerySchema.parse(request.query)));
+  }),
+);
+
+barberRouter.post(
+  '/search',
+  asyncHandler(async (request, response) => {
+    response.json(await searchMarketplaceBarbers(MarketplaceSearchSchema.parse(request.body)));
   }),
 );
 
@@ -485,6 +500,19 @@ barberRouter.get(
   asyncHandler(async (request, response) => {
     const range = DateRangeSchema.parse(request.query);
     response.json(await listSlots(userId(request), range.startDate, range.endDate));
+  }),
+);
+barberRouter.get(
+  '/me/payment-preferences',
+  asyncHandler(async (request, response) => {
+    response.json(await getPaymentPreferences(userId(request)));
+  }),
+);
+barberRouter.patch(
+  '/me/payment-preferences',
+  asyncHandler(async (request, response) => {
+    const input = UpdatePaymentPreferencesSchema.parse(request.body);
+    response.json(await updatePaymentPreferences(userId(request), input.onlinePaymentsEnabled));
   }),
 );
 barberRouter.post(

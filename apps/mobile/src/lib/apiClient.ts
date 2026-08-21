@@ -27,6 +27,8 @@ import type {
   ShopLocationReverseGeocodeRequest,
   StartJourneyRequest,
   StartJourneyResponse,
+  MarketplaceBarberResult,
+  MarketplaceSearchRequest,
   TravelEstimateRequest,
   UpdateAddressRequest,
 } from '@barber-saas/shared-types';
@@ -140,6 +142,8 @@ export const mobileApi = {
     search: (
       params?: Record<string, string | number | boolean | undefined>,
     ): Promise<Paginated<PublicBarber>> => barberDiscoveryApi.search(publicClient, params),
+    marketplaceSearch: (body: MarketplaceSearchRequest): Promise<Paginated<MarketplaceBarberResult>> =>
+      withAuth((client) => barberDiscoveryApi.marketplaceSearch(client, body)),
     profile: (barberId: string): Promise<BarberProfile> =>
       barberDiscoveryApi.getProfile(publicClient, barberId),
     services: (barberId: string): Promise<Paginated<BarberService>> =>
@@ -182,6 +186,8 @@ export const mobileApi = {
       withAuth((client) => clientApi.paymentHistory(client)),
     addresses: (): Promise<{ addresses: ClientAddress[] }> =>
       withAuth((client) => clientApi.addresses(client)),
+    searchLocations: (body: ShopLocationSearchRequest): Promise<ShopLocationSearchResult> =>
+      withAuth((client) => clientApi.searchLocations(client, body)),
     createAddress: (body: SaveAddressRequest): Promise<ClientAddress> =>
       withAuth((client) => clientApi.createAddress(client, body)),
     updateAddress: (addressId: string, body: UpdateAddressRequest): Promise<ClientAddress> =>

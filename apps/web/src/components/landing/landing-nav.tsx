@@ -60,7 +60,7 @@ export function LandingNav(): React.ReactElement {
           </Link>
           <Link
             className="landing-cinematic-button landing-cinematic-button-primary"
-            href="/client/barbers"
+            href="/client/start"
           >
             Find your barber
           </Link>
@@ -95,7 +95,7 @@ export function LandingNav(): React.ReactElement {
           </Link>
           <Link
             className="landing-cinematic-button landing-cinematic-button-primary"
-            href="/client/barbers"
+            href="/client/start"
             onClick={() => setMenuOpen(false)}
           >
             Find your barber

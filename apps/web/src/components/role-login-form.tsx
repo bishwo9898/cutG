@@ -130,7 +130,10 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
         </div>
         <p className="auth-footer">
           New to cutG?{' '}
-          <Link className="text-link" href={isBarber ? '/barber/register' : '/client/register'}>
+          <Link
+            className="text-link"
+            href={`${isBarber ? '/barber/register' : '/client/register'}${searchParams.get('next') === null ? '' : `?next=${encodeURIComponent(searchParams.get('next') as string)}`}`}
+          >
             Create your account
           </Link>
         </p>

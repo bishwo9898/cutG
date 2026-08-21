@@ -50,6 +50,50 @@ export const BarberSearchQuerySchema = z.object({
 });
 export type BarberSearchQuery = z.infer<typeof BarberSearchQuerySchema>;
 
+export const MarketplaceLocationSchema = z.object({
+  label: z.string().trim().max(500).optional(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+export type MarketplaceLocation = z.infer<typeof MarketplaceLocationSchema>;
+
+export const MarketplaceSearchSchema = z
+  .object({
+    location: MarketplaceLocationSchema.optional(),
+    category: ServiceCategoryEnum.optional(),
+    maxDistanceMiles: z.number().min(5).max(50).optional(),
+    maxPrice: z.number().min(10).max(200).optional(),
+    page: z.number().int().min(1).default(1),
+    limit: z.number().int().min(1).max(48).default(12),
+  })
+  .refine((value) => value.maxDistanceMiles === undefined || value.location !== undefined, {
+    message: 'A location is required when limiting distance',
+    path: ['location'],
+  });
+export type MarketplaceSearchRequest = z.infer<typeof MarketplaceSearchSchema>;
+
+export type MarketplaceCapabilityFlags = {
+  mobileVisits: boolean;
+  onlinePayments: boolean;
+  verified: boolean;
+};
+
+export type MarketplaceBarberResult = {
+  id: string;
+  businessName: string;
+  bio: string | null;
+  profilePhotoUrl: string | null;
+  city: string | null;
+  state: string | null;
+  averageRating: number;
+  totalReviews: number;
+  lowestMatchingPrice: number | null;
+  serviceCategories: string[];
+  nextAvailableSlot: string | null;
+  distanceMiles: number | null;
+  capabilities: MarketplaceCapabilityFlags;
+};
+
 export const CreateReviewSchema = z.object({
   appointmentId: z.string().uuid(),
   rating: z.number().int().min(1).max(5),

@@ -63,6 +63,8 @@ export type PublicBarber = {
   serviceCategories: ServiceCategory[];
   nextAvailableSlot: string | null;
   stripeChargesEnabled?: boolean;
+  onlinePaymentsAvailable?: boolean;
+  distanceMiles?: number | null;
   mobileService?: PublicMobileService | null;
 };
 
@@ -145,6 +147,12 @@ export type AvailabilitySlot = {
   status?: 'AVAILABLE' | 'BOOKED' | 'BLOCKED';
   isAvailable?: boolean;
   appointment?: AppointmentSummary | null;
+  appointmentSummary?: {
+    appointmentId: string;
+    customerName: string;
+    serviceName: string;
+    status: string;
+  };
   availableForMobile?: boolean;
 };
 

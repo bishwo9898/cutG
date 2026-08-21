@@ -811,3 +811,137 @@
 .appointment-next-actions .button {
   width: 100%;
 }
+
+/* Date-grouped private availability */
+.availability-schedule-panel {
+  margin-top: 22px;
+}
+.availability-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.availability-legend span,
+.availability-slot-state {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 5px 8px;
+  border: 1px solid var(--ivory-line);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.availability-legend .is-available,
+.availability-slot.is-available .availability-slot-state {
+  border-color: var(--status-confirmed-line);
+  color: var(--status-confirmed-ink);
+  background: var(--status-confirmed-bg);
+}
+.availability-legend .is-booked,
+.availability-slot.is-booked .availability-slot-state {
+  border-color: var(--status-pending-line);
+  color: var(--status-pending-ink);
+  background: var(--status-pending-bg);
+}
+.availability-legend .is-blocked,
+.availability-slot.is-blocked .availability-slot-state {
+  border-color: var(--status-closed-line);
+  color: var(--status-closed-ink);
+  background: var(--status-closed-bg);
+}
+.availability-days {
+  display: grid;
+  gap: 22px;
+}
+.availability-day {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 18px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ivory-line);
+}
+.availability-day:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.availability-day > header {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--ivory-ink);
+}
+.availability-day > header strong,
+.availability-day > header small {
+  display: block;
+}
+.availability-day > header small {
+  margin-top: 4px;
+  color: var(--ivory-muted);
+}
+.availability-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 10px;
+}
+.availability-slot {
+  position: relative;
+  display: grid;
+  min-height: 116px;
+  gap: 9px;
+  align-content: start;
+  padding: 12px;
+  overflow: hidden;
+  border: 1px solid var(--ivory-line);
+  border-radius: 12px;
+  color: var(--ivory-ink);
+  background: var(--ivory-surface-raised);
+}
+.availability-slot.is-available {
+  border-color: var(--status-confirmed-line);
+  background: linear-gradient(145deg, var(--ivory-surface-raised), var(--status-confirmed-bg));
+}
+.availability-slot.is-booked {
+  border-color: var(--status-pending-line);
+  background:
+    repeating-linear-gradient(-45deg, transparent 0 8px, rgba(139, 105, 56, 0.06) 8px 12px),
+    var(--ivory-surface-raised);
+}
+.availability-slot.is-blocked {
+  border: 1px dashed var(--status-closed-line);
+  background:
+    repeating-linear-gradient(-45deg, transparent 0 8px, rgba(154, 80, 77, 0.08) 8px 12px),
+    var(--status-closed-bg);
+}
+.availability-slot-time {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.availability-slot-time span {
+  color: var(--ivory-muted);
+  font-size: 0.78rem;
+}
+.availability-booking-summary {
+  display: grid;
+  gap: 2px;
+  color: var(--ivory-ink);
+}
+.availability-booking-summary span,
+.availability-booking-summary small {
+  color: var(--ivory-muted);
+}
+.availability-booking-summary small {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.availability-review-link {
+  width: max-content;
+  color: var(--ivory-ink);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

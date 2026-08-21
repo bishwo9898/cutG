@@ -205,6 +205,16 @@ export type ShopLocationSearchResult = {
   source: 'google_places' | 'google_geocoding' | 'saved' | 'unavailable';
 };
 
+export const UpdatePaymentPreferencesSchema = z.object({
+  onlinePaymentsEnabled: z.boolean(),
+});
+export type UpdatePaymentPreferencesRequest = z.infer<typeof UpdatePaymentPreferencesSchema>;
+
+export type BarberPaymentPreferences = {
+  onlinePaymentsEnabled: boolean;
+  onlinePaymentsReady: boolean;
+};
+
 export type ResolvedAddress = {
   id?: string;
   addressLine1: string;

@@ -34,8 +34,8 @@ export default function DashboardPaymentsPage(): React.ReactElement {
       <div className="page-header">
         <div>
           <span className="eyebrow">Payments</span>
-          <h1>Stripe setup</h1>
-          <p>Connect Stripe to accept card payments and receive payouts.</p>
+          <h1>Online payment setup</h1>
+          <p>Complete secure setup to accept card payments and receive payouts.</p>
         </div>
       </div>
       <section className="panel">
@@ -45,7 +45,7 @@ export default function DashboardPaymentsPage(): React.ReactElement {
         </div>
         <div className="panel-body form-stack">
           <p>
-            <strong>Account:</strong> {status.data?.stripeAccountId ?? 'Not started'}
+            <strong>Setup:</strong> {status.data?.stripeAccountId === null ? 'Not started' : 'Started'}
           </p>
           <p>
             <strong>Onboarding:</strong>{' '}
@@ -66,7 +66,7 @@ export default function DashboardPaymentsPage(): React.ReactElement {
               onClick={() => connect.mutate()}
               type="button"
             >
-              {connect.isPending ? 'Opening Stripe...' : 'Connect with Stripe'}
+              {connect.isPending ? 'Opening secure setup…' : 'Complete payout setup'}
             </button>
           )}
           {connect.error instanceof Error && <Notice>{connect.error.message}</Notice>}

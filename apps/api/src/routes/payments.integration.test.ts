@@ -110,6 +110,34 @@ describe('Phase 4 payments and subscriptions API', () => {
     );
   });
 
+  it('defaults online payments on and enforces the barber preference at checkout', async () => {
+    const initial = await request(app)
+      .get('/barbers/me/payment-preferences')
+      .set('Authorization', `Bearer ${barberToken}`);
+    expect(initial.status).toBe(200);
+    expect(initial.body).toMatchObject({ onlinePaymentsEnabled: true });
+
+    const disabled = await request(app)
+      .patch('/barbers/me/payment-preferences')
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({ onlinePaymentsEnabled: false });
+    expect(disabled.status).toBe(200);
+    expect(disabled.body).toMatchObject({ onlinePaymentsEnabled: false, onlinePaymentsReady: false });
+
+    const rejected = await request(app)
+      .post('/payments/create-intent')
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ appointmentId });
+    expect(rejected.status).toBe(402);
+    expect(rejected.body).toMatchObject({ error: 'BARBER_NOT_ONBOARDED' });
+
+    await request(app)
+      .patch('/barbers/me/payment-preferences')
+      .set('Authorization', `Bearer ${barberToken}`)
+      .send({ onlinePaymentsEnabled: true })
+      .expect(200);
+  });
+
   it('returns barber stripe status, earnings, and subscription state', async () => {
     const stripeStatus = await request(app)
       .get('/barbers/me/stripe/status')

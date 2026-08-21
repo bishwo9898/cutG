@@ -104,6 +104,8 @@ export const toQueryString = (params: QueryParams = {}): string => {
 export const barberDiscoveryApi = {
   search: <T>(client: ApiClient, params?: QueryParams): Promise<T> =>
     client.get<T>(`/barbers${toQueryString(params)}`),
+  marketplaceSearch: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/barbers/search', body),
   getProfile: <T>(client: ApiClient, barberId: string): Promise<T> =>
     client.get<T>(`/barbers/${barberId}`),
   getPortfolio: <T>(client: ApiClient, barberId: string): Promise<T> =>
@@ -155,6 +157,8 @@ export const clientApi = {
       longitude,
       ...(barberId === undefined ? {} : { barberId }),
     }),
+  searchLocations: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/clients/me/locations/search', body),
   updateAddress: <T>(client: ApiClient, addressId: string, body: unknown): Promise<T> =>
     client.patch<T>(`/clients/me/addresses/${addressId}`, body),
   deleteAddress: <T>(client: ApiClient, addressId: string): Promise<T> =>
@@ -231,6 +235,10 @@ export const paymentApi = {
 export const barberBillingApi = {
   stripeStatus: <T>(client: ApiClient): Promise<T> => client.get<T>('/barbers/me/stripe/status'),
   connectStripe: <T>(client: ApiClient): Promise<T> => client.post<T>('/barbers/me/stripe/connect'),
+  paymentPreferences: <T>(client: ApiClient): Promise<T> =>
+    client.get<T>('/barbers/me/payment-preferences'),
+  updatePaymentPreferences: <T>(client: ApiClient, onlinePaymentsEnabled: boolean): Promise<T> =>
+    client.patch<T>('/barbers/me/payment-preferences', { onlinePaymentsEnabled }),
   earnings: <T>(client: ApiClient, params?: QueryParams): Promise<T> =>
     client.get<T>(`/barbers/me/earnings${toQueryString(params)}`),
   subscription: <T>(client: ApiClient): Promise<T> => client.get<T>('/barbers/me/subscription'),

@@ -83,7 +83,7 @@ export default function LandingPage(): React.ReactElement {
             <div className="landing-cinematic-hero-actions">
               <Link
                 className="landing-cinematic-button landing-cinematic-button-primary"
-                href="/client/barbers"
+                href="/client/start"
               >
                 Find your barber <ArrowUpRight size={16} />
               </Link>
@@ -141,7 +141,7 @@ export default function LandingPage(): React.ReactElement {
             </div>
             <Link
               className="landing-cinematic-button landing-cinematic-button-primary"
-              href="/client/barbers?mobileOnly=true"
+              href="/client/start"
             >
               Explore mobile barbers
             </Link>
@@ -320,7 +320,7 @@ export default function LandingPage(): React.ReactElement {
               <p>Browse, book, and manage the visit in one place.</p>
               <Link
                 className="landing-cinematic-button landing-cinematic-button-primary"
-                href="/client/barbers"
+                href="/client/start"
               >
                 Start browsing
               </Link>

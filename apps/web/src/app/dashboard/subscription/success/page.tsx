@@ -9,7 +9,7 @@ export default function SubscriptionSuccessPage(): React.ReactElement {
         </div>
         <div className="panel-body form-stack">
           <p className="subtitle">
-            Stripe is confirming your subscription. Webhooks will sync the final status.
+            Your subscription is being confirmed. The final status will update shortly.
           </p>
           <Link className="button button-primary" href="/barber/dashboard/subscription">
             Back to subscription

@@ -20,6 +20,7 @@ import {
   RetryHairDesignSchema,
   SaveAddressSchema,
   SaveBarberSchema,
+  ShopLocationSearchSchema,
   UuidParamsSchema,
   UpdateAddressSchema,
   TrackingAppointmentParamsSchema,
@@ -73,6 +74,7 @@ import {
   deleteClientAddress,
   listClientAddresses,
   reverseGeocodeCoordinates,
+  searchMapLocations,
   setDefaultClientAddress,
   updateClientAddress,
 } from '../services/mobile/geocodingService';
@@ -101,6 +103,12 @@ clientRouter.get(
   '/me/addresses',
   asyncHandler(async (request, response) => {
     response.json(await listClientAddresses(userId(request)));
+  }),
+);
+clientRouter.post(
+  '/me/locations/search',
+  asyncHandler(async (request, response) => {
+    response.json(await searchMapLocations(ShopLocationSearchSchema.parse(request.body)));
   }),
 );
 clientRouter.post(

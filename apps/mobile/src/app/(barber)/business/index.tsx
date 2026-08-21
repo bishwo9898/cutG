@@ -52,7 +52,7 @@ export default function BusinessHubScreen(): React.ReactElement {
         </Card>
       </View>
       <Badge
-        label={stripe.data?.chargesEnabled === true ? 'Stripe ready' : 'Stripe setup needed'}
+        label={stripe.data?.chargesEnabled === true ? 'Online payments ready' : 'Payment setup needed'}
         tone={stripe.data?.chargesEnabled === true ? 'success' : 'warning'}
       />
       <HubCard

@@ -15,7 +15,7 @@ import { colors, spacing, typography } from '@/theme';
 const categories = ['haircut', 'beard', 'shave', 'combo', 'kids'];
 
 export default function DiscoverScreen(): React.ReactElement {
-  const featured = useBarberSearch({ limit: 8, verified: true });
+  const featured = useBarberSearch({ limit: 8 });
   const barbers = listFromResponse(featured.data ?? {});
 
   return (
@@ -26,7 +26,7 @@ export default function DiscoverScreen(): React.ReactElement {
       }}
     >
       <View style={styles.hero}>
-        <Text style={styles.eyebrow}>CUTG · FOR CLIENTS</Text>
+        <Text style={styles.eyebrow}>CUTG · FOR CUSTOMERS</Text>
         <ScreenHeader
           title="Find your next great barber."
           subtitle="Trusted professionals, real availability, one simple booking."
@@ -59,11 +59,6 @@ export default function DiscoverScreen(): React.ReactElement {
           onPress={() => router.push('/(client)/discover/search?nearMe=true')}
           variant="secondary"
         />
-        <Button
-          title="Mobile barbers"
-          onPress={() => router.push('/(client)/discover/search?mobileOnly=true')}
-          variant="secondary"
-        />
         {categories.map((category) => (
           <Button
             key={category}
@@ -78,7 +73,7 @@ export default function DiscoverScreen(): React.ReactElement {
           <Text style={styles.eyebrow}>CURATED FOR YOU</Text>
           <Text style={styles.section}>Featured barbers</Text>
         </View>
-        <Text style={styles.sectionMeta}>Verified</Text>
+        <Text style={styles.sectionMeta}>Available now</Text>
       </View>
       {featured.isLoading ? <Skeleton height={120} /> : null}
       {!featured.isLoading && barbers.length === 0 ? (

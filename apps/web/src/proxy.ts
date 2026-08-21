@@ -57,6 +57,8 @@ export function proxy(request: NextRequest): NextResponse {
   const barberProtected =
     pathname === '/barber/dashboard' || pathname.startsWith('/barber/dashboard/');
   const clientProtected =
+    pathname === '/client/barbers' ||
+    pathname.startsWith('/client/barbers/') ||
     pathname === '/client/appointments' ||
     pathname.startsWith('/client/appointments/') ||
     pathname === '/client/design' ||

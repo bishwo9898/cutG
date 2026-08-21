@@ -1,4 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { addDays, format } from 'date-fns';
+import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -43,23 +45,49 @@ export default function ScheduleScreen(): React.ReactElement {
           />
         ))}
       </ScrollView>
-      {list.map((slot) => (
-        <Card key={slot.id}>
+      {list.map((slot) => {
+        const state = slot.status ?? (slot.isAvailable === true ? 'AVAILABLE' : 'BLOCKED');
+        return (
+        <Card
+          key={slot.id}
+          style={
+            state === 'BOOKED'
+              ? styles.bookedCard
+              : state === 'BLOCKED'
+                ? styles.blockedCard
+                : styles.availableCard
+          }
+        >
           <View style={styles.slotRow}>
-            <Text style={styles.time}>
-              {slot.startTime} - {slot.endTime}
-            </Text>
-            <Text
-              style={[
-                styles.status,
-                slot.status === 'AVAILABLE' ? styles.available : styles.unavailable,
-              ]}
-            >
-              {slot.status}
-            </Text>
+            <View style={styles.timeRow}>
+              <Ionicons color={colors.textSecondary} name="time-outline" size={18} />
+              <Text style={styles.time}>{slot.startTime} – {slot.endTime}</Text>
+            </View>
+            <View style={[styles.stateBadge, state === 'AVAILABLE' ? styles.availableBadge : state === 'BOOKED' ? styles.bookedBadge : styles.blockedBadge]}>
+              <Ionicons
+                color={state === 'AVAILABLE' ? colors.success : state === 'BOOKED' ? colors.warning : colors.error}
+                name={state === 'AVAILABLE' ? 'checkmark-circle' : state === 'BOOKED' ? 'person' : 'ban'}
+                size={14}
+              />
+              <Text style={[styles.status, state === 'AVAILABLE' ? styles.available : styles.unavailable]}>{state === 'AVAILABLE' ? 'Available' : state === 'BOOKED' ? 'Booked' : 'Blocked'}</Text>
+            </View>
           </View>
+          {state === 'BOOKED' ? (
+            <View style={styles.bookingSummary}>
+              <Text style={styles.customer}>{slot.appointmentSummary?.customerName ?? 'Customer booking'}</Text>
+              <Text style={styles.meta}>{slot.appointmentSummary?.serviceName ?? 'Service'}</Text>
+              <Text style={styles.meta}>{(slot.appointmentSummary?.status ?? 'BOOKED').replaceAll('_', ' ')}</Text>
+              {slot.appointmentSummary !== undefined ? (
+                <Button
+                  title="Review booking"
+                  variant="secondary"
+                  onPress={() => router.push(`/(barber)/appointments/${slot.appointmentSummary?.appointmentId}`)}
+                />
+              ) : null}
+            </View>
+          ) : null}
         </Card>
-      ))}
+      );})}
       <Button title="Edit schedule" onPress={() => setEditing(true)} />
       <Button title="Block date" variant="secondary" onPress={() => setEditing(true)} />
       <BottomSheet visible={editing} onClose={() => setEditing(false)}>
@@ -75,9 +103,17 @@ export default function ScheduleScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
+  availableBadge: { backgroundColor: colors.statusConfirmedSurface, borderColor: colors.statusConfirmed },
+  availableCard: { backgroundColor: colors.statusConfirmedSurface, borderColor: colors.statusConfirmed },
   available: {
     color: colors.success,
   },
+  blockedBadge: { backgroundColor: colors.statusCancelledSurface, borderColor: colors.statusCancelled },
+  blockedCard: { backgroundColor: colors.statusCancelledSurface, borderColor: colors.statusCancelled, borderStyle: 'dashed' },
+  bookedBadge: { backgroundColor: colors.statusPendingSurface, borderColor: colors.statusPending },
+  bookedCard: { backgroundColor: colors.statusPendingSurface, borderColor: colors.statusPending },
+  bookingSummary: { borderTopColor: colors.border, borderTopWidth: 1, gap: spacing.xs, marginTop: spacing.md, paddingTop: spacing.md },
+  customer: { ...typography.label, color: colors.textPrimary },
   days: {
     gap: spacing.sm,
   },
@@ -90,6 +126,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  stateBadge: { alignItems: 'center', borderRadius: 999, borderWidth: 1, flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   status: {
     ...typography.label,
   },
@@ -97,6 +134,7 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.textPrimary,
   },
+  timeRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
   title: {
     ...typography.h3,
     color: colors.textPrimary,

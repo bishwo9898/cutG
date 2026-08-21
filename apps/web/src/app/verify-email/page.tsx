@@ -15,6 +15,7 @@ function VerifyEmailForm(): React.ReactElement {
   const searchParams = useSearchParams();
   const email = searchParams.get('email') ?? '';
   const role = searchParams.get('role') === 'barber' ? 'barber' : 'client';
+  const next = searchParams.get('next');
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
   const {
     register,
@@ -94,7 +95,10 @@ function VerifyEmailForm(): React.ReactElement {
           </button>
         </form>
         <p className="auth-footer">
-          <Link className="text-link" href={`/${role}/login`}>
+          <Link
+            className="text-link"
+            href={`/${role}/login${next === null ? '' : `?next=${encodeURIComponent(next)}`}`}
+          >
             Return to sign in
           </Link>
         </p>

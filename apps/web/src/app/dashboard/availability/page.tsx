@@ -1,7 +1,8 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { Ban, CalendarCheck, CheckCircle2, Clock3, RefreshCw, Save, Trash2, UserRound } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { Notice } from '@/components/notice';
@@ -24,6 +25,20 @@ const defaultSchedule = (): ScheduleEntry[] =>
 const isoDate = (date: Date): string => date.toISOString().slice(0, 10);
 
 type BlockedDate = { id: string; date: string; reason: string | null };
+type PrivateSlot = {
+  id: string;
+  date: string;
+  dayName: string;
+  startTime: string;
+  endTime: string;
+  status: 'AVAILABLE' | 'BOOKED' | 'BLOCKED';
+  appointmentSummary?: {
+    appointmentId: string;
+    customerName: string;
+    serviceName: string;
+    status: string;
+  };
+};
 
 export default function AvailabilityPage(): React.ReactElement {
   const queryClient = useQueryClient();
@@ -46,7 +61,7 @@ export default function AvailabilityPage(): React.ReactElement {
     queryKey: ['slots', range],
     queryFn: () =>
       browserApi.get<{
-        slots: unknown[];
+        slots: PrivateSlot[];
         summary: { totalSlots: number; available: number; booked: number; blocked: number };
       }>(`/barbers/me/slots?startDate=${range.startDate}&endDate=${range.endDate}`),
   });
@@ -120,6 +135,11 @@ export default function AvailabilityPage(): React.ReactElement {
 
   if (scheduleQuery.isPending) {
     return <LoadingState />;
+  }
+
+  const slotsByDate = new Map<string, PrivateSlot[]>();
+  for (const slot of slots.data?.slots ?? []) {
+    slotsByDate.set(slot.date, [...(slotsByDate.get(slot.date) ?? []), slot]);
   }
 
   return (
@@ -343,6 +363,90 @@ export default function AvailabilityPage(): React.ReactElement {
               )}
             </div>
           </section>
+        </div>
+      </section>
+      <section className="panel availability-schedule-panel">
+        <div className="panel-header">
+          <div>
+            <span className="eyebrow">Booking calendar</span>
+            <h2>Your generated schedule</h2>
+            <p className="panel-description">
+              Available, booked, and blocked times for the selected range.
+            </p>
+          </div>
+          <div className="availability-legend" aria-label="Schedule legend">
+            <span className="is-available"><CheckCircle2 size={14} /> Available</span>
+            <span className="is-booked"><UserRound size={14} /> Booked</span>
+            <span className="is-blocked"><Ban size={14} /> Blocked</span>
+          </div>
+        </div>
+        <div className="panel-body availability-days">
+          {slots.isPending ? (
+            <LoadingState />
+          ) : slotsByDate.size === 0 ? (
+            <EmptyState
+              title="No generated times in this range"
+              detail="Choose a date range above and generate availability."
+            />
+          ) : (
+            [...slotsByDate.entries()].map(([slotDate, daySlots]) => (
+              <section className="availability-day" key={slotDate}>
+                <header>
+                  <CalendarCheck size={18} />
+                  <div>
+                    <strong>
+                      {new Date(`${slotDate}T12:00:00`).toLocaleDateString([], {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </strong>
+                    <small>{daySlots.length} times</small>
+                  </div>
+                </header>
+                <div className="availability-slot-grid">
+                  {daySlots.map((slot) => (
+                    <article
+                      className={`availability-slot is-${slot.status.toLowerCase()}`}
+                      key={slot.id}
+                    >
+                      <div className="availability-slot-time">
+                        <Clock3 size={15} />
+                        <strong>{slot.startTime}</strong>
+                        <span>– {slot.endTime}</span>
+                      </div>
+                      {slot.status === 'AVAILABLE' && (
+                        <span className="availability-slot-state"><CheckCircle2 size={14} /> Available</span>
+                      )}
+                      {slot.status === 'BLOCKED' && (
+                        <span className="availability-slot-state"><Ban size={14} /> Blocked</span>
+                      )}
+                      {slot.status === 'BOOKED' && (
+                        <>
+                          <span className="availability-slot-state"><UserRound size={14} /> Booked</span>
+                          <div className="availability-booking-summary">
+                            <strong>{slot.appointmentSummary?.customerName ?? 'Customer booking'}</strong>
+                            <span>{slot.appointmentSummary?.serviceName ?? 'Service'}</span>
+                            <small>
+                              {(slot.appointmentSummary?.status ?? 'BOOKED').replaceAll('_', ' ')}
+                            </small>
+                          </div>
+                          {slot.appointmentSummary !== undefined && (
+                            <Link
+                              className="availability-review-link"
+                              href={`/barber/dashboard/appointments/${slot.appointmentSummary.appointmentId}`}
+                            >
+                              Review booking
+                            </Link>
+                          )}
+                        </>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
         </div>
       </section>
     </main>

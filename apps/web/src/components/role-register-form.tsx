@@ -4,7 +4,7 @@ import { PasswordSchema, RegisterRequestSchema } from '@barber-saas/shared-types
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -36,7 +36,11 @@ type FormValues = z.infer<typeof schema>;
 
 export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactElement {
   const [error, setError] = useState<string | null>(null);
+  const [next, setNext] = useState<string | null>(null);
   const isBarber = role === 'BARBER';
+  useEffect(() => {
+    setNext(new URLSearchParams(window.location.search).get('next'));
+  }, []);
   const {
     register,
     handleSubmit,
@@ -65,9 +69,11 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
         setError(body.message ?? 'We could not create your account.');
         return;
       }
-      window.location.assign(
-        `/verify-email?email=${encodeURIComponent(values.email)}&role=${role.toLowerCase()}`,
-      );
+      const query = new URLSearchParams({ email: values.email, role: role.toLowerCase() });
+      if (next?.startsWith(role === 'BARBER' ? '/barber' : '/client') === true) {
+        query.set('next', next);
+      }
+      window.location.assign(`/verify-email?${query.toString()}`);
     } catch {
       setError('The registration service could not be reached. Check that the API is running.');
     }
@@ -179,7 +185,10 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
         </div>
         <p className="auth-footer">
           Already have an account?{' '}
-          <Link className="text-link" href={isBarber ? '/barber/login' : '/client/login'}>
+          <Link
+            className="text-link"
+            href={`${isBarber ? '/barber/login' : '/client/login'}${next === null ? '' : `?next=${encodeURIComponent(next)}`}`}
+          >
             Sign in
           </Link>
         </p>
