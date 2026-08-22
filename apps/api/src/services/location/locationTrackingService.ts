@@ -112,7 +112,7 @@ export const startBarberJourney = async (
       const message = 'Your barber is on the way!';
       await client.query(
         `INSERT INTO notifications (user_id,type,title,message,related_data)
-         VALUES ($1,'APPOINTMENT_REMINDER',$2::text,$2::text,$3::jsonb)`,
+         VALUES ($1,'JOURNEY_STARTED',$2::text,$2::text,$3::jsonb)`,
         [appointment.client_id, message, JSON.stringify({ appointmentId })],
       );
     } else if (departedAt === null) {

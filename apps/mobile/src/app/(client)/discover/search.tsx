@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/Input';
 import { mobileApi } from '@/lib/apiClient';
 import type { PublicBarber } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
+import { useClientAddresses } from '@/hooks/useMobileBarber';
 
 const categories = ['', 'haircut', 'beard', 'shave', 'color', 'combo', 'kids', 'other'];
 type Point = { label: string; latitude: number; longitude: number };
@@ -57,6 +58,18 @@ export default function SearchResultsScreen(): React.ReactElement {
   const [distance, setDistance] = useState(50);
   const [maxPrice, setMaxPrice] = useState(200);
   const [permissionMessage, setPermissionMessage] = useState<string | null>(null);
+  const addresses = useClientAddresses();
+
+  useEffect(() => {
+    if (location !== null || locationText.length > 0) return;
+    const saved = addresses.data?.addresses.find((address) => address.isDefault);
+    if (saved === undefined) return;
+    const label = [saved.addressLine1, saved.city, saved.state, saved.zipCode]
+      .filter(Boolean)
+      .join(', ');
+    setLocation({ label, latitude: saved.latitude, longitude: saved.longitude });
+    setLocationText(label);
+  }, [addresses.data?.addresses, location, locationText.length]);
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(locationText.trim()), 350);
@@ -127,7 +140,11 @@ export default function SearchResultsScreen(): React.ReactElement {
         void results.refetch();
       }}
     >
-      <ScreenHeader showBack title="Find your barber" subtitle="Start with a location, then narrow only when needed." />
+      <ScreenHeader
+        showBack
+        title="Find your barber"
+        subtitle="Start with a location, then narrow only when needed."
+      />
       {design.data !== undefined ? (
         <View style={styles.designBanner}>
           <Text style={styles.filterTitle}>Booking for {design.data.styleName}</Text>
@@ -154,7 +171,9 @@ export default function SearchResultsScreen(): React.ReactElement {
           <Ionicons color={colors.textSecondary} name="location-outline" size={18} />
           <View style={styles.suggestionCopy}>
             <Text style={styles.filterTitle}>{item.name}</Text>
-            <Text numberOfLines={2} style={styles.muted}>{item.formattedAddress}</Text>
+            <Text numberOfLines={2} style={styles.muted}>
+              {item.formattedAddress}
+            </Text>
           </View>
         </Pressable>
       ))}
@@ -168,7 +187,11 @@ export default function SearchResultsScreen(): React.ReactElement {
 
       <View style={styles.filterBox}>
         <Text style={styles.filterTitle}>Category</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chips}
+        >
           {categories.map((item) => (
             <Pressable
               accessibilityRole="button"
@@ -189,7 +212,9 @@ export default function SearchResultsScreen(): React.ReactElement {
         </ScrollView>
         <View style={styles.sliderHeading}>
           <Text style={styles.filterTitle}>Distance</Text>
-          <Text style={styles.muted}>{distance >= 50 ? '50+ miles · Any' : `${distance} miles`}</Text>
+          <Text style={styles.muted}>
+            {distance >= 50 ? '50+ miles · Any' : `${distance} miles`}
+          </Text>
         </View>
         <Slider
           accessibilityLabel="Maximum distance"
@@ -197,7 +222,7 @@ export default function SearchResultsScreen(): React.ReactElement {
           maximumValue={50}
           minimumTrackTintColor={colors.gold}
           minimumValue={5}
-          onValueChange={(value) => setDistance(Math.round(value / 5) * 5)}
+          onValueChange={(value: number) => setDistance(Math.round(value / 5) * 5)}
           step={5}
           thumbTintColor={colors.primary}
           value={distance}
@@ -212,7 +237,7 @@ export default function SearchResultsScreen(): React.ReactElement {
           maximumValue={200}
           minimumTrackTintColor={colors.gold}
           minimumValue={10}
-          onValueChange={(value) => setMaxPrice(Math.round(value / 10) * 10)}
+          onValueChange={(value: number) => setMaxPrice(Math.round(value / 10) * 10)}
           step={10}
           thumbTintColor={colors.primary}
           value={maxPrice}
@@ -220,7 +245,10 @@ export default function SearchResultsScreen(): React.ReactElement {
       </View>
 
       {barbers.length === 0 && !results.isLoading ? (
-        <EmptyState title="No matches yet" message="Try Any distance or Any price to see more barbers." />
+        <EmptyState
+          title="No matches yet"
+          message="Try Any distance or Any price to see more barbers."
+        />
       ) : null}
       {barbers.map((barber) => (
         <BarberCard

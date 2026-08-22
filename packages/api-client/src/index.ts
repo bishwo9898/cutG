@@ -62,6 +62,14 @@ export class ApiClient {
     return this.request<T>(path, { ...init, method: 'DELETE' });
   }
 
+  public postRaw<T>(path: string, body: BodyInit, contentType: string): Promise<T> {
+    return this.request<T>(path, {
+      method: 'POST',
+      body,
+      headers: { 'Content-Type': contentType },
+    });
+  }
+
   private async request<T>(path: string, init: RequestInit): Promise<T> {
     const configuredHeaders =
       typeof this.headers === 'function' ? await this.headers() : (this.headers ?? {});
@@ -248,4 +256,16 @@ export const barberBillingApi = {
     client.post<T>('/barbers/me/subscription/cancel'),
   resumeSubscription: <T>(client: ApiClient): Promise<T> =>
     client.post<T>('/barbers/me/subscription/resume'),
+};
+
+export const notificationApi = {
+  registerDevice: <T>(client: ApiClient, body: unknown): Promise<T> =>
+    client.post<T>('/notifications/devices', body),
+  unregisterDevice: <T>(client: ApiClient, installationId: string): Promise<T> =>
+    client.delete<T>(`/notifications/devices/${encodeURIComponent(installationId)}`),
+  list: <T>(client: ApiClient, params?: QueryParams): Promise<T> =>
+    client.get<T>(`/notifications${toQueryString(params)}`),
+  markRead: <T>(client: ApiClient, notificationId: string): Promise<T> =>
+    client.patch<T>(`/notifications/${notificationId}/read`, {}),
+  markAllRead: <T>(client: ApiClient): Promise<T> => client.post<T>('/notifications/read-all'),
 };

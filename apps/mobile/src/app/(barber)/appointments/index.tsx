@@ -12,18 +12,18 @@ import { listFromResponse } from '@/lib/types';
 import { spacing } from '@/theme';
 
 const statuses = [
-  'All',
-  'PENDING',
-  'CONFIRMED',
-  'ON_THE_WAY',
-  'ARRIVED',
-  'IN_PROGRESS',
-  'COMPLETED',
-  'CANCELLED',
+  { value: 'All', label: 'All' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'CONFIRMED', label: 'Confirmed' },
+  { value: 'ON_THE_WAY', label: 'On the way' },
+  { value: 'ARRIVED', label: 'Arrived' },
+  { value: 'IN_PROGRESS', label: 'In progress' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'CANCELLED', label: 'Cancelled' },
 ] as const;
 
 export default function BarberAppointmentListScreen(): React.ReactElement {
-  const [status, setStatus] = useState<(typeof statuses)[number]>('All');
+  const [status, setStatus] = useState<(typeof statuses)[number]['value']>('All');
   const [search, setSearch] = useState('');
   const appointments = useBarberAppointments(status === 'All' ? {} : { status });
   const list = listFromResponse(appointments.data ?? {}).filter((appointment) =>
@@ -45,10 +45,10 @@ export default function BarberAppointmentListScreen(): React.ReactElement {
       <View style={styles.chips}>
         {statuses.map((item) => (
           <Button
-            key={item}
-            title={item}
-            onPress={() => setStatus(item)}
-            variant={item === status ? 'primary' : 'secondary'}
+            key={item.value}
+            title={item.label}
+            onPress={() => setStatus(item.value)}
+            variant={item.value === status ? 'primary' : 'secondary'}
           />
         ))}
       </View>

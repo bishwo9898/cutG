@@ -44,6 +44,7 @@ export type Paginated<T> = {
   services?: T[];
   reviews?: T[];
   payments?: T[];
+  slots?: T[];
   pagination?: Pagination;
 };
 
@@ -348,6 +349,7 @@ export const listFromResponse = <T>(response: Paginated<T> | T[]): T[] => {
     response.services ??
     response.reviews ??
     response.payments ??
+    response.slots ??
     []
   );
 };

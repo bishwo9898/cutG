@@ -120,6 +120,7 @@ const EnvSchema = z
     EMAIL_FROM: z.string().email().default('noreply@example.com'),
     WEB_APP_URL: z.string().url().default('http://localhost:3000'),
     MOBILE_APP_URL: z.string().default('cutg://'),
+    EXPO_ACCESS_TOKEN: z.string().default(''),
     ENABLE_ANALYTICS: booleanFromEnvironment.default(false),
     ENABLE_AI_FEATURES: booleanFromEnvironment.default(false),
   })

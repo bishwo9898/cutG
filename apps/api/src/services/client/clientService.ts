@@ -489,8 +489,8 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
     await trx.query(
       `INSERT INTO notifications (user_id,type,title,message,related_data)
        VALUES
-         ($1,'APPOINTMENT_CONFIRMED','Appointment requested','Your appointment request was created.',$3::jsonb),
-         ($2,'APPOINTMENT_CONFIRMED','New appointment request','A client booked one of your available slots.',$3::jsonb)`,
+         ($1,'APPOINTMENT_CREATED','Appointment requested','Your appointment request was created.',$3::jsonb),
+         ($2,'APPOINTMENT_CREATED','New appointment request','A customer booked one of your available slots.',$3::jsonb)`,
       [
         clientId,
         barber.user_id,

@@ -3,18 +3,22 @@
     "name": "cutG",
     "slug": "cutg",
     "scheme": "cutg",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cutg.mobile"
+      "bundleIdentifier": "com.cutg.mobile",
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.cutg.mobile",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#0F0F1A"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F7F3EC"
       }
     },
     "plugins": [
@@ -23,7 +27,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow cutG to use your precise location while you travel to a client.",
+          "locationWhenInUsePermission": "Allow cutG to use your precise location to find nearby barbers, set service addresses, and guide active journeys.",
           "locationAlwaysAndWhenInUsePermission": "Allow cutG to share your journey with the client, including while the app is in the background.",
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true,
@@ -39,6 +43,18 @@
         }
       ],
       "expo-notifications",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#F7F3EC"
+        }
+      ],
+      "expo-status-bar",
+      "expo-dev-client",
       [
         "@stripe/stripe-react-native",
         {
@@ -47,8 +63,6 @@
         }
       ]
     ],
-    "experiments": {
-      "typedRoutes": false
-    }
+    "experiments": { "typedRoutes": false }
   }
 }

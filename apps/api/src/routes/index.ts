@@ -8,6 +8,7 @@ import { clientRouter } from './clients';
 import { healthRouter } from './health';
 import { internalAiRouter } from './internalAi';
 import { paymentRouter } from './payments';
+import { notificationRouter } from './notifications';
 
 export const routes: ExpressRouter = Router();
 
@@ -22,6 +23,7 @@ routes.get('/', (_request, response): void => {
       clients: '/clients',
       health: '/health',
       payments: '/payments',
+      notifications: '/notifications',
     },
   });
 });
@@ -32,3 +34,4 @@ routes.use('/clients', clientRouter);
 routes.use('/health', healthRouter);
 routes.use('/internal/ai', internalAiRouter);
 routes.use('/payments', paymentRouter);
+routes.use('/notifications', notificationRouter);

@@ -26,8 +26,8 @@ export default function LoginScreen(): React.ReactElement {
   const setAuth = useAuthStore((state) => state.setAuth);
   const { control, formState, handleSubmit, setError } = useForm<LoginForm>({
     defaultValues: {
-      email: params.role === 'BARBER' ? 'barber.test@example.com' : 'client.test@example.com',
-      password: 'password123',
+      email: '',
+      password: '',
     },
     resolver: zodResolver(LoginFormSchema),
   });
@@ -96,7 +96,8 @@ export default function LoginScreen(): React.ReactElement {
       ) : null}
       <Button
         disabled={formState.isSubmitting}
-        title={formState.isSubmitting ? 'Signing in...' : 'Sign In'}
+        loading={formState.isSubmitting}
+        title="Sign in"
         onPress={handleSubmit(onSubmit)}
       />
       <Button

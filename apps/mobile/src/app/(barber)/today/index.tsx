@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { router } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AppointmentCard } from '@/components/barber/AppointmentCard';
@@ -34,6 +34,16 @@ export default function TodayScreen(): React.ReactElement {
     (sum, item) => sum + (item.paymentStatus === 'SUCCEEDED' ? item.price : 0),
     0,
   );
+  const confirmChange = (id: string, status: string, title: string): void => {
+    Alert.alert(title, 'The customer will see this update immediately.', [
+      { text: 'Go back', style: 'cancel' },
+      {
+        text: title,
+        style: status === 'CANCELLED' ? 'destructive' : 'default',
+        onPress: () => void updateStatus.mutateAsync({ id, status }),
+      },
+    ]);
+  };
 
   return (
     <Screen
@@ -113,7 +123,11 @@ export default function TodayScreen(): React.ReactElement {
                     router.push('/(barber)/appointments/' + appointment.id);
                     return;
                   }
-                  void updateStatus.mutateAsync({ id: appointment.id, status });
+                  if (status === 'COMPLETED') {
+                    confirmChange(appointment.id, status, 'Complete appointment');
+                  } else {
+                    void updateStatus.mutateAsync({ id: appointment.id, status });
+                  }
                 }}
               />
             ) : null}
@@ -122,7 +136,7 @@ export default function TodayScreen(): React.ReactElement {
                 title="Decline"
                 variant="danger"
                 onPress={() => {
-                  void updateStatus.mutateAsync({ id: appointment.id, status: 'CANCELLED' });
+                  confirmChange(appointment.id, 'CANCELLED', 'Decline request');
                 }}
               />
             ) : null}

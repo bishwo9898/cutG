@@ -21,6 +21,7 @@ import { useAppointmentStatus } from '@/hooks/useAppointmentStatus';
 import { usePaymentStatus } from '@/hooks/usePayments';
 import { errorMessage } from '@/lib/errors';
 import { colors, spacing, typography } from '@/theme';
+import { humanLabel, money } from '@/lib/formatters';
 
 export default function ClientAppointmentDetailScreen(): React.ReactElement {
   const { appointmentId = '' } = useLocalSearchParams<{ appointmentId?: string }>();
@@ -127,12 +128,12 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
           <Card>
             <View style={styles.row}>
               <Text style={styles.title}>{item.serviceName}</Text>
-              <Badge label={item.status} tone={statusTone(item.status)} />
+              <Badge label={humanLabel(item.status)} tone={statusTone(item.status)} />
             </View>
             <Text style={styles.meta}>
               {item.barberName ?? 'Barber'} · {item.scheduledDate} at {item.startTime}
             </Text>
-            <Text style={styles.price}>{'$' + (item.pricing?.total ?? item.price).toFixed(2)}</Text>
+            <Text style={styles.price}>{money(item.pricing?.total ?? item.price)}</Text>
           </Card>
           {item.isMobileService === true ? (
             <Card>
@@ -263,10 +264,12 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
           ) : null}
           <Card>
             <Text style={styles.title}>Payment</Text>
-            <Text style={styles.meta}>{payment.data?.paymentStatus ?? item.paymentStatus}</Text>
+            <Text style={styles.meta}>
+              {humanLabel(payment.data?.paymentStatus ?? item.paymentStatus)}
+            </Text>
             {(payment.data?.paymentStatus ?? item.paymentStatus) === 'PENDING' ? (
               <Button
-                title="Pay Now"
+                title="Pay online"
                 onPress={() =>
                   router.push(
                     '/(client)/discover/' +
@@ -298,7 +301,7 @@ export default function ClientAppointmentDetailScreen(): React.ReactElement {
               <StarRating value={rating} onChange={setRating} size={28} />
               <Input label="Comment" value={comment} onChangeText={setComment} multiline />
               <Button
-                title="Submit Review"
+                title="Submit review"
                 onPress={() => {
                   void submitReview();
                 }}

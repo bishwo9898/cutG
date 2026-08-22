@@ -55,7 +55,7 @@ export default function PaymentScreen(): React.ReactElement {
         }}
         postalCodeEnabled={false}
         style={styles.cardContainer}
-        onCardChange={(details) => setCardComplete(details.complete)}
+        onCardChange={(details: { complete: boolean }) => setCardComplete(details.complete)}
       />
       {error !== null ? <Text style={styles.error}>{error}</Text> : null}
       <Button

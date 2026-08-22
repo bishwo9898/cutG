@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Image, Linking, StyleSheet, Text, View } from 'react-native';
@@ -20,6 +21,7 @@ import {
 } from '@/services/backgroundLocation';
 import { queryClient } from '@/lib/queryClient';
 import { colors, spacing, typography } from '@/theme';
+import { humanLabel, money } from '@/lib/formatters';
 
 const nextStatus = (status?: string, mobile = false): { status: string; label: string } | null => {
   if (status === 'PENDING') return { status: 'CONFIRMED', label: 'Confirm booking' };
@@ -194,6 +196,26 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
     }
   };
 
+  const confirmStatus = (next: string, title: string, description: string): void => {
+    if (item === undefined) return;
+    Alert.alert(title, description, [
+      { text: 'Go back', style: 'cancel' },
+      {
+        text: title,
+        style: 'destructive',
+        onPress: () => {
+          void updateStatus
+            .mutateAsync({ id: item.id, status: next, notes: notes || undefined })
+            .then(async () => {
+              if (['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(next))
+                await stopBackgroundLocationTracking();
+            })
+            .catch((error: unknown) => setJourneyError(errorMessage(error)));
+        },
+      },
+    ]);
+  };
+
   if (item === undefined) {
     return (
       <Screen refreshing={appointment.isFetching} onRefresh={() => void appointment.refetch()}>
@@ -235,7 +257,7 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
               {item.client.firstName} {item.client.lastName}
             </Text>
           </View>
-          <Badge label={item.status.replaceAll('_', ' ')} tone={statusTone(item.status)} />
+          <Badge label={humanLabel(item.status)} tone={statusTone(item.status)} />
         </View>
         {item.client.phone !== null ? (
           <Text
@@ -247,6 +269,12 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
         ) : (
           <Text style={styles.meta}>No phone number on file.</Text>
         )}
+        <Text
+          style={styles.link}
+          onPress={() => void Linking.openURL(`mailto:${item.client.email}`)}
+        >
+          {item.client.email}
+        </Text>
       </Card>
 
       <Card>
@@ -255,7 +283,7 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
             <Text style={styles.eyebrow}>SERVICE</Text>
             <Text style={styles.title}>{item.service.name}</Text>
           </View>
-          <Text style={styles.total}>${item.pricing.total.toFixed(2)}</Text>
+          <Text style={styles.total}>{money(item.pricing.total)}</Text>
         </View>
         <View style={styles.factGrid}>
           <Text style={styles.meta}>
@@ -270,8 +298,39 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
             {item.isMobileService ? 'Mobile service' : 'Shop service'}
           </Text>
           <Text style={styles.meta}>
-            {item.paymentMethod} · {item.paymentStatus}
+            {humanLabel(item.paymentMethod)} · {humanLabel(item.paymentStatus)}
           </Text>
+        </View>
+      </Card>
+
+      <Card>
+        <Text style={styles.eyebrow}>PROGRESS</Text>
+        <Text style={styles.title}>Appointment timeline</Text>
+        <View style={styles.timeline}>
+          {item.timeline.map((entry) => (
+            <View key={entry.status} style={styles.timelineRow}>
+              <View
+                style={[
+                  styles.timelineDot,
+                  (entry.done || entry.current) && styles.timelineDotDone,
+                ]}
+              >
+                <Ionicons
+                  color={entry.done || entry.current ? colors.textOnAccent : colors.textMuted}
+                  name={entry.done ? 'checkmark' : entry.current ? 'ellipse' : 'ellipse-outline'}
+                  size={11}
+                />
+              </View>
+              <View style={styles.flex}>
+                <Text style={[styles.meta, entry.current && styles.timelineCurrent]}>
+                  {entry.label}
+                </Text>
+                {entry.at !== null ? (
+                  <Text style={styles.timelineTime}>{new Date(entry.at).toLocaleString()}</Text>
+                ) : null}
+              </View>
+            </View>
+          ))}
         </View>
       </Card>
 
@@ -410,8 +469,59 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
         <Button
           disabled={updateStatus.isPending || startingJourney}
           title={startingJourney ? 'Starting secure location…' : status.label}
-          onPress={() => void applyNextStatus()}
+          onPress={() =>
+            status.status === 'COMPLETED'
+              ? confirmStatus(
+                  'COMPLETED',
+                  'Complete appointment',
+                  'This closes the booking and cannot be undone.',
+                )
+              : void applyNextStatus()
+          }
         />
+      ) : null}
+      {item.status === 'PENDING' ? (
+        <Button
+          title="Decline request"
+          variant="danger"
+          onPress={() =>
+            confirmStatus(
+              'CANCELLED',
+              'Decline request',
+              'The customer will be notified and this time will reopen.',
+            )
+          }
+        />
+      ) : null}
+      {item.status === 'CONFIRMED' ? (
+        <View style={styles.dangerActions}>
+          <View style={styles.flex}>
+            <Button
+              title="Cancel booking"
+              variant="danger"
+              onPress={() =>
+                confirmStatus(
+                  'CANCELLED',
+                  'Cancel booking',
+                  'The customer will be notified and this time will reopen.',
+                )
+              }
+            />
+          </View>
+          <View style={styles.flex}>
+            <Button
+              title="Mark no-show"
+              variant="secondary"
+              onPress={() =>
+                confirmStatus(
+                  'NO_SHOW',
+                  'Mark no-show',
+                  'Use this only when the customer did not attend.',
+                )
+              }
+            />
+          </View>
+        </View>
       ) : null}
       {journeyError !== null ? <Text style={styles.error}>{journeyError}</Text> : null}
     </Screen>
@@ -431,6 +541,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
+  dangerActions: { flexDirection: 'row', gap: spacing.sm },
   error: { ...typography.bodySmall, color: colors.statusCancelled },
   eyebrow: {
     ...typography.caption,
@@ -483,6 +594,21 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     justifyContent: 'space-between',
   },
+  timeline: { gap: spacing.sm, marginTop: spacing.md },
+  timelineCurrent: { color: colors.textPrimary, fontWeight: '800' },
+  timelineDot: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 1,
+    height: 20,
+    justifyContent: 'center',
+    width: 20,
+  },
+  timelineDotDone: { backgroundColor: colors.statusConfirmed, borderColor: colors.statusConfirmed },
+  timelineRow: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.sm },
+  timelineTime: { ...typography.caption, color: colors.textMuted },
   total: { ...typography.h2, color: colors.textPrimary },
   trackingDot: { borderRadius: 999, height: 10, width: 10 },
   trackingDotActive: { backgroundColor: colors.statusConfirmed },

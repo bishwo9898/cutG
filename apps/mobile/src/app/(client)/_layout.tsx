@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import type { ColorValue } from 'react-native';
 
 import { colors } from '@/theme';
 
 type TabIconName = keyof typeof Ionicons.glyphMap;
 
 const tabIcon = (name: TabIconName) =>
-  function Icon({ color, size }: { color: string; size: number }): React.ReactElement {
+  function Icon({ color, size }: { color: ColorValue; size: number }): React.ReactElement {
     return <Ionicons color={color} name={name} size={size} />;
   };
 
@@ -15,13 +16,13 @@ export default function ClientLayout(): React.ReactElement {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.textPrimary,
+        tabBarActiveTintColor: colors.gold,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginBottom: 4 },
         tabBarStyle: {
-          backgroundColor: colors.primary,
+          backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 72,
+          height: 76,
           paddingTop: 8,
         },
       }}

@@ -1,0 +1,25 @@
+appId: com.cutg.mobile
+name: Barber tabs and booking review entry
+env:
+  BARBER_EMAIL: ${BARBER_EMAIL}
+  BARBER_PASSWORD: ${BARBER_PASSWORD}
+---
+- clearState
+- launchApp
+- tapOn: 'I’m a barber'
+- tapOn: 'Sign in'
+- tapOn: 'Email'
+- inputText: ${BARBER_EMAIL}
+- tapOn: 'Password'
+- inputText: ${BARBER_PASSWORD}
+- tapOn: 'Sign in'
+- assertVisible: 'Your chair, at a glance.'
+- assertVisible: 'Appointments'
+- assertVisible: 'Calendar'
+- assertVisible: 'Business'
+- tapOn: 'Appointments'
+- assertVisible: 'Review every customer booking and its progress.'
+- tapOn: 'Calendar'
+- assertVisible: 'Availability, bookings, and time away.'
+- tapOn: 'Business'
+- assertVisible: 'Online payments'

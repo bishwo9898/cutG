@@ -38,6 +38,7 @@ export type BarberAppointmentDetail = {
     firstName: string;
     lastName: string;
     phone: string | null;
+    email: string;
   };
   isMobileService: boolean;
   pricing: {
@@ -59,6 +60,13 @@ export type BarberAppointmentDetail = {
     isTracking: boolean;
     routeOrigin: { latitude: number; longitude: number } | null;
   };
+  timeline: Array<{
+    status: AppointmentStatus;
+    label: string;
+    at: string | null;
+    done: boolean;
+    current: boolean;
+  }>;
 };
 
 export type StartJourneyRequest = LocationPingRequest;

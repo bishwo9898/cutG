@@ -118,11 +118,13 @@ Next.js route handler.
 - Ship API and AI logs to the hosting provider's log collector.
 - Retain enough API shutdown time for in-flight requests and database connections to close.
 
-## Native journey-tracking builds
+## Native private-beta builds
 
-Barber background location requires a native iOS or Android build; Expo Go cannot exercise this
-flow. Set `EXPO_PUBLIC_API_URL` to the deployed Render API origin before creating the build, then
-verify the resolved native permissions:
+Barber background location and push notifications require a native iOS or Android build; Expo Go
+cannot exercise these flows. Set `EXPO_PUBLIC_API_URL` to the deployed Render API origin,
+`EXPO_PUBLIC_EAS_PROJECT_ID` to the linked EAS project, and keep the secondary beta feature flags
+off before creating the build. Only restricted public map and payment keys belong in the app.
+Verify the resolved native permissions:
 
 ```bash
 pnpm --filter @barber-saas/mobile exec expo config --type public
@@ -133,3 +135,8 @@ foreground-service permissions. The iOS build must include the location backgrou
 physical device by starting a mobile appointment journey, minimizing and locking the phone, and
 confirming that the client map continues updating. Mark **I've arrived** and confirm that the
 Android foreground-service notification or iOS background indicator stops immediately.
+
+Run internal builds from `apps/mobile/eas.json` with the `development` or `preview` profile. Deploy
+database migration `016_mobile_push_notifications` and the API before distributing those builds so
+device registration and the notification inbox are available. If authenticated push delivery is
+used, keep `EXPO_ACCESS_TOKEN` only in Render; it is never an `EXPO_PUBLIC_*` value.

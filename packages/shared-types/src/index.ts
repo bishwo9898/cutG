@@ -7,5 +7,6 @@ export * from './database';
 export * from './design';
 export * from './enums';
 export * from './mobile';
+export * from './notifications';
 export * from './location';
 export * from './payment';

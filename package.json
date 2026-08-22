@@ -5,7 +5,7 @@
   "description": "Technical foundation for cutG, a barber operations and client booking platform.",
   "packageManager": "pnpm@10.26.0",
   "engines": {
-    "node": ">=20.9.0",
+    "node": ">=22.13.0",
     "pnpm": ">=9.0.0"
   },
   "scripts": {
@@ -49,5 +49,11 @@
     "prettier": "^3.3.3",
     "typescript": "^5.5.4",
     "wrangler": "^4.114.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.2.17",
+      "@types/react-dom": "19.2.3"
+    }
   }
 }

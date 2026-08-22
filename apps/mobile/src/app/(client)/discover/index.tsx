@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useBarberSearch } from '@/hooks/useBarbers';
 import { listFromResponse } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
+import { mobileFeatures } from '@/lib/features';
 
 const categories = ['haircut', 'beard', 'shave', 'combo', 'kids'];
 
@@ -39,14 +40,16 @@ export default function DiscoverScreen(): React.ReactElement {
               onPress={() => router.push('/(client)/discover/search')}
             />
           </View>
-          <View style={styles.heroAction}>
-            <Button
-              icon={<Ionicons color={colors.textSecondary} name="sparkles-outline" size={17} />}
-              title="Design a look"
-              variant="secondary"
-              onPress={() => router.push('/(client)/design')}
-            />
-          </View>
+          {mobileFeatures.hairStudio ? (
+            <View style={styles.heroAction}>
+              <Button
+                icon={<Ionicons color={colors.textSecondary} name="sparkles-outline" size={17} />}
+                title="Design a look"
+                variant="secondary"
+                onPress={() => router.push('/(client)/design')}
+              />
+            </View>
+          ) : null}
         </View>
       </View>
       <ScrollView

@@ -1,0 +1,22 @@
+appId: com.cutg.mobile
+name: Customer sign-in and discovery
+env:
+  CUSTOMER_EMAIL: ${CUSTOMER_EMAIL}
+  CUSTOMER_PASSWORD: ${CUSTOMER_PASSWORD}
+---
+- clearState
+- launchApp
+- tapOn: 'Find your barber'
+- tapOn: 'Sign in'
+- tapOn: 'Email'
+- inputText: ${CUSTOMER_EMAIL}
+- tapOn: 'Password'
+- inputText: ${CUSTOMER_PASSWORD}
+- tapOn: 'Sign in'
+- assertVisible: 'Find your next great barber.'
+- assertVisible: 'Search barbers'
+- tapOn: 'Search barbers'
+- assertVisible: 'Find your barber'
+- assertVisible: 'Use my current location'
+- assertVisible: 'Category'
+- assertVisible: 'Maximum price'

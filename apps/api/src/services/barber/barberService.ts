@@ -594,7 +594,7 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
   );
   values.push(filters.limit, (filters.page - 1) * filters.limit);
   const rows = await query<Row>(
-    `SELECT a.*,s.name AS service_name,u.first_name,u.last_name,u.phone,
+    `SELECT a.*,s.name AS service_name,u.first_name,u.last_name,u.phone,u.email,
       hd.id AS style_design_id,hd.style_name,hd.description AS style_description,
       hd.generated_preview_url,hd.generated_asset_key,hd.source_photo_url,hd.source_asset_key
      FROM appointments a JOIN services s ON s.id=a.service_id JOIN users u ON u.id=a.client_id
@@ -793,6 +793,7 @@ export const getAppointment = async (userId: string, appointmentId: string) => {
       firstName: row.first_name,
       lastName: row.last_name,
       phone: row.phone,
+      email: String(row.email),
     },
     isMobileService,
     serviceAddress: mobileLocation,
@@ -815,6 +816,32 @@ export const getAppointment = async (userId: string, appointmentId: string) => {
       isTracking: row.status === 'ON_THE_WAY',
       routeOrigin,
     },
+    timeline: (isMobileService
+      ? [
+          ['PENDING', 'Requested', row.created_at],
+          ['CONFIRMED', 'Confirmed', row.confirmed_at],
+          ['ON_THE_WAY', 'On the way', row.barber_departed_at],
+          ['ARRIVED', 'Arrived', row.barber_arrived_at],
+          ['IN_PROGRESS', 'Service in progress', null],
+          ['COMPLETED', 'Completed', row.completed_at],
+        ]
+      : [
+          ['PENDING', 'Requested', row.created_at],
+          ['CONFIRMED', 'Confirmed', row.confirmed_at],
+          ['IN_PROGRESS', 'Service in progress', null],
+          ['COMPLETED', 'Completed', row.completed_at],
+        ]
+    ).map(([status, label, at], index, entries) => {
+      const currentIndex = entries.findIndex(([entryStatus]) => entryStatus === row.status);
+      const terminal = row.status === 'CANCELLED' || row.status === 'NO_SHOW';
+      return {
+        status,
+        label,
+        at: at === null || at === undefined ? null : dateTime(at),
+        done: !terminal && currentIndex >= 0 && index < currentIndex,
+        current: status === row.status,
+      };
+    }),
   };
 };
 
@@ -886,13 +913,23 @@ export const updateAppointmentStatus = async (
       );
     }
     if (nextStatus === 'CANCELLED') await releaseTravelBufferSlots(appointmentId, client);
-    if (nextStatus === 'ON_THE_WAY' || nextStatus === 'ARRIVED') {
+    if (nextStatus === 'CONFIRMED' || nextStatus === 'ON_THE_WAY' || nextStatus === 'ARRIVED') {
       const message =
-        nextStatus === 'ON_THE_WAY' ? 'Your barber is on the way!' : 'Your barber has arrived!';
+        nextStatus === 'CONFIRMED'
+          ? 'Your appointment is confirmed!'
+          : nextStatus === 'ON_THE_WAY'
+            ? 'Your barber is on the way!'
+            : 'Your barber has arrived!';
+      const notificationType =
+        nextStatus === 'CONFIRMED'
+          ? 'APPOINTMENT_CONFIRMED'
+          : nextStatus === 'ON_THE_WAY'
+            ? 'JOURNEY_STARTED'
+            : 'BARBER_ARRIVED';
       await client.query(
         `INSERT INTO notifications (user_id,type,title,message,related_data)
-         VALUES ($1,'APPOINTMENT_REMINDER',$2::text,$2::text,$3::jsonb)`,
-        [appointment.client_id, message, JSON.stringify({ appointmentId })],
+         VALUES ($1,$2::notification_type_enum,$3::text,$3::text,$4::jsonb)`,
+        [appointment.client_id, notificationType, message, JSON.stringify({ appointmentId })],
       );
     }
     return {

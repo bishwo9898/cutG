@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Image, StyleSheet, Text } from 'react-native';
 
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -14,6 +14,7 @@ import { useBarberProfilePrivate } from '@/hooks/useBarberDashboard';
 import { mobileApi } from '@/lib/apiClient';
 import { errorMessage } from '@/lib/errors';
 import { useAuthStore } from '@/store/authStore';
+import { unregisterCurrentDevice } from '@/services/pushNotifications';
 import { colors, spacing, typography } from '@/theme';
 
 export default function BarberProfileScreen(): React.ReactElement {
@@ -28,7 +29,7 @@ export default function BarberProfileScreen(): React.ReactElement {
     try {
       if (businessName.length > 0 || bio.length > 0)
         await mobileApi.barber.updateProfile({ businessName, bio });
-      if (photoUrl.length > 0) await mobileApi.barber.updatePhoto(photoUrl);
+      if (photoUrl.length > 0) await mobileApi.barber.uploadPhoto(photoUrl);
       setMessage('Profile updated.');
       await profile.refetch();
     } catch (error) {
@@ -45,6 +46,7 @@ export default function BarberProfileScreen(): React.ReactElement {
   };
 
   const logout = async (): Promise<void> => {
+    await unregisterCurrentDevice();
     await mobileApi.auth.logout().catch(() => undefined);
     await clearAuth();
     router.replace('/(auth)/welcome');
@@ -81,12 +83,13 @@ export default function BarberProfileScreen(): React.ReactElement {
         multiline
         placeholder={profile.data?.bio ?? 'Tell customers about your shop'}
       />
-      <Input
-        label="Photo URL"
-        value={photoUrl}
-        onChangeText={setPhotoUrl}
-        placeholder="https://..."
-      />
+      {photoUrl.length > 0 ? (
+        <Image
+          accessibilityLabel="Selected profile photo"
+          source={{ uri: photoUrl }}
+          style={styles.preview}
+        />
+      ) : null}
       <Button
         title="Choose photo"
         variant="secondary"
@@ -129,4 +132,5 @@ const styles = StyleSheet.create({
     ...typography.h2,
     color: colors.textPrimary,
   },
+  preview: { borderRadius: 18, height: 180, width: '100%' },
 });

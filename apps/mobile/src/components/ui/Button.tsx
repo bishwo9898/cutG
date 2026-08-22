@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
 
 import { colors, spacing, typography } from '@/theme';
@@ -11,6 +12,7 @@ type ButtonProps = {
   variant?: ButtonVariant;
   disabled?: boolean;
   icon?: ReactNode;
+  loading?: boolean;
 };
 
 export const Button = ({
@@ -19,11 +21,16 @@ export const Button = ({
   variant = 'primary',
   disabled = false,
   icon,
+  loading = false,
 }: ButtonProps): React.ReactElement => (
   <Pressable
     accessibilityRole="button"
-    disabled={disabled}
-    onPress={onPress}
+    accessibilityState={{ busy: loading, disabled: disabled || loading }}
+    disabled={disabled || loading}
+    onPress={() => {
+      void Haptics.selectionAsync();
+      onPress?.();
+    }}
     style={({ pressed }) => [
       styles.base,
       styles[variant],
@@ -32,8 +39,23 @@ export const Button = ({
     ]}
   >
     <View style={styles.content}>
-      {icon}
-      <Text style={[styles.text, variant !== 'primary' && styles.secondaryText]}>{title}</Text>
+      {loading ? (
+        <ActivityIndicator
+          color={
+            variant === 'primary' || variant === 'danger' ? colors.textOnAccent : colors.textPrimary
+          }
+        />
+      ) : (
+        icon
+      )}
+      <Text
+        style={[
+          styles.text,
+          (variant === 'secondary' || variant === 'ghost') && styles.secondaryText,
+        ]}
+      >
+        {title}
+      </Text>
     </View>
   </Pressable>
 );

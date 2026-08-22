@@ -6,6 +6,7 @@ import { closeDatabase } from './config/database';
 import { env } from './config/env';
 import { maintainHairStudio } from './services/design/hairStudioService';
 import { isCloudinaryEnabled } from './services/storage/cloudinaryStorage';
+import { dispatchPendingPushNotifications } from './services/notification/notificationService';
 import { logger } from './utils/logger';
 
 if (env.CLOUDINARY_URL.length > 0 && !isCloudinaryEnabled()) {
@@ -32,6 +33,18 @@ maintenanceTimer.unref();
 void maintainHairStudio().catch((error: unknown) => {
   logger.error('Initial Hair Studio maintenance failed', error);
 });
+
+let notificationDispatchRunning = false;
+const dispatchNotifications = (): void => {
+  if (notificationDispatchRunning) return;
+  notificationDispatchRunning = true;
+  void dispatchPendingPushNotifications().finally(() => {
+    notificationDispatchRunning = false;
+  });
+};
+const notificationTimer = setInterval(dispatchNotifications, 15 * 1000);
+notificationTimer.unref();
+dispatchNotifications();
 
 server.on('error', (error: NodeJS.ErrnoException): void => {
   if (error.code === 'EADDRINUSE') {
@@ -76,6 +89,7 @@ const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
 
     await closeDatabase();
     clearInterval(maintenanceTimer);
+    clearInterval(notificationTimer);
     clearTimeout(forceExitTimer);
     logger.info('Graceful shutdown complete');
     process.exit(0);

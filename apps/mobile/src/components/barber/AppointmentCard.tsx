@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import type { AppointmentSummary } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
+import { humanLabel, money } from '@/lib/formatters';
 
 type AppointmentCardProps = {
   appointment: AppointmentSummary;
@@ -51,7 +52,7 @@ export const AppointmentCard = ({
           <View style={styles.body}>
             <View style={styles.titleRow}>
               <Text style={styles.title}>{name}</Text>
-              <Badge label={appointment.status} tone={statusTone(appointment.status)} />
+              <Badge label={humanLabel(appointment.status)} tone={statusTone(appointment.status)} />
             </View>
             <Text style={styles.meta}>{appointment.serviceName}</Text>
             {appointment.isMobileService === true ? (
@@ -66,10 +67,9 @@ export const AppointmentCard = ({
               {formatDate(appointment.scheduledDate)} at {appointment.startTime}
             </Text>
             <Text style={styles.price}>
-              {'$' +
-                (appointment.price + (appointment.travelFee ?? 0)).toFixed(2) +
+              {money(appointment.price + (appointment.travelFee ?? 0)) +
                 ' · ' +
-                appointment.paymentStatus}
+                humanLabel(appointment.paymentStatus)}
             </Text>
             {mode === 'barber' ? <Text style={styles.review}>Review booking →</Text> : null}
             {onPrimaryAction !== undefined ? (

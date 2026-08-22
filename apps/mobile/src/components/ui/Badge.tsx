@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '@/theme';
@@ -52,11 +53,33 @@ const toneColors = {
 
 export const Badge = ({ label, tone = 'default' }: BadgeProps): React.ReactElement => (
   <View
+    accessibilityLabel={label}
     style={[
       styles.badge,
       { backgroundColor: toneColors[tone].background, borderColor: toneColors[tone].border },
     ]}
   >
+    <Ionicons
+      color={toneColors[tone].text}
+      name={
+        tone === 'success'
+          ? 'checkmark-circle'
+          : tone === 'warning'
+            ? 'time'
+            : tone === 'error'
+              ? 'alert-circle'
+              : tone === 'info'
+                ? 'navigate-circle'
+                : tone === 'arrived'
+                  ? 'location'
+                  : tone === 'completed'
+                    ? 'checkmark-done-circle'
+                    : tone === 'gold'
+                      ? 'cut'
+                      : 'ellipse'
+      }
+      size={14}
+    />
     <Text style={[styles.text, { color: toneColors[tone].text }]}>{label}</Text>
   </View>
 );
@@ -74,9 +97,12 @@ export const statusTone = (status: string): BadgeProps['tone'] => {
 
 const styles = StyleSheet.create({
   badge: {
+    alignItems: 'center',
     alignSelf: 'flex-start',
     borderWidth: 1,
     borderRadius: 999,
+    flexDirection: 'row',
+    gap: spacing.xs,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },

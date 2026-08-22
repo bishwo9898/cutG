@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { mobileApi } from '@/lib/apiClient';
 import { errorMessage } from '@/lib/errors';
 import { useAuthStore } from '@/store/authStore';
+import { unregisterCurrentDevice } from '@/services/pushNotifications';
 import { colors, typography } from '@/theme';
 
 export default function ClientProfileScreen(): React.ReactElement {
@@ -35,6 +36,7 @@ export default function ClientProfileScreen(): React.ReactElement {
   };
 
   const logout = async (): Promise<void> => {
+    await unregisterCurrentDevice();
     await mobileApi.auth.logout().catch(() => undefined);
     await clearAuth();
     router.replace('/(auth)/welcome');

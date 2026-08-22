@@ -10,6 +10,7 @@ import { useBarberProfilePrivate, useBarberServicesPrivate } from '@/hooks/useBa
 import { useEarnings, useStripeStatus, useSubscription } from '@/hooks/usePayments';
 import { listFromResponse } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
+import { mobileFeatures } from '@/lib/features';
 
 type HubCardProps = {
   title: string;
@@ -28,13 +29,13 @@ const HubCard = ({ title, subtitle, onPress }: HubCardProps): React.ReactElement
 export default function BusinessHubScreen(): React.ReactElement {
   const profile = useBarberProfilePrivate();
   const services = useBarberServicesPrivate();
-  const earnings = useEarnings('month');
-  const subscription = useSubscription();
+  const earnings = useEarnings('month', mobileFeatures.earnings);
+  const subscription = useSubscription(mobileFeatures.subscriptions);
   const stripe = useStripeStatus();
 
   return (
     <Screen>
-      <ScreenHeader title="Business" subtitle="Services, earnings, billing, and payouts." />
+      <ScreenHeader title="Business" subtitle="Services, locations, and online payments." />
       <View style={styles.quickStats}>
         <Card style={styles.stat}>
           <Text style={styles.statValue}>{listFromResponse(services.data ?? {}).length}</Text>
@@ -46,13 +47,19 @@ export default function BusinessHubScreen(): React.ReactElement {
         </Card>
         <Card style={styles.stat}>
           <Text style={styles.statValue}>
-            {'$' + (earnings.data?.totalEarnings ?? 0).toFixed(0)}
+            {mobileFeatures.earnings
+              ? '$' + (earnings.data?.totalEarnings ?? 0).toFixed(0)
+              : stripe.data?.chargesEnabled === true
+                ? 'Ready'
+                : 'Setup'}
           </Text>
-          <Text style={styles.meta}>Month</Text>
+          <Text style={styles.meta}>{mobileFeatures.earnings ? 'Month' : 'Payments'}</Text>
         </Card>
       </View>
       <Badge
-        label={stripe.data?.chargesEnabled === true ? 'Online payments ready' : 'Payment setup needed'}
+        label={
+          stripe.data?.chargesEnabled === true ? 'Online payments ready' : 'Payment setup needed'
+        }
         tone={stripe.data?.chargesEnabled === true ? 'success' : 'warning'}
       />
       <HubCard
@@ -66,15 +73,24 @@ export default function BusinessHubScreen(): React.ReactElement {
         onPress={() => router.push('/(barber)/business/mobile-service')}
       />
       <HubCard
-        title="Earnings"
-        subtitle="Revenue, fees, and payout history."
-        onPress={() => router.push('/(barber)/business/earnings')}
+        title="Online payments"
+        subtitle="Choose whether customers can pay securely before their visit."
+        onPress={() => router.push('/(barber)/business/payments')}
       />
-      <HubCard
-        title="Subscription"
-        subtitle={'Current tier: ' + (subscription.data?.tier ?? 'FREE')}
-        onPress={() => router.push('/(barber)/business/subscription')}
-      />
+      {mobileFeatures.earnings ? (
+        <HubCard
+          title="Earnings"
+          subtitle="Revenue, fees, and payout history."
+          onPress={() => router.push('/(barber)/business/earnings')}
+        />
+      ) : null}
+      {mobileFeatures.subscriptions ? (
+        <HubCard
+          title="Subscription"
+          subtitle={'Current tier: ' + (subscription.data?.tier ?? 'FREE')}
+          onPress={() => router.push('/(barber)/business/subscription')}
+        />
+      ) : null}
     </Screen>
   );
 }

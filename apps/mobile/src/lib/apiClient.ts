@@ -5,11 +5,13 @@ import {
   barberDiscoveryApi,
   clientApi,
   mobileBarberApi,
+  notificationApi,
   paymentApi,
 } from '@barber-saas/api-client';
 import type {
   BookAppointmentRequest,
   BarberAppointmentDetail,
+  BarberPaymentPreferences,
   CreateBarberProfileRequest,
   CreateReviewRequest,
   CreateServiceRequest,
@@ -31,6 +33,9 @@ import type {
   MarketplaceSearchRequest,
   TravelEstimateRequest,
   UpdateAddressRequest,
+  NotificationPage,
+  RegisterPushDeviceRequest,
+  ScheduleEntry,
 } from '@barber-saas/shared-types';
 import ExpoConstants from 'expo-constants';
 import { Platform } from 'react-native';
@@ -138,11 +143,25 @@ export const mobileApi = {
     resetPassword: (body: ResetPasswordRequest): Promise<{ message: string }> =>
       publicClient.post('/auth/reset-password', body),
   },
+  notifications: {
+    list: (params?: { cursor?: string; limit?: number }): Promise<NotificationPage> =>
+      withAuth((client) => notificationApi.list(client, params)),
+    registerDevice: (body: RegisterPushDeviceRequest): Promise<{ registered: true }> =>
+      withAuth((client) => notificationApi.registerDevice(client, body)),
+    unregisterDevice: (installationId: string): Promise<{ unregistered: boolean }> =>
+      withAuth((client) => notificationApi.unregisterDevice(client, installationId)),
+    markRead: (notificationId: string): Promise<{ read: true }> =>
+      withAuth((client) => notificationApi.markRead(client, notificationId)),
+    markAllRead: (): Promise<{ readCount: number }> =>
+      withAuth((client) => notificationApi.markAllRead(client)),
+  },
   discovery: {
     search: (
       params?: Record<string, string | number | boolean | undefined>,
     ): Promise<Paginated<PublicBarber>> => barberDiscoveryApi.search(publicClient, params),
-    marketplaceSearch: (body: MarketplaceSearchRequest): Promise<Paginated<MarketplaceBarberResult>> =>
+    marketplaceSearch: (
+      body: MarketplaceSearchRequest,
+    ): Promise<Paginated<MarketplaceBarberResult>> =>
       withAuth((client) => barberDiscoveryApi.marketplaceSearch(client, body)),
     profile: (barberId: string): Promise<BarberProfile> =>
       barberDiscoveryApi.getProfile(publicClient, barberId),
@@ -245,6 +264,13 @@ export const mobileApi = {
       withAuth((client) => client.patch('/barbers/me/profile', body)),
     updatePhoto: (photoUrl: string): Promise<BarberProfile> =>
       withAuth((client) => client.post('/barbers/me/photo', { photoUrl })),
+    uploadPhoto: async (localUri: string): Promise<{ profilePhotoUrl: string }> => {
+      const image = await fetch(localUri);
+      const blob = await image.blob();
+      return withAuth((client) =>
+        client.postRaw('/barbers/me/portfolio/photo', blob, blob.type || 'image/jpeg'),
+      );
+    },
     searchShopLocations: (body: ShopLocationSearchRequest): Promise<ShopLocationSearchResult> =>
       withAuth((client) => mobileBarberApi.searchShopLocations(client, body)),
     reverseGeocodeShopLocation: (
@@ -261,10 +287,22 @@ export const mobileApi = {
       withAuth((client) => client.patch('/barbers/me/services/' + serviceId, body)),
     deleteService: (serviceId: string): Promise<{ deleted: boolean }> =>
       withAuth((client) => client.delete('/barbers/me/services/' + serviceId)),
-    schedule: (): Promise<{ schedule: unknown[] }> =>
+    schedule: (): Promise<{ schedule: ScheduleEntry[] }> =>
       withAuth((client) => client.get('/barbers/me/schedule')),
-    updateSchedule: (schedule: unknown[]): Promise<{ schedule: unknown[] }> =>
+    updateSchedule: (schedule: ScheduleEntry[]): Promise<{ schedule: ScheduleEntry[] }> =>
       withAuth((client) => client.put('/barbers/me/schedule', { schedule })),
+    generateSlots: (
+      startDate: string,
+      endDate: string,
+    ): Promise<{ generated: number; skipped: number }> =>
+      withAuth((client) => client.post('/barbers/me/slots/generate', { startDate, endDate })),
+    blockedDates: (): Promise<{
+      blockedDates: Array<{ id: string; date: string; reason: string | null }>;
+    }> => withAuth((client) => client.get('/barbers/me/blocked-dates')),
+    blockDate: (date: string, reason?: string): Promise<{ date: string }> =>
+      withAuth((client) => client.post('/barbers/me/blocked-dates', { date, reason })),
+    unblockDate: (date: string): Promise<{ date: string }> =>
+      withAuth((client) => client.delete(`/barbers/me/blocked-dates/${date}`)),
     slots: (
       params?: Record<string, string | number | boolean | undefined>,
     ): Promise<Paginated<AvailabilitySlot>> =>
@@ -286,6 +324,12 @@ export const mobileApi = {
       withAuth((client) => barberBillingApi.stripeStatus(client)),
     connectStripe: (): Promise<StripeConnectStatus> =>
       withAuth((client) => barberBillingApi.connectStripe(client)),
+    paymentPreferences: (): Promise<BarberPaymentPreferences> =>
+      withAuth((client) => barberBillingApi.paymentPreferences(client)),
+    updatePaymentPreferences: (onlinePaymentsEnabled: boolean): Promise<BarberPaymentPreferences> =>
+      withAuth((client) =>
+        barberBillingApi.updatePaymentPreferences(client, onlinePaymentsEnabled),
+      ),
     earnings: (period?: string): Promise<EarningsSummary> =>
       withAuth((client) => barberBillingApi.earnings(client, { period })),
     subscription: (): Promise<SubscriptionSummary> =>

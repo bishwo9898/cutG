@@ -93,7 +93,7 @@ const updatePaymentSucceeded = async (object: Record<string, unknown>) =>
     );
     await trx.query(
       `INSERT INTO notifications (user_id,type,title,message,related_data)
-       VALUES ($1,'SYSTEM','Payment confirmed','Your appointment payment was confirmed.',$2::jsonb)`,
+       VALUES ($1,'PAYMENT_SUCCEEDED','Payment confirmed','Your appointment payment was confirmed.',$2::jsonb)`,
       [
         payment.client_id,
         JSON.stringify({ appointmentId: payment.appointment_id, paymentIntentId: intentId }),
@@ -102,7 +102,7 @@ const updatePaymentSucceeded = async (object: Record<string, unknown>) =>
     if (barberRows[0]?.user_id !== undefined) {
       await trx.query(
         `INSERT INTO notifications (user_id,type,title,message,related_data)
-         VALUES ($1,'SYSTEM','Paid booking','A client payment was confirmed.',$2::jsonb)`,
+         VALUES ($1,'PAYMENT_SUCCEEDED','Paid booking','A customer payment was confirmed.',$2::jsonb)`,
         [
           barberRows[0].user_id,
           JSON.stringify({ appointmentId: payment.appointment_id, paymentIntentId: intentId }),
@@ -133,7 +133,7 @@ const updatePaymentFailed = async (object: Record<string, unknown>) =>
     ]);
     await trx.query(
       `INSERT INTO notifications (user_id,type,title,message,related_data)
-       VALUES ($1,'SYSTEM','Payment failed','Your card payment failed. Please try again.',$2::jsonb)`,
+       VALUES ($1,'PAYMENT_FAILED','Payment failed','Your card payment failed. Please try again.',$2::jsonb)`,
       [payment.client_id, JSON.stringify({ appointmentId: payment.appointment_id })],
     );
   });

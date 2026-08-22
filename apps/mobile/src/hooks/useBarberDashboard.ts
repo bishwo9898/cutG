@@ -14,6 +14,7 @@ import type {
   Paginated,
 } from '@/lib/types';
 import type { BarberAppointmentDetail } from '@barber-saas/shared-types';
+import type { ScheduleEntry } from '@barber-saas/shared-types';
 
 export const todayDate = (): string => format(new Date(), 'yyyy-MM-dd');
 
@@ -48,6 +49,26 @@ export const useBarberSlotsPrivate = (
     queryKey: ['barber', 'slots', filters],
     queryFn: () => mobileApi.barber.slots(filters),
     staleTime: 30_000,
+  });
+
+export const useBarberSchedule = () =>
+  useQuery({ queryKey: ['barber', 'schedule'], queryFn: mobileApi.barber.schedule });
+
+export const useUpdateBarberSchedule = () =>
+  useMutation({
+    mutationFn: (schedule: ScheduleEntry[]) => mobileApi.barber.updateSchedule(schedule),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['barber', 'schedule'] });
+    },
+  });
+
+export const useBlockBarberDate = () =>
+  useMutation({
+    mutationFn: ({ date, reason }: { date: string; reason?: string }) =>
+      mobileApi.barber.blockDate(date, reason),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['barber', 'slots'] });
+    },
   });
 
 export const useBarberProfilePrivate = (): UseQueryResult<BarberProfile> =>

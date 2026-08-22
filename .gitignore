@@ -6,6 +6,7 @@ coverage/
 .next/
 build/
 apps/mobile/.expo/
+.expo/
 services/ai/.venv/
 services/ai/models/*.tflite
 .mypy_cache/

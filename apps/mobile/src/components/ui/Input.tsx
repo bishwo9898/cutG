@@ -19,11 +19,16 @@ export const Input = ({
   <View style={styles.wrap}>
     <Text style={styles.label}>{label}</Text>
     <TextInput
+      accessibilityLabel={props.accessibilityLabel ?? label}
       placeholderTextColor={colors.textMuted}
       style={[styles.input, error !== undefined && styles.errorBorder, style]}
       {...props}
     />
-    {error !== undefined ? <Text style={styles.error}>{error}</Text> : null}
+    {error !== undefined ? (
+      <Text accessibilityLiveRegion="polite" role="alert" style={styles.error}>
+        {error}
+      </Text>
+    ) : null}
     {error === undefined && helperText !== undefined ? (
       <Text style={styles.helper}>{helperText}</Text>
     ) : null}
