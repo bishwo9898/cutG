@@ -1,7 +1,7 @@
-import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
 import type { AuthUser } from '@/lib/types';
+import * as SecureStore from '@/lib/secureStorage';
 import { stopBackgroundLocationTracking } from '@/services/locationTrackingStorage';
 
 const ACCESS_TOKEN_KEY = 'cutg.accessToken';

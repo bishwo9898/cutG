@@ -41,6 +41,7 @@ const HeaderContent = ({
     <View style={styles.wrap}>
       {showBack ? (
         <Pressable
+          accessibilityLabel="Go back"
           accessibilityRole="button"
           onPress={() => router.back()}
           style={styles.backButton}

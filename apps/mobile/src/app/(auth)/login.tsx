@@ -14,8 +14,8 @@ import { useAuthStore } from '@/store/authStore';
 import { colors, typography } from '@/theme';
 
 const LoginFormSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z.string().email('Enter a valid email address.'),
+  password: z.string().min(1, 'Password is required.'),
 });
 
 type LoginForm = z.infer<typeof LoginFormSchema>;

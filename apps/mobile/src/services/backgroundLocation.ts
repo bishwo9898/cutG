@@ -1,10 +1,10 @@
 import { ApiError } from '@barber-saas/api-client';
 import type { LocationPingRequest, StartJourneyResponse } from '@barber-saas/shared-types';
 import * as Location from 'expo-location';
-import * as SecureStore from 'expo-secure-store';
 import * as TaskManager from 'expo-task-manager';
 
 import { mobileApi } from '@/lib/apiClient';
+import * as SecureStore from '@/lib/secureStorage';
 import { useAuthStore } from '@/store/authStore';
 import {
   ACTIVE_APPOINTMENT_KEY,

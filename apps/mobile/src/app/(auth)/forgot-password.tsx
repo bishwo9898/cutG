@@ -20,7 +20,7 @@ export default function ForgotPasswordScreen(): React.ReactElement {
     try {
       await mobileApi.auth.forgotPassword(email);
       setSent(true);
-      setMessage('Reset code sent if the email exists. Check API logs locally.');
+      setMessage('If an account exists for this email, a reset code is on its way.');
     } catch (error) {
       setMessage(errorMessage(error));
     }
@@ -40,7 +40,7 @@ export default function ForgotPasswordScreen(): React.ReactElement {
       <ScreenHeader
         showBack
         title="Reset password"
-        subtitle="Use the development reset code from API logs."
+        subtitle="We’ll email you a secure code to choose a new password."
       />
       <Input
         autoCapitalize="none"
@@ -72,7 +72,7 @@ export default function ForgotPasswordScreen(): React.ReactElement {
         </>
       ) : (
         <Button
-          title="Send Reset Code"
+          title="Send reset code"
           onPress={() => {
             void sendCode();
           }}

@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
-import * as SecureStore from 'expo-secure-store';
+
+import * as SecureStore from '@/lib/secureStorage';
 
 export const LOCATION_TASK = 'cutg-barber-journey-location';
 export const ACTIVE_APPOINTMENT_KEY = 'cutg.activeJourneyAppointment';

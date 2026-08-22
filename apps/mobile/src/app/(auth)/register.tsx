@@ -14,11 +14,11 @@ import { colors, typography } from '@/theme';
 
 const RegisterFormSchema = z
   .object({
-    confirmPassword: z.string().min(12),
-    email: z.string().email(),
-    firstName: z.string().min(1),
-    lastName: z.string().min(1),
-    password: z.string().min(12),
+    confirmPassword: z.string().min(12, 'Please confirm your 12-character password.'),
+    email: z.string().email('Enter a valid email address.'),
+    firstName: z.string().min(1, 'First name is required.'),
+    lastName: z.string().min(1, 'Last name is required.'),
+    password: z.string().min(12, 'Password must contain at least 12 characters.'),
   })
   .refine((value) => value.password === value.confirmPassword, {
     message: 'Passwords must match.',
@@ -26,6 +26,14 @@ const RegisterFormSchema = z
   });
 
 type RegisterForm = z.infer<typeof RegisterFormSchema>;
+
+const fieldLabels: Record<keyof RegisterForm, string> = {
+  confirmPassword: 'Confirm password',
+  email: 'Email',
+  firstName: 'First name',
+  lastName: 'Last name',
+  password: 'Password',
+};
 
 export default function RegisterScreen(): React.ReactElement {
   const params = useLocalSearchParams<{ role?: string }>();
@@ -68,9 +76,7 @@ export default function RegisterScreen(): React.ReactElement {
             <Input
               autoCapitalize={name === 'email' ? 'none' : 'words'}
               keyboardType={name === 'email' ? 'email-address' : 'default'}
-              label={
-                name === 'confirmPassword' ? 'Confirm password' : name.replace(/([A-Z])/g, ' $1')
-              }
+              label={fieldLabels[name]}
               onBlur={field.onBlur}
               onChangeText={field.onChange}
               secureTextEntry={name.includes('password') || name.includes('Password')}
@@ -85,7 +91,7 @@ export default function RegisterScreen(): React.ReactElement {
       ) : null}
       <Button
         disabled={formState.isSubmitting}
-        title="Create Account"
+        title="Create account"
         onPress={handleSubmit(onSubmit)}
       />
     </Screen>

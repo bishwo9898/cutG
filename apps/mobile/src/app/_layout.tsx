@@ -1,14 +1,15 @@
 import 'react-native-gesture-handler';
 
-import { StripeProvider } from '@stripe/stripe-react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { queryClient } from '@/lib/queryClient';
+import { PaymentProvider } from '@/components/payments/PaymentProvider';
 import { reconcileBackgroundLocation } from '@/services/backgroundLocation';
 import {
   listenForNotificationResponses,
@@ -17,14 +18,14 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { colors } from '@/theme';
 
-const publishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
-
 export default function RootLayout(): React.ReactElement {
   const loadStoredAuth = useAuthStore((state) => state.loadStoredAuth);
   const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
-    void loadStoredAuth().then(() => reconcileBackgroundLocation());
+    void loadStoredAuth().then(() => {
+      if (Platform.OS !== 'web') return reconcileBackgroundLocation();
+    });
   }, [loadStoredAuth]);
 
   useEffect(() => listenForNotificationResponses(() => useAuthStore.getState().user), []);
@@ -37,11 +38,7 @@ export default function RootLayout(): React.ReactElement {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        <StripeProvider
-          publishableKey={publishableKey}
-          urlScheme="cutg"
-          merchantIdentifier="merchant.com.cutg.mobile"
-        >
+        <PaymentProvider>
           <QueryClientProvider client={queryClient}>
             <Stack
               screenOptions={{
@@ -50,7 +47,7 @@ export default function RootLayout(): React.ReactElement {
               }}
             />
           </QueryClientProvider>
-        </StripeProvider>
+        </PaymentProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

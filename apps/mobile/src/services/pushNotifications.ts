@@ -2,24 +2,27 @@ import * as Crypto from 'expo-crypto';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { Alert, Platform } from 'react-native';
 
 import { mobileApi } from '@/lib/apiClient';
 import { notificationDestination } from '@/lib/notificationNavigation';
+import * as SecureStore from '@/lib/secureStorage';
 import type { AuthUser } from '@/lib/types';
 
 const INSTALLATION_KEY = 'cutg.pushInstallationId';
 const PROMPTED_KEY = 'cutg.pushPermissionPrompted';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: () =>
+      Promise.resolve({
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+  });
+}
 
 const installationId = async (): Promise<string> => {
   const existing = await SecureStore.getItemAsync(INSTALLATION_KEY);
@@ -35,10 +38,10 @@ const explainNotifications = (): Promise<boolean> =>
       'Stay up to date',
       'Allow cutG to alert you about bookings, journey progress, arrivals, cancellations, and payments.',
       [
-        { text: 'Not now', style: 'cancel', onPress: () => resolve(false) },
-        { text: 'Allow alerts', onPress: () => resolve(true) },
+        { text: 'Not now', style: 'cancel', onPress: (): void => resolve(false) },
+        { text: 'Allow alerts', onPress: (): void => resolve(true) },
       ],
-      { cancelable: true, onDismiss: () => resolve(false) },
+      { cancelable: true, onDismiss: (): void => resolve(false) },
     );
   });
 
@@ -84,6 +87,7 @@ const openNotification = (data: Record<string, unknown>, user: AuthUser | null):
 };
 
 export const listenForNotificationResponses = (getUser: () => AuthUser | null): (() => void) => {
+  if (Platform.OS === 'web') return () => undefined;
   const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
     openNotification(response.notification.request.content.data ?? {}, getUser());
   });

@@ -1,4 +1,3 @@
-import { CardField, useStripe } from '@stripe/stripe-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
@@ -7,6 +6,7 @@ import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { CardPaymentField, useConfirmCardPayment } from '@/components/payments/CardPaymentField';
 import { useCreatePaymentIntent } from '@/hooks/usePayments';
 import { errorMessage } from '@/lib/errors';
 import { colors, spacing, typography } from '@/theme';
@@ -16,7 +16,7 @@ export default function PaymentScreen(): React.ReactElement {
     appointmentId?: string;
     total?: string;
   }>();
-  const { confirmPayment } = useStripe();
+  const confirmPayment = useConfirmCardPayment();
   const createIntent = useCreatePaymentIntent();
   const [cardComplete, setCardComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,9 +25,9 @@ export default function PaymentScreen(): React.ReactElement {
     setError(null);
     try {
       const intent = await createIntent.mutateAsync(appointmentId);
-      const result = await confirmPayment(intent.clientSecret, { paymentMethodType: 'Card' });
-      if (result.error !== undefined) {
-        setError(result.error.message ?? 'Payment failed. Please try again.');
+      const paymentError = await confirmPayment(intent.clientSecret);
+      if (paymentError !== null) {
+        setError(paymentError);
         return;
       }
       router.replace('/(client)/appointments/' + appointmentId + '?paymentSuccess=true');
@@ -46,17 +46,7 @@ export default function PaymentScreen(): React.ReactElement {
           Your payment status will update automatically after confirmation.
         </Text>
       </Card>
-      <CardField
-        cardStyle={{
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          borderRadius: 8,
-          textColor: colors.textPrimary,
-        }}
-        postalCodeEnabled={false}
-        style={styles.cardContainer}
-        onCardChange={(details: { complete: boolean }) => setCardComplete(details.complete)}
-      />
+      <CardPaymentField onComplete={setCardComplete} />
       {error !== null ? <Text style={styles.error}>{error}</Text> : null}
       <Button
         disabled={!cardComplete || createIntent.isPending}
@@ -75,12 +65,6 @@ export default function PaymentScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    height: 52,
-    padding: spacing.sm,
-  },
   amount: {
     ...typography.h2,
     color: colors.gold,
