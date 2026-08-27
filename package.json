@@ -54,6 +54,13 @@
     "overrides": {
       "@types/react": "19.2.17",
       "@types/react-dom": "19.2.3"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@clerk/shared",
+      "browser-tabs-lock",
+      "bufferutil",
+      "core-js",
+      "utf-8-validate"
+    ]
   }
 }

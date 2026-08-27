@@ -161,6 +161,7 @@ export default function LandingPage(): React.ReactElement {
                 <div className="landing-cinematic-map-aura landing-cinematic-map-aura-right" />
                 <div className="landing-cinematic-map-grid" />
                 <div className="landing-cinematic-map-path" />
+                <span className="landing-cinematic-map-route-dot" />
                 <div className="landing-cinematic-map-stop landing-cinematic-map-stop-origin">
                   <span className="landing-cinematic-map-stop-icon">
                     <Scissors size={15} />
