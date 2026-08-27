@@ -58,6 +58,12 @@
   "ignorePatterns": ["dist/", "node_modules/", "*.js", "apps/web/next-env.d.ts"],
   "overrides": [
     {
+      "files": ["apps/web/src/**/*.{ts,tsx}"],
+      "parserOptions": {
+        "project": ["./apps/web/tsconfig.json"]
+      }
+    },
+    {
       "files": ["apps/mobile/**/*.{ts,tsx}"],
       "rules": {
         "@typescript-eslint/no-redundant-type-constituents": "off",

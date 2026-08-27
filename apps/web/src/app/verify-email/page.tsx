@@ -1,56 +1,81 @@
 'use client';
 
-import { VerifyEmailRequestSchema, type VerifyEmailRequest } from '@barber-saas/shared-types';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useSignUp } from '@clerk/nextjs/legacy';
 import { MailCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
-import { useForm } from 'react-hook-form';
 
 import { AuthShell } from '@/components/auth-shell';
 import { Notice } from '@/components/notice';
+import { clerkErrorMessage } from '@/lib/clerk-error-message';
 
 function VerifyEmailForm(): React.ReactElement {
   const searchParams = useSearchParams();
   const email = searchParams.get('email') ?? '';
-  const role = searchParams.get('role') === 'barber' ? 'barber' : 'client';
+  const role = searchParams.get('role') === 'barber' ? 'BARBER' : 'CLIENT';
   const next = searchParams.get('next');
+  const { isLoaded, signUp, setActive } = useSignUp();
+  const [code, setCode] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<VerifyEmailRequest>({
-    resolver: zodResolver(VerifyEmailRequestSchema),
-    defaultValues: { email },
-  });
 
-  const submit = async (values: VerifyEmailRequest): Promise<void> => {
-    const response = await fetch('/api/backend/auth/verify-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(values),
-    });
-    const body = (await response.json()) as { message?: string };
-    setMessage({
-      tone: response.ok ? 'success' : 'error',
-      text: response.ok
-        ? 'Email verified. You can sign in now.'
-        : (body.message ?? 'Verification failed.'),
-    });
+  const submit = async (event: React.FormEvent): Promise<void> => {
+    event.preventDefault();
+    if (!isLoaded) {
+      return;
+    }
+    setMessage(null);
+    setIsSubmitting(true);
+    try {
+      const result = await signUp.attemptEmailAddressVerification({ code });
+
+      if (result.status !== 'complete' || result.createdSessionId === null) {
+        setMessage({ tone: 'error', text: 'That code did not work. Please try again.' });
+        return;
+      }
+
+      await setActive({ session: result.createdSessionId });
+
+      const syncResponse = await fetch('/api/auth/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userType: role }),
+      });
+
+      if (!syncResponse.ok) {
+        setMessage({
+          tone: 'error',
+          text: 'Email verified, but we could not finish setting up your account. Try signing in.',
+        });
+        return;
+      }
+
+      const portalPrefix = role === 'BARBER' ? '/barber' : '/client';
+      const destination =
+        next?.startsWith(portalPrefix) === true
+          ? next
+          : role === 'BARBER'
+            ? '/barber/dashboard'
+            : '/client';
+      window.location.assign(destination);
+    } catch (error) {
+      setMessage({ tone: 'error', text: clerkErrorMessage(error, 'Verification failed.') });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resend = async (): Promise<void> => {
-    const response = await fetch('/api/backend/auth/resend-verification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-    setMessage({
-      tone: response.ok ? 'success' : 'error',
-      text: response.ok ? 'A fresh code is on its way.' : 'We could not resend the code.',
-    });
+    if (!isLoaded) {
+      return;
+    }
+    try {
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      setMessage({ tone: 'success', text: 'A fresh code is on its way.' });
+    } catch {
+      setMessage({ tone: 'error', text: 'We could not resend the code.' });
+    }
   };
 
   return (
@@ -58,16 +83,11 @@ function VerifyEmailForm(): React.ReactElement {
       <div className="auth-form">
         <span className="eyebrow">One quick check</span>
         <h1>Verify your email</h1>
-        <p className="subtitle">Enter the six-digit code sent to your email address.</p>
-        <form className="form-stack" onSubmit={handleSubmit(submit)}>
+        <p className="subtitle">
+          Enter the six-digit code sent to {email !== '' ? email : 'your email address'}.
+        </p>
+        <form className="form-stack" onSubmit={(event) => void submit(event)}>
           {message !== null && <Notice tone={message.tone}>{message.text}</Notice>}
-          <div className="field">
-            <label htmlFor="email">Email address</label>
-            <input id="email" className="input" type="email" {...register('email')} />
-            {errors.email?.message !== undefined && (
-              <span className="field-error">{errors.email.message}</span>
-            )}
-          </div>
           <div className="field">
             <label htmlFor="verificationCode">Verification code</label>
             <input
@@ -76,28 +96,26 @@ function VerifyEmailForm(): React.ReactElement {
               inputMode="numeric"
               maxLength={6}
               autoComplete="one-time-code"
-              {...register('verificationCode')}
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
             />
-            {errors.verificationCode?.message !== undefined && (
-              <span className="field-error">{errors.verificationCode.message}</span>
-            )}
           </div>
           <button
             className="button button-primary button-full"
-            disabled={isSubmitting}
+            disabled={isSubmitting || code.length === 0}
             type="submit"
           >
             <MailCheck size={17} />
             {isSubmitting ? 'Verifying...' : 'Verify email'}
           </button>
-          <button className="button button-ghost" onClick={resend} type="button">
+          <button className="button button-ghost" onClick={() => void resend()} type="button">
             Send a new code
           </button>
         </form>
         <p className="auth-footer">
           <Link
             className="text-link"
-            href={`/${role}/login${next === null ? '' : `?next=${encodeURIComponent(next)}`}`}
+            href={`/${role === 'BARBER' ? 'barber' : 'client'}/login${next === null ? '' : `?next=${encodeURIComponent(next)}`}`}
           >
             Return to sign in
           </Link>

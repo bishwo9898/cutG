@@ -1,3 +1,4 @@
+import { useClerk } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
@@ -10,12 +11,13 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { mobileApi } from '@/lib/apiClient';
 import { errorMessage } from '@/lib/errors';
-import { useAuthStore } from '@/store/authStore';
 import { unregisterCurrentDevice } from '@/services/pushNotifications';
+import { useAuthStore } from '@/store/authStore';
 import { colors, typography } from '@/theme';
 
 export default function ClientProfileScreen(): React.ReactElement {
   const { user, clearAuth, updateUser } = useAuthStore();
+  const { signOut } = useClerk();
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
   const [lastName, setLastName] = useState(user?.lastName ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
@@ -28,7 +30,7 @@ export default function ClientProfileScreen(): React.ReactElement {
         lastName,
         phone: phone.length > 0 ? phone : null,
       });
-      await updateUser(updated);
+      updateUser(updated);
       setMessage('Profile updated.');
     } catch (error) {
       setMessage(errorMessage(error));
@@ -37,8 +39,8 @@ export default function ClientProfileScreen(): React.ReactElement {
 
   const logout = async (): Promise<void> => {
     await unregisterCurrentDevice();
-    await mobileApi.auth.logout().catch(() => undefined);
     await clearAuth();
+    await signOut();
     router.replace('/(auth)/welcome');
   };
 

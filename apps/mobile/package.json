@@ -17,6 +17,7 @@
     "@barber-saas/api-client": "workspace:*",
     "@barber-saas/shared-types": "workspace:*",
     "@barber-saas/shared-utils": "workspace:*",
+    "@clerk/clerk-expo": "^2.20.0",
     "@expo/metro-runtime": "~57.0.12",
     "@expo/vector-icons": "^15.1.1",
     "@hookform/resolvers": "^5.2.2",

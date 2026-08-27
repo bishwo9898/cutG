@@ -12,7 +12,6 @@ import {
 let barberToken = '';
 let clientToken = '';
 let barberId = '';
-type LoginBody = { accessToken: string };
 type ProfileBody = { id: string; businessName: string };
 type GenerateBody = { generated: number };
 type ServiceBody = { id: string; imageUrl: string | null };
@@ -31,16 +30,10 @@ beforeAll(async () => {
   await resetTestDatabase();
   const barber = await createVerifiedUser('BARBER', 'barber.integration@example.com');
   await createBarberProfileFixture(barber.id);
-  await createVerifiedUser('CLIENT', 'client.integration@example.com');
+  const client = await createVerifiedUser('CLIENT', 'client.integration@example.com');
 
-  const barberLogin = await request(app)
-    .post('/auth/login')
-    .send({ email: 'barber.integration@example.com', password: 'strong-password-123' });
-  const clientLogin = await request(app)
-    .post('/auth/login')
-    .send({ email: 'client.integration@example.com', password: 'strong-password-123' });
-  barberToken = (barberLogin.body as LoginBody).accessToken;
-  clientToken = (clientLogin.body as LoginBody).accessToken;
+  barberToken = barber.clerkUserId;
+  clientToken = client.clerkUserId;
 });
 
 afterAll(async () => closeDatabase());

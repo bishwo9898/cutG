@@ -1,3 +1,4 @@
+import { getClerkInstance, useSignIn } from '@clerk/clerk-expo';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
@@ -8,9 +9,7 @@ import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { authErrorMessage } from '@/lib/errors';
-import { mobileApi } from '@/lib/apiClient';
-import { useAuthStore } from '@/store/authStore';
+import { clerkErrorMessage } from '@/lib/clerkErrorMessage';
 import { colors, typography } from '@/theme';
 
 const LoginFormSchema = z.object({
@@ -23,7 +22,7 @@ type LoginForm = z.infer<typeof LoginFormSchema>;
 export default function LoginScreen(): React.ReactElement {
   const params = useLocalSearchParams<{ role?: string }>();
   const expectedRole = params.role === 'BARBER' ? 'BARBER' : 'CLIENT';
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const { isLoaded, signIn, setActive } = useSignIn();
   const { control, formState, handleSubmit, setError } = useForm<LoginForm>({
     defaultValues: {
       email: '',
@@ -33,9 +32,25 @@ export default function LoginScreen(): React.ReactElement {
   });
 
   const onSubmit = async (values: LoginForm): Promise<void> => {
+    if (!isLoaded) {
+      return;
+    }
     try {
-      const response = await mobileApi.auth.login(values);
-      if (response.user.userType !== expectedRole) {
+      const result = await signIn.create({
+        identifier: values.email,
+        password: values.password,
+      });
+
+      if (result.status !== 'complete' || result.createdSessionId === null) {
+        setError('root', { message: 'Sign in could not be completed. Please try again.' });
+        return;
+      }
+
+      await setActive({ session: result.createdSessionId });
+
+      const userType = getClerkInstance().user?.publicMetadata?.userType;
+      if (userType !== undefined && userType !== expectedRole) {
+        await getClerkInstance().signOut();
         setError('root', {
           message:
             expectedRole === 'BARBER'
@@ -44,12 +59,10 @@ export default function LoginScreen(): React.ReactElement {
         });
         return;
       }
-      await setAuth(response.user, response.accessToken, response.refreshToken);
-      router.replace(
-        response.user.userType === 'BARBER' ? '/(barber)/today' : '/(client)/discover',
-      );
+
+      router.replace(expectedRole === 'BARBER' ? '/(barber)/today' : '/(client)/discover');
     } catch (error) {
-      setError('root', { message: authErrorMessage(error) });
+      setError('root', { message: clerkErrorMessage(error, 'Sign in failed. Please try again.') });
     }
   };
 

@@ -1,24 +1,10 @@
+import { getAuth } from '@clerk/express';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 
-import { findPublicUserById, isTokenBlacklisted } from '../db/queries/auth.queries';
-import { tokenExpiresAtFromPayload, verifyToken } from '../services/auth/tokenService';
+import { findUserByClerkId } from '../db/queries/auth.queries';
 import type { AuthenticatedRequest, AuthenticatedUser } from '../types/auth';
 
 import { AppError } from './errorHandler';
-
-const getBearerToken = (authorizationHeader: string | undefined): string | null => {
-  if (authorizationHeader === undefined) {
-    return null;
-  }
-
-  const [scheme, token] = authorizationHeader.split(' ');
-
-  if (scheme !== 'Bearer' || token === undefined || token.trim() === '') {
-    return null;
-  }
-
-  return token;
-};
 
 const authenticateRequest = async (
   request: Request,
@@ -26,23 +12,16 @@ const authenticateRequest = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const token = getBearerToken(request.header('authorization'));
+    const { userId } = getAuth(request);
 
-    if (token === null) {
-      throw new AppError(401, 'No valid token provided.', 'UNAUTHORIZED');
+    if (userId === null) {
+      throw new AppError(401, 'No valid session provided.', 'UNAUTHORIZED');
     }
 
-    const payload = verifyToken(token, 'access');
-    const isBlacklisted = await isTokenBlacklisted(payload.jti);
-
-    if (isBlacklisted) {
-      throw new AppError(401, 'No valid token provided.', 'UNAUTHORIZED');
-    }
-
-    const user = await findPublicUserById(payload.sub);
+    const user = await findUserByClerkId(userId);
 
     if (user === null || !user.is_active) {
-      throw new AppError(401, 'No valid token provided.', 'UNAUTHORIZED');
+      throw new AppError(401, 'No valid session provided.', 'UNAUTHORIZED');
     }
 
     const authenticatedUser: AuthenticatedUser = {
@@ -50,8 +29,6 @@ const authenticateRequest = async (
       email: user.email,
       userType: user.user_type,
       emailVerified: user.email_verified,
-      jti: payload.jti,
-      tokenExpiresAt: tokenExpiresAtFromPayload(payload),
     };
 
     (request as AuthenticatedRequest).auth = authenticatedUser;
@@ -69,12 +46,31 @@ export const requireAuth: RequestHandler = (
   void authenticateRequest(request, response, next).catch(next);
 };
 
+/**
+ * Verifies a Clerk session without requiring a local `users` row to already exist. Used only by
+ * `POST /auth/sync`, which is what creates that row for a brand-new Clerk sign-up.
+ */
+export const requireClerkSession: RequestHandler = (
+  request: Request,
+  _response: Response,
+  next: NextFunction,
+): void => {
+  const { userId } = getAuth(request);
+
+  if (userId === null) {
+    next(new AppError(401, 'No valid session provided.', 'UNAUTHORIZED'));
+    return;
+  }
+
+  next();
+};
+
 export const requireRoles = (...roles: AuthenticatedUser['userType'][]): RequestHandler => {
   return (request: Request, _response: Response, next: NextFunction): void => {
     const authenticatedRequest = request as Partial<AuthenticatedRequest>;
 
     if (authenticatedRequest.auth === undefined) {
-      next(new AppError(401, 'No valid token provided.', 'UNAUTHORIZED'));
+      next(new AppError(401, 'No valid session provided.', 'UNAUTHORIZED'));
       return;
     }
 

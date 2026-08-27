@@ -1,13 +1,5 @@
-import {
-  ForgotPasswordRequestSchema,
-  LoginRequestSchema,
-  RefreshTokenRequestSchema,
-  RegisterRequestSchema,
-  ResendVerificationRequestSchema,
-  ResetPasswordRequestSchema,
-  UpdateProfileRequestSchema,
-  VerifyEmailRequestSchema,
-} from '@barber-saas/shared-types';
+import { SyncRequestSchema, UpdateProfileRequestSchema } from '@barber-saas/shared-types';
+import { getAuth } from '@clerk/express';
 import {
   Router,
   type NextFunction,
@@ -17,20 +9,11 @@ import {
   type Router as ExpressRouter,
 } from 'express';
 
-import { requireAuth } from '../middleware/auth';
+import type { UpdateUserProfileInput } from '../db/queries/auth.queries';
+import { requireAuth, requireClerkSession } from '../middleware/auth';
 import { authRateLimiter } from '../middleware/rateLimit';
-import {
-  forgotPassword,
-  getProfile,
-  loginUser,
-  logoutUser,
-  refreshAccessToken,
-  registerUser,
-  resendVerification,
-  resetPassword,
-  updateProfile,
-  verifyEmail,
-} from '../services/auth/authService';
+import { syncUser } from '../services/auth/clerkSyncService';
+import { getCurrentUser, updateCurrentUser } from '../services/auth/userService';
 import type { AuthenticatedRequest } from '../types/auth';
 
 export const authRouter: ExpressRouter = Router();
@@ -44,65 +27,13 @@ const asyncHandler = (
 };
 
 authRouter.post(
-  '/register',
+  '/sync',
   authRateLimiter,
+  requireClerkSession,
   asyncHandler(async (request, response): Promise<void> => {
-    const body = RegisterRequestSchema.parse(request.body);
-    const result = await registerUser(body);
-
-    response.status(201).json(result);
-  }),
-);
-
-authRouter.post(
-  '/verify-email',
-  authRateLimiter,
-  asyncHandler(async (request, response): Promise<void> => {
-    const body = VerifyEmailRequestSchema.parse(request.body);
-    const result = await verifyEmail(body);
-
-    response.json(result);
-  }),
-);
-
-authRouter.post(
-  '/resend-verification',
-  authRateLimiter,
-  asyncHandler(async (request, response): Promise<void> => {
-    const body = ResendVerificationRequestSchema.parse(request.body);
-    const result = await resendVerification(body);
-
-    response.json(result);
-  }),
-);
-
-authRouter.post(
-  '/login',
-  authRateLimiter,
-  asyncHandler(async (request, response): Promise<void> => {
-    const body = LoginRequestSchema.parse(request.body);
-    const result = await loginUser(body);
-
-    response.json(result);
-  }),
-);
-
-authRouter.post(
-  '/refresh',
-  asyncHandler(async (request, response): Promise<void> => {
-    const body = RefreshTokenRequestSchema.parse(request.body);
-    const result = await refreshAccessToken(body.refreshToken);
-
-    response.json(result);
-  }),
-);
-
-authRouter.post(
-  '/logout',
-  requireAuth,
-  asyncHandler(async (request, response): Promise<void> => {
-    const authenticatedRequest = request as AuthenticatedRequest;
-    const result = await logoutUser(authenticatedRequest.auth);
+    const body = SyncRequestSchema.parse(request.body);
+    const { userId } = getAuth(request);
+    const result = await syncUser(userId as string, body.userType);
 
     response.json(result);
   }),
@@ -113,7 +44,7 @@ authRouter.get(
   requireAuth,
   asyncHandler(async (request, response): Promise<void> => {
     const authenticatedRequest = request as AuthenticatedRequest;
-    const result = await getProfile(authenticatedRequest.auth.id);
+    const result = await getCurrentUser(authenticatedRequest.auth.id);
 
     response.json(result);
   }),
@@ -125,29 +56,19 @@ authRouter.patch(
   asyncHandler(async (request, response): Promise<void> => {
     const authenticatedRequest = request as AuthenticatedRequest;
     const body = UpdateProfileRequestSchema.parse(request.body);
-    const result = await updateProfile(authenticatedRequest.auth.id, body);
+    const updateInput: UpdateUserProfileInput = {};
 
-    response.json(result);
-  }),
-);
+    if (body.firstName !== undefined) {
+      updateInput.firstName = body.firstName;
+    }
+    if (body.lastName !== undefined) {
+      updateInput.lastName = body.lastName;
+    }
+    if (Object.hasOwn(body, 'phone')) {
+      updateInput.phone = body.phone ?? null;
+    }
 
-authRouter.post(
-  '/forgot-password',
-  authRateLimiter,
-  asyncHandler(async (request, response): Promise<void> => {
-    const body = ForgotPasswordRequestSchema.parse(request.body);
-    const result = await forgotPassword(body);
-
-    response.json(result);
-  }),
-);
-
-authRouter.post(
-  '/reset-password',
-  authRateLimiter,
-  asyncHandler(async (request, response): Promise<void> => {
-    const body = ResetPasswordRequestSchema.parse(request.body);
-    const result = await resetPassword(body);
+    const result = await updateCurrentUser(authenticatedRequest.auth.id, updateInput);
 
     response.json(result);
   }),

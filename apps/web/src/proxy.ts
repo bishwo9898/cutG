@@ -1,4 +1,5 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { clerkMiddleware } from '@clerk/nextjs/server';
+import { NextResponse, type NextRequest } from 'next/server';
 
 type PortalRole = 'BARBER' | 'CLIENT';
 
@@ -24,12 +25,16 @@ const redirectWithPath = (
   return NextResponse.redirect(target, status);
 };
 
-const roleOf = (request: NextRequest): PortalRole | null => {
-  const value = request.cookies.get('cutg_role')?.value;
+export const roleFromPublicMetadata = (publicMetadata: unknown): PortalRole | null => {
+  const value = (publicMetadata as { userType?: unknown } | null | undefined)?.userType;
   return value === 'BARBER' || value === 'CLIENT' ? value : null;
 };
 
-export function proxy(request: NextRequest): NextResponse {
+export const applyPortalRules = (
+  request: NextRequest,
+  hasSession: boolean,
+  role: PortalRole | null,
+): NextResponse => {
   const pathname = request.nextUrl.pathname;
   for (const [from, to] of legacyRoutes) {
     if (pathname === from || pathname.startsWith(`${from}/`)) {
@@ -37,8 +42,6 @@ export function proxy(request: NextRequest): NextResponse {
     }
   }
 
-  const role = roleOf(request);
-  const hasSession = request.cookies.has('barber_access') || request.cookies.has('barber_refresh');
   const isAuthRoute =
     pathname === '/barber/login' ||
     pathname === '/barber/register' ||
@@ -78,7 +81,14 @@ export function proxy(request: NextRequest): NextResponse {
   }
 
   return NextResponse.next();
-}
+};
+
+export const proxy = clerkMiddleware(async (auth, request) => {
+  const { userId, sessionClaims } = await auth();
+  const role = roleFromPublicMetadata(sessionClaims?.publicMetadata);
+
+  return applyPortalRules(request, userId !== null, role);
+});
 
 export const config = {
   matcher: [

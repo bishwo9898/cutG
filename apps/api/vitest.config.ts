@@ -9,6 +9,7 @@ export default defineConfig({
     fileParallelism: false,
     include: ['src/**/*.test.ts'],
     pool: 'forks',
+    setupFiles: ['./src/test/clerkAuthMock.ts'],
     testTimeout: 15_000,
   },
 });

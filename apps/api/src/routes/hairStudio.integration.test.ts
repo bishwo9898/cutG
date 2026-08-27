@@ -16,7 +16,6 @@ let clientId = '';
 let scanId = '';
 let designId = '';
 
-type LoginBody = { accessToken: string };
 type ScanBody = { id: string; status: string; analysisStatus: string; captures: unknown[] };
 type DesignBody = { id: string; generationStatus: string; generatedPreviewUrl: string | null };
 
@@ -76,16 +75,10 @@ beforeAll(async () => {
   );
   await resetTestDatabase();
   const client = await createVerifiedUser('CLIENT', 'hair.studio@example.com');
-  await createVerifiedUser('CLIENT', 'hair.studio.other@example.com');
+  const otherClient = await createVerifiedUser('CLIENT', 'hair.studio.other@example.com');
   clientId = client.id;
-  const login = await request(app)
-    .post('/auth/login')
-    .send({ email: 'hair.studio@example.com', password: 'strong-password-123' });
-  const otherLogin = await request(app)
-    .post('/auth/login')
-    .send({ email: 'hair.studio.other@example.com', password: 'strong-password-123' });
-  clientToken = (login.body as LoginBody).accessToken;
-  otherClientToken = (otherLogin.body as LoginBody).accessToken;
+  clientToken = client.clerkUserId;
+  otherClientToken = otherClient.clerkUserId;
 });
 
 afterAll(async () => {

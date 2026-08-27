@@ -1,6 +1,8 @@
+import { clerkMiddleware } from '@clerk/express';
 import express, { json, raw, type Express } from 'express';
 import helmet from 'helmet';
 
+import { env } from './config/env';
 import { corsMiddleware } from './middleware/cors';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/logger';
@@ -19,6 +21,12 @@ export const createApp = (): Express => {
     void stripeWebhookHandler(request, response).catch(next);
   });
   app.use(json({ limit: '1mb' }));
+  app.use(
+    clerkMiddleware({
+      secretKey: env.CLERK_SECRET_KEY,
+      publishableKey: env.CLERK_PUBLISHABLE_KEY,
+    }),
+  );
   app.use(requestLogger);
   app.use(routes);
   app.use(notFoundHandler);

@@ -78,9 +78,8 @@ const EnvSchema = z
     DATABASE_POOL_MIN: z.coerce.number().int().nonnegative().default(2),
     DATABASE_POOL_MAX: z.coerce.number().int().positive().default(10),
     REDIS_URL: z.string().url().default('redis://localhost:6380'),
-    JWT_SECRET: z.string().min(32).default('your_jwt_secret_here_change_in_production'),
-    JWT_EXPIRY: z.string().min(1).default('24h'),
-    JWT_REFRESH_EXPIRY: z.string().min(1).default('30d'),
+    CLERK_SECRET_KEY: z.string().min(1).default('sk_test_placeholder_change_me'),
+    CLERK_PUBLISHABLE_KEY: z.string().min(1).default('pk_test_placeholder_change_me'),
     STRIPE_SECRET_KEY: z.string().min(1).default('sk_test_...'),
     STRIPE_PUBLISHABLE_KEY: z.string().min(1).default('pk_test_...'),
     STRIPE_PUBLIC_KEY: z.string().min(1).default('pk_test_...'),
@@ -139,11 +138,18 @@ const EnvSchema = z
     };
 
     rejectLoopbackUrl('DATABASE_URL');
-    if (value.JWT_SECRET === 'your_jwt_secret_here_change_in_production') {
+    if (value.CLERK_SECRET_KEY === 'sk_test_placeholder_change_me') {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['JWT_SECRET'],
-        message: 'JWT_SECRET must be replaced in production.',
+        path: ['CLERK_SECRET_KEY'],
+        message: 'CLERK_SECRET_KEY must be replaced in production.',
+      });
+    }
+    if (value.CLERK_PUBLISHABLE_KEY === 'pk_test_placeholder_change_me') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CLERK_PUBLISHABLE_KEY'],
+        message: 'CLERK_PUBLISHABLE_KEY must be replaced in production.',
       });
     }
     if (new URL(value.WEB_APP_URL).protocol !== 'https:') {

@@ -22,13 +22,6 @@ export type AuthUser = {
   phone?: string | null;
 };
 
-export type LoginResponse = {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-  user: AuthUser;
-};
-
 export type Pagination = {
   page: number;
   limit: number;

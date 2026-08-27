@@ -1,5 +1,6 @@
 'use client';
 
+import { useClerk } from '@clerk/nextjs';
 import {
   BadgeCheck,
   CalendarDays,
@@ -45,6 +46,7 @@ const isActive = (pathname: string, href: string): boolean =>
 export function DashboardShell({ children }: { children: React.ReactNode }): React.ReactElement {
   const pathname = usePathname();
   const router = useRouter();
+  const { signOut: clerkSignOut } = useClerk();
   const userQuery = useUser();
   const user = userQuery.data;
   const initials =
@@ -53,7 +55,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }): Rea
       : `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
 
   const logout = async (): Promise<void> => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await clerkSignOut();
     router.replace('/barber/login');
     router.refresh();
   };

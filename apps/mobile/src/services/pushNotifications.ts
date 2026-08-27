@@ -1,6 +1,6 @@
 import * as Crypto from 'expo-crypto';
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
+import ExpoConstants from 'expo-constants';
 import { router } from 'expo-router';
 import { Alert, Platform } from 'react-native';
 
@@ -11,6 +11,7 @@ import type { AuthUser } from '@/lib/types';
 
 const INSTALLATION_KEY = 'cutg.pushInstallationId';
 const PROMPTED_KEY = 'cutg.pushPermissionPrompted';
+const pushNotificationsEnabled = process.env.EXPO_PUBLIC_ENABLE_PUSH_NOTIFICATIONS !== 'false';
 
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
@@ -46,7 +47,7 @@ const explainNotifications = (): Promise<boolean> =>
   });
 
 export const registerCurrentDevice = async (): Promise<void> => {
-  if (Platform.OS === 'web') return;
+  if (Platform.OS === 'web' || !pushNotificationsEnabled) return;
   const current = await Notifications.getPermissionsAsync();
   let granted = current.granted;
   if (!granted) {
@@ -64,8 +65,8 @@ export const registerCurrentDevice = async (): Promise<void> => {
     });
   }
   const projectId =
-    Constants.easConfig?.projectId ??
-    (Constants.expoConfig?.extra?.eas as { projectId?: string } | undefined)?.projectId ??
+    ExpoConstants.easConfig?.projectId ??
+    (ExpoConstants.expoConfig?.extra?.eas as { projectId?: string } | undefined)?.projectId ??
     process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
   if (projectId === undefined || projectId.length === 0) return;
   const token = await Notifications.getExpoPushTokenAsync({ projectId });
@@ -73,7 +74,7 @@ export const registerCurrentDevice = async (): Promise<void> => {
     installationId: await installationId(),
     expoPushToken: token.data,
     platform: Platform.OS === 'ios' ? 'ios' : 'android',
-    appVersion: Constants.expoConfig?.version ?? '0.2.0',
+    appVersion: ExpoConstants.expoConfig?.version ?? '0.2.0',
   });
 };
 

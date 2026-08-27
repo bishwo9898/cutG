@@ -1,39 +1,43 @@
+import { randomUUID } from 'node:crypto';
+
 import { pool } from '../config/database';
-import { hashPassword } from '../services/auth/passwordService';
 
 type UserType = 'BARBER' | 'CLIENT';
 
 type TestUser = {
   id: string;
   email: string;
-  accessToken?: string;
+  clerkUserId: string;
 };
 
 export const resetTestDatabase = async (): Promise<void> => {
   await pool.query('TRUNCATE TABLE users CASCADE');
 };
 
+/**
+ * Inserts a local `users` row as if `/auth/sync` had already run for it, keyed by a fake
+ * `clerk_user_id`. Integration tests authenticate by mocking `@clerk/express`'s `getAuth` to
+ * return this `clerkUserId` rather than by signing a real Clerk session token.
+ */
 export const createVerifiedUser = async (
   userType: UserType,
   email: string,
-  password = 'strong-password-123',
 ): Promise<TestUser> => {
-  const passwordHash = await hashPassword(password);
+  const clerkUserId = `user_test_${randomUUID()}`;
   const result = await pool.query<{ id: string; email: string }>(
     `
       INSERT INTO users (
+        clerk_user_id,
         email,
-        password_hash,
         first_name,
         last_name,
         user_type,
-        email_verified,
-        email_verified_at
+        email_verified
       )
-      VALUES ($1, $2, 'Test', 'User', $3, true, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, 'Test', 'User', $3, true)
       RETURNING id, email
     `,
-    [email, passwordHash, userType],
+    [clerkUserId, email, userType],
   );
   const user = result.rows[0];
 
@@ -41,7 +45,7 @@ export const createVerifiedUser = async (
     throw new Error('Test user fixture was not created.');
   }
 
-  return user;
+  return { ...user, clerkUserId };
 };
 
 export const createBarberProfileFixture = async (userId: string): Promise<string> => {

@@ -1,196 +1,99 @@
 import request from 'supertest';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { app } from '../app';
 import { closeDatabase, pool } from '../config/database';
 import { createVerifiedUser, resetTestDatabase } from '../test/fixtures';
 
-type TokenBody = {
-  accessToken: string;
-  refreshToken: string;
-};
+type ProfileBody = { id: string; email: string; userType: string };
+type ErrorBody = { error: string };
 
-type ProfileBody = {
-  createdAt: string;
-};
+const CLERK_USER_ID = 'user_test_sync_target';
 
-const registration = {
-  email: 'new.barber@example.com',
-  password: 'strong-password-123',
-  firstName: 'New',
-  lastName: 'Barber',
-  userType: 'BARBER',
-};
-
-const latestVerificationCode = async (email: string): Promise<string> => {
-  const result = await pool.query<{ code: string }>(
-    `
-      SELECT evt.code
-      FROM email_verification_tokens evt
-      JOIN users u ON u.id = evt.user_id
-      WHERE u.email = $1
-      ORDER BY evt.created_at DESC
-      LIMIT 1
-    `,
-    [email],
-  );
-  const token = result.rows[0];
-
-  if (token === undefined) {
-    throw new Error('Verification token was not created.');
-  }
-
-  return token.code;
-};
+vi.mock('@clerk/backend', () => ({
+  createClerkClient: (): unknown => ({
+    users: {
+      getUser: vi.fn(() =>
+        Promise.resolve({
+          emailAddresses: [
+            {
+              id: 'idn_primary',
+              emailAddress: 'new.barber@example.com',
+              verification: { status: 'verified' },
+            },
+          ],
+          primaryEmailAddressId: 'idn_primary',
+          firstName: 'New',
+          lastName: 'Barber',
+        }),
+      ),
+      updateUserMetadata: vi.fn(() => Promise.resolve({})),
+    },
+  }),
+}));
 
 beforeEach(async () => {
   await resetTestDatabase();
 });
 
-afterAll(async () => {
-  await closeDatabase();
-});
+afterAll(async () => closeDatabase());
 
-describe('authentication API', () => {
-  it('registers a barber and rejects duplicate email and public admin creation', async () => {
-    const created = await request(app).post('/auth/register').send(registration);
-    expect(created.status).toBe(201);
-    expect(created.body).toMatchObject({
-      email: registration.email,
-      userType: 'BARBER',
-      emailVerified: false,
-    });
+describe('auth routes', () => {
+  it('creates a local user on first /auth/sync and is idempotent on repeat calls', async () => {
+    const first = await request(app)
+      .post('/auth/sync')
+      .set('Authorization', `Bearer ${CLERK_USER_ID}`)
+      .send({ userType: 'BARBER' });
 
-    const duplicate = await request(app).post('/auth/register').send(registration);
-    expect(duplicate.status).toBe(400);
-    expect(duplicate.body).toMatchObject({ code: 'EMAIL_ALREADY_EXISTS' });
+    expect(first.status).toBe(200);
+    const body = first.body as ProfileBody;
+    expect(body.email).toBe('new.barber@example.com');
+    expect(body.userType).toBe('BARBER');
 
-    const admin = await request(app)
-      .post('/auth/register')
-      .send({ ...registration, email: 'admin@example.com', userType: 'ADMIN' });
-    expect(admin.status).toBe(422);
-  });
-
-  it('blocks login until verification and prevents token reuse', async () => {
-    await request(app).post('/auth/register').send(registration);
-
-    const blocked = await request(app)
-      .post('/auth/login')
-      .send({ email: registration.email, password: registration.password });
-    expect(blocked.status).toBe(403);
-    expect(blocked.body).toMatchObject({ code: 'EMAIL_NOT_VERIFIED' });
-
-    const code = await latestVerificationCode(registration.email);
-    const verified = await request(app)
-      .post('/auth/verify-email')
-      .send({ email: registration.email, verificationCode: code });
-    expect(verified.status).toBe(200);
-
-    const reused = await request(app)
-      .post('/auth/verify-email')
-      .send({ email: registration.email, verificationCode: code });
-    expect(reused.status).toBe(400);
-
-    const login = await request(app)
-      .post('/auth/login')
-      .send({ email: registration.email, password: registration.password });
-    expect(login.status).toBe(200);
-    expect(login.body).toHaveProperty('accessToken');
-  });
-
-  it('rejects expired verification codes and resends a replacement', async () => {
-    await request(app).post('/auth/register').send(registration);
-    const expiredCode = await latestVerificationCode(registration.email);
-    await pool.query(
-      `
-        UPDATE email_verification_tokens
-        SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute'
-        WHERE code = $1
-      `,
-      [expiredCode],
+    const userRow = await pool.query<{ clerk_user_id: string }>(
+      'SELECT clerk_user_id FROM users WHERE email = $1',
+      ['new.barber@example.com'],
     );
+    expect(userRow.rows[0]?.clerk_user_id).toBe(CLERK_USER_ID);
 
-    const expired = await request(app)
-      .post('/auth/verify-email')
-      .send({ email: registration.email, verificationCode: expiredCode });
-    expect(expired.status).toBe(400);
+    const second = await request(app)
+      .post('/auth/sync')
+      .set('Authorization', `Bearer ${CLERK_USER_ID}`)
+      .send({ userType: 'BARBER' });
 
-    const resent = await request(app)
-      .post('/auth/resend-verification')
-      .send({ email: registration.email });
-    expect(resent.status).toBe(200);
-    expect(await latestVerificationCode(registration.email)).not.toBe(expiredCode);
+    expect(second.status).toBe(200);
+    expect((second.body as ProfileBody).id).toBe(body.id);
+
+    const countResult = await pool.query<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM users WHERE email = $1',
+      ['new.barber@example.com'],
+    );
+    expect(countResult.rows[0]?.count).toBe('1');
   });
 
-  it('refreshes tokens, authorizes profile access, and invalidates a logged-out access token', async () => {
-    await createVerifiedUser('BARBER', 'verified@example.com');
-    const login = await request(app)
-      .post('/auth/login')
-      .send({ email: 'verified@example.com', password: 'strong-password-123' });
-    const tokens = login.body as TokenBody;
+  it('rejects /auth/sync without a valid session', async () => {
+    const response = await request(app).post('/auth/sync').send({ userType: 'BARBER' });
 
-    const me = await request(app)
+    expect(response.status).toBe(401);
+  });
+
+  it('returns the current user profile from /auth/me', async () => {
+    const user = await createVerifiedUser('CLIENT', 'client.me@example.com');
+
+    const response = await request(app)
       .get('/auth/me')
-      .set('Authorization', `Bearer ${tokens.accessToken}`);
-    expect(me.status).toBe(200);
-    expect((me.body as ProfileBody).createdAt).toEqual(expect.any(String));
+      .set('Authorization', `Bearer ${user.clerkUserId}`);
 
-    const refreshed = await request(app)
-      .post('/auth/refresh')
-      .send({ refreshToken: tokens.refreshToken });
-    expect(refreshed.status).toBe(200);
-    expect(refreshed.body).toHaveProperty('accessToken');
-
-    expect(
-      (await request(app).post('/auth/logout').set('Authorization', `Bearer ${tokens.accessToken}`))
-        .status,
-    ).toBe(200);
-
-    expect(
-      (await request(app).get('/auth/me').set('Authorization', `Bearer ${tokens.accessToken}`))
-        .status,
-    ).toBe(401);
+    expect(response.status).toBe(200);
+    expect((response.body as ProfileBody).email).toBe('client.me@example.com');
   });
 
-  it('resets a password once without revealing unknown accounts', async () => {
-    await createVerifiedUser('CLIENT', 'reset@example.com');
+  it('rejects /auth/me for a user with no local row', async () => {
+    const response = await request(app)
+      .get('/auth/me')
+      .set('Authorization', 'Bearer user_test_unknown');
 
-    const unknown = await request(app)
-      .post('/auth/forgot-password')
-      .send({ email: 'unknown@example.com' });
-    expect(unknown.status).toBe(200);
-
-    await request(app).post('/auth/forgot-password').send({ email: 'reset@example.com' });
-    const result = await pool.query<{ code: string }>(
-      `
-        SELECT prt.code
-        FROM password_reset_tokens prt
-        JOIN users u ON u.id = prt.user_id
-        WHERE u.email = 'reset@example.com'
-        ORDER BY prt.created_at DESC
-        LIMIT 1
-      `,
-    );
-    const code = result.rows[0]?.code;
-    expect(code).toEqual(expect.any(String));
-
-    const reset = await request(app).post('/auth/reset-password').send({
-      email: 'reset@example.com',
-      resetCode: code,
-      newPassword: 'new-strong-password-123',
-    });
-    expect(reset.status).toBe(200);
-
-    const reused = await request(app).post('/auth/reset-password').send({
-      email: 'reset@example.com',
-      resetCode: code,
-      newPassword: 'another-password-123',
-    });
-    expect(reused.status).toBe(400);
-
-    const login = await request(app)
-      .post('/auth/login')
-      .send({ email: 'reset@example.com', password: 'new-strong-password-123' });
-    expect(login.status).toBe(200);
+    expect(response.status).toBe(401);
+    expect((response.body as ErrorBody).error).toBeDefined();
   });
 });

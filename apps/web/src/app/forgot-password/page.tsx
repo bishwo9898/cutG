@@ -1,33 +1,39 @@
 'use client';
 
-import { ForgotPasswordRequestSchema, type ForgotPasswordRequest } from '@barber-saas/shared-types';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useSignIn } from '@clerk/nextjs/legacy';
 import { Send } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
 
 import { AuthShell } from '@/components/auth-shell';
 import { Notice } from '@/components/notice';
+import { clerkErrorMessage } from '@/lib/clerk-error-message';
 
 export default function ForgotPasswordPage(): React.ReactElement {
   const pathname = usePathname();
   const role = pathname.startsWith('/barber') ? 'barber' : 'client';
+  const { isLoaded, signIn } = useSignIn();
+  const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<ForgotPasswordRequest>({ resolver: zodResolver(ForgotPasswordRequestSchema) });
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const submit = async (values: ForgotPasswordRequest): Promise<void> => {
-    await fetch('/api/backend/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(values),
-    });
-    setSent(true);
+  const submit = async (event: React.FormEvent): Promise<void> => {
+    event.preventDefault();
+    if (!isLoaded) {
+      return;
+    }
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await signIn.create({ strategy: 'reset_password_email_code', identifier: email });
+      setSent(true);
+    } catch (submitError) {
+      setError(clerkErrorMessage(submitError, 'We could not send a reset code.'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -36,12 +42,13 @@ export default function ForgotPasswordPage(): React.ReactElement {
         <span className="eyebrow">Account recovery</span>
         <h1>Reset your password</h1>
         <p className="subtitle">We will send reset instructions when the account exists.</p>
-        <form className="form-stack" onSubmit={handleSubmit(submit)}>
+        <form className="form-stack" onSubmit={(event) => void submit(event)}>
           {sent && (
             <Notice tone="success">
               Check your inbox, then continue to the reset form with the code.
             </Notice>
           )}
+          {error !== null && <Notice>{error}</Notice>}
           <div className="field">
             <label htmlFor="email">Email address</label>
             <input
@@ -49,15 +56,13 @@ export default function ForgotPasswordPage(): React.ReactElement {
               className="input"
               type="email"
               autoComplete="email"
-              {...register('email')}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
             />
-            {errors.email?.message !== undefined && (
-              <span className="field-error">{errors.email.message}</span>
-            )}
           </div>
           <button
             className="button button-primary button-full"
-            disabled={isSubmitting}
+            disabled={isSubmitting || email.length === 0}
             type="submit"
           >
             <Send size={17} />

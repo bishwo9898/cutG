@@ -14,7 +14,6 @@ let otherBarberToken = '';
 let clientToken = '';
 let barberId = '';
 let appointmentId = '';
-type LoginBody = { accessToken: string };
 type DesignBody = { id: string };
 type LocationBody = { distanceRemainingMiles: number };
 type BarberAppointmentsBody = {
@@ -50,24 +49,9 @@ beforeAll(async () => {
     [client.id, barberId, service.rows[0]?.id],
   );
   appointmentId = appointment.rows[0]?.id ?? '';
-  barberToken = (
-    await request(app)
-      .post('/auth/login')
-      .send({ email: 'phase9.barber@example.com', password: 'strong-password-123' })
-      .then((response) => response.body as LoginBody)
-  ).accessToken;
-  otherBarberToken = (
-    await request(app)
-      .post('/auth/login')
-      .send({ email: 'phase9.other-barber@example.com', password: 'strong-password-123' })
-      .then((response) => response.body as LoginBody)
-  ).accessToken;
-  clientToken = (
-    await request(app)
-      .post('/auth/login')
-      .send({ email: 'phase9.client@example.com', password: 'strong-password-123' })
-      .then((response) => response.body as LoginBody)
-  ).accessToken;
+  barberToken = barber.clerkUserId;
+  otherBarberToken = otherBarber.clerkUserId;
+  clientToken = client.clerkUserId;
 });
 
 afterAll(async () => closeDatabase());

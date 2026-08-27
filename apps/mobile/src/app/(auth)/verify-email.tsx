@@ -1,3 +1,4 @@
+import { useSignUp } from '@clerk/clerk-expo';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
@@ -7,25 +8,37 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { mobileApi } from '@/lib/apiClient';
-import { errorMessage } from '@/lib/errors';
+import { clerkErrorMessage } from '@/lib/clerkErrorMessage';
 import { colors, typography } from '@/theme';
 
 export default function VerifyEmailScreen(): React.ReactElement {
   const params = useLocalSearchParams<{ email?: string; role?: string }>();
   const email = params.email ?? '';
   const role = params.role === 'BARBER' ? 'BARBER' : 'CLIENT';
+  const { isLoaded, signUp, setActive } = useSignUp();
   const [code, setCode] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const submit = async (): Promise<void> => {
+    if (!isLoaded) {
+      return;
+    }
     setLoading(true);
     setMessage(null);
     try {
-      await mobileApi.auth.verifyEmail(email, code);
-      router.replace('/(auth)/login?role=' + role);
+      const result = await signUp.attemptEmailAddressVerification({ code });
+
+      if (result.status !== 'complete' || result.createdSessionId === null) {
+        setMessage('That code did not work. Please try again.');
+        return;
+      }
+
+      await setActive({ session: result.createdSessionId });
+      await mobileApi.auth.sync(role);
+      router.replace(role === 'BARBER' ? '/(barber)/today' : '/(client)/discover');
     } catch (error) {
-      setMessage(errorMessage(error));
+      setMessage(clerkErrorMessage(error, 'Verification failed.'));
     } finally {
       setLoading(false);
     }
@@ -36,7 +49,7 @@ export default function VerifyEmailScreen(): React.ReactElement {
       <ScreenHeader
         showBack
         title="Verify email"
-        subtitle={email.length > 0 ? email : 'Enter the code from the API logs.'}
+        subtitle={email.length > 0 ? email : 'Enter the code from your email.'}
       />
       <Input
         keyboardType="number-pad"

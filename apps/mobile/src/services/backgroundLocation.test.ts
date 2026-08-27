@@ -48,12 +48,6 @@ vi.mock('@/lib/apiClient', () => ({
   },
 }));
 
-vi.mock('@/store/authStore', () => ({
-  useAuthStore: {
-    getState: () => ({ accessToken: 'access-token', loadStoredAuth: vi.fn() }),
-  },
-}));
-
 import { getBackgroundTrackingSnapshot, startBackgroundJourney } from './backgroundLocation';
 
 const location = (latitude: number, longitude: number) => ({

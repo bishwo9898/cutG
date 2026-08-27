@@ -5,7 +5,6 @@ import * as TaskManager from 'expo-task-manager';
 
 import { mobileApi } from '@/lib/apiClient';
 import * as SecureStore from '@/lib/secureStorage';
-import { useAuthStore } from '@/store/authStore';
 import {
   ACTIVE_APPOINTMENT_KEY,
   clearTrackingStorage,
@@ -28,23 +27,12 @@ const toPing = (location: Location.LocationObject): LocationPingRequest => ({
 
 export { stopBackgroundLocationTracking } from '@/services/locationTrackingStorage';
 
-const ensureStoredAuth = async (): Promise<boolean> => {
-  if (useAuthStore.getState().accessToken === null) {
-    await useAuthStore.getState().loadStoredAuth();
-  }
-  return useAuthStore.getState().accessToken !== null;
-};
-
 const recordLocation = async (
   appointmentId: string,
   location: Location.LocationObject,
 ): Promise<void> => {
   const ping = toPing(location);
   try {
-    if (!(await ensureStoredAuth())) {
-      await stopBackgroundLocationTracking();
-      return;
-    }
     await mobileApi.barber.sendLocationPing(appointmentId, ping);
     await Promise.all([
       SecureStore.setItemAsync(LAST_PING_KEY, new Date().toISOString()),
@@ -52,7 +40,10 @@ const recordLocation = async (
       SecureStore.deleteItemAsync(PENDING_LOCATION_KEY),
     ]);
   } catch (error) {
-    if (error instanceof ApiError && error.code === 'TRACKING_NOT_ACTIVE') {
+    if (
+      error instanceof ApiError &&
+      (error.code === 'TRACKING_NOT_ACTIVE' || error.status === 401)
+    ) {
       await stopBackgroundLocationTracking();
       return;
     }
@@ -155,7 +146,7 @@ export const reconcileBackgroundLocation = async (): Promise<void> => {
     if (snapshot.appointmentId !== null) await clearTrackingStorage();
     return;
   }
-  if (snapshot.appointmentId === null || !(await ensureStoredAuth())) {
+  if (snapshot.appointmentId === null) {
     await stopBackgroundLocationTracking();
     return;
   }

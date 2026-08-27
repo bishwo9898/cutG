@@ -1,6 +1,7 @@
 'use client';
 
 import { clientApi } from '@barber-saas/api-client';
+import { useClerk } from '@clerk/nextjs';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, Heart, LogOut, MapPin } from 'lucide-react';
 import Link from 'next/link';
@@ -14,6 +15,7 @@ export default function ClientProfilePage(): React.ReactElement {
   const { data: user } = useUser();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { signOut: clerkSignOut } = useClerk();
   const addresses = useQuery({
     queryKey: ['client-addresses'],
     queryFn: () => clientApi.addresses<{ addresses: unknown[] }>(browserApi),
@@ -31,7 +33,7 @@ export default function ClientProfilePage(): React.ReactElement {
       }),
   });
   const signOut = async (): Promise<void> => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await clerkSignOut();
     queryClient.clear();
     router.replace('/client/login');
     router.refresh();

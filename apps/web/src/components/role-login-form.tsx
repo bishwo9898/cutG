@@ -1,5 +1,7 @@
 'use client';
 
+import { useClerk } from '@clerk/nextjs';
+import { useSignIn } from '@clerk/nextjs/legacy';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { BriefcaseBusiness, LogIn, Search } from 'lucide-react';
 import Link from 'next/link';
@@ -10,6 +12,7 @@ import { z } from 'zod';
 
 import { AuthShell } from '@/components/auth-shell';
 import { Notice } from '@/components/notice';
+import { clerkErrorMessage } from '@/lib/clerk-error-message';
 
 type AuthRole = 'CLIENT' | 'BARBER';
 
@@ -21,6 +24,8 @@ type FormValues = z.infer<typeof schema>;
 
 export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement {
   const searchParams = useSearchParams();
+  const { isLoaded, signIn, setActive } = useSignIn();
+  const clerk = useClerk();
   const [error, setError] = useState<string | null>(null);
   const isBarber = role === 'BARBER';
   const fieldTestMode = process.env.NEXT_PUBLIC_FIELD_TEST_MODE === 'true';
@@ -36,17 +41,30 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
 
   const submit = async (values: FormValues): Promise<void> => {
     setError(null);
+    if (!isLoaded) {
+      return;
+    }
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...values, expectedUserType: role }),
-      });
-      const body = (await response.json().catch(() => ({}))) as { message?: string };
-      if (!response.ok) {
-        setError(body.message ?? 'Sign in failed. Check your email and password.');
+      const result = await signIn.create({ identifier: values.email, password: values.password });
+
+      if (result.status !== 'complete' || result.createdSessionId === null) {
+        setError('Sign in could not be completed. Please try again.');
         return;
       }
+
+      await setActive({ session: result.createdSessionId });
+
+      const userType = clerk.user?.publicMetadata?.userType;
+      if (userType !== undefined && userType !== role) {
+        await clerk.signOut();
+        setError(
+          isBarber
+            ? 'This is a customer account. Use customer sign in instead.'
+            : 'This is a barber account. Use barber sign in instead.',
+        );
+        return;
+      }
+
       const requestedNext = searchParams.get('next');
       const portalPrefix = isBarber ? '/barber' : '/client';
       const destination =
@@ -56,8 +74,8 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
             ? '/barber/dashboard'
             : '/client';
       window.location.assign(destination);
-    } catch {
-      setError('The sign-in service could not be reached. Check that the API is running.');
+    } catch (submitError) {
+      setError(clerkErrorMessage(submitError, 'Sign in failed. Check your email and password.'));
     }
   };
 

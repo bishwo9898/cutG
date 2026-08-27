@@ -3,13 +3,12 @@ import type { AuthUser, AuthUserSummary } from '@barber-saas/shared-types';
 import {
   findPublicUserById,
   updateUserProfile,
-  type PublicUserRecord,
   type UpdateUserProfileInput,
   type UserRecord,
 } from '../../db/queries/auth.queries';
 import { AppError } from '../../middleware/errorHandler';
 
-export const toAuthUserSummary = (user: PublicUserRecord | UserRecord): AuthUserSummary => {
+export const toAuthUserSummary = (user: UserRecord): AuthUserSummary => {
   return {
     id: user.id,
     email: user.email,
@@ -20,7 +19,7 @@ export const toAuthUserSummary = (user: PublicUserRecord | UserRecord): AuthUser
   };
 };
 
-export const toAuthUser = (user: PublicUserRecord): AuthUser => {
+export const toAuthUser = (user: UserRecord): AuthUser => {
   return {
     ...toAuthUserSummary(user),
     phone: user.phone,

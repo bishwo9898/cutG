@@ -1,3 +1,4 @@
+import { useClerk } from '@clerk/clerk-expo';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -13,13 +14,14 @@ import { Input } from '@/components/ui/Input';
 import { useBarberProfilePrivate } from '@/hooks/useBarberDashboard';
 import { mobileApi } from '@/lib/apiClient';
 import { errorMessage } from '@/lib/errors';
-import { useAuthStore } from '@/store/authStore';
 import { unregisterCurrentDevice } from '@/services/pushNotifications';
+import { useAuthStore } from '@/store/authStore';
 import { colors, spacing, typography } from '@/theme';
 
 export default function BarberProfileScreen(): React.ReactElement {
   const profile = useBarberProfilePrivate();
   const { clearAuth } = useAuthStore();
+  const { signOut } = useClerk();
   const [businessName, setBusinessName] = useState('');
   const [bio, setBio] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
@@ -47,8 +49,8 @@ export default function BarberProfileScreen(): React.ReactElement {
 
   const logout = async (): Promise<void> => {
     await unregisterCurrentDevice();
-    await mobileApi.auth.logout().catch(() => undefined);
     await clearAuth();
+    await signOut();
     router.replace('/(auth)/welcome');
   };
 

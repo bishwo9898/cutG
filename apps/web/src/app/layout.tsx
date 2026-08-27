@@ -1,3 +1,4 @@
+import { ClerkProvider } from '@clerk/nextjs';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata } from 'next';
@@ -26,12 +27,14 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>): React.ReactElement {
   return (
-    <html lang="en">
-      <body>
-        <Providers>{children}</Providers>
-        <Analytics />
-        <SpeedInsights />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body>
+          <Providers>{children}</Providers>
+          <Analytics />
+          <SpeedInsights />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useClerk } from '@clerk/nextjs';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   CalendarDays,
@@ -33,6 +34,7 @@ export function ClientHeader(): React.ReactElement {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { signOut: clerkSignOut } = useClerk();
   const user = useUser();
   const [signingOut, setSigningOut] = useState(false);
   const client = user.data?.userType === 'CLIENT' ? user.data : null;
@@ -41,7 +43,7 @@ export function ClientHeader(): React.ReactElement {
   const signOut = async (): Promise<void> => {
     setSigningOut(true);
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await clerkSignOut();
       queryClient.clear();
       router.replace('/client/login');
       router.refresh();

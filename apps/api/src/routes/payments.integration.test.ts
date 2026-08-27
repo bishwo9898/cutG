@@ -15,7 +15,6 @@ let barberId = '';
 let serviceId = '';
 let appointmentId = '';
 
-type LoginBody = { accessToken: string };
 type IntentBody = { clientSecret: string; breakdown: { platformFee: number } };
 type StripeStatusBody = { onboardingComplete: boolean };
 type EarningsBody = { summary: Record<string, unknown> };
@@ -66,14 +65,8 @@ beforeAll(async () => {
     slot.rows[0]?.id,
   ]);
 
-  const barberLogin = await request(app)
-    .post('/auth/login')
-    .send({ email: 'phase4.barber@example.com', password: 'strong-password-123' });
-  const clientLogin = await request(app)
-    .post('/auth/login')
-    .send({ email: 'phase4.client@example.com', password: 'strong-password-123' });
-  barberToken = (barberLogin.body as LoginBody).accessToken;
-  clientToken = (clientLogin.body as LoginBody).accessToken;
+  barberToken = barber.clerkUserId;
+  clientToken = client.clerkUserId;
 });
 
 afterAll(async () => closeDatabase());

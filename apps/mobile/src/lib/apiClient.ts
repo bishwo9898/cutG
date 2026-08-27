@@ -1,6 +1,5 @@
 import {
   ApiClient,
-  ApiError,
   barberBillingApi,
   barberDiscoveryApi,
   clientApi,
@@ -15,9 +14,6 @@ import type {
   CreateBarberProfileRequest,
   CreateReviewRequest,
   CreateServiceRequest,
-  LoginRequest,
-  RegisterRequest,
-  ResetPasswordRequest,
   UpdateBarberProfileRequest,
   UpdateProfileRequest,
   UpdateServiceRequest,
@@ -37,10 +33,9 @@ import type {
   RegisterPushDeviceRequest,
   ScheduleEntry,
 } from '@barber-saas/shared-types';
+import { getClerkInstance } from '@clerk/clerk-expo';
 import ExpoConstants from 'expo-constants';
 import { Platform } from 'react-native';
-
-import { useAuthStore } from '@/store/authStore';
 
 import type {
   AppointmentSummary,
@@ -52,7 +47,6 @@ import type {
   BarberService,
   ClientAddress,
   EarningsSummary,
-  LoginResponse,
   Paginated,
   PaymentIntentResponse,
   PaymentStatusResponse,
@@ -82,41 +76,14 @@ const publicClient = new ApiClient({ baseUrl: MOBILE_API_URL });
 const createAuthedClient = (): ApiClient =>
   new ApiClient({
     baseUrl: MOBILE_API_URL,
-    headers: (): Record<string, string> => {
-      const token = useAuthStore.getState().accessToken;
-      return token === null ? {} : { Authorization: 'Bearer ' + token };
+    headers: async (): Promise<Record<string, string>> => {
+      const token = await getClerkInstance().session?.getToken();
+      return token === null || token === undefined ? {} : { Authorization: 'Bearer ' + token };
     },
   });
 
-const refreshAccessToken = async (): Promise<boolean> => {
-  const { refreshToken, setAccessToken, clearAuth } = useAuthStore.getState();
-  if (refreshToken === null) {
-    await clearAuth();
-    return false;
-  }
-
-  try {
-    const response = await publicClient.post<{ accessToken: string }>('/auth/refresh', {
-      refreshToken,
-    });
-    await setAccessToken(response.accessToken);
-    return true;
-  } catch {
-    await clearAuth();
-    return false;
-  }
-};
-
-const withAuth = async <T>(operation: (client: ApiClient) => Promise<T>): Promise<T> => {
-  try {
-    return await operation(createAuthedClient());
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 401 && (await refreshAccessToken())) {
-      return operation(createAuthedClient());
-    }
-    throw error;
-  }
-};
+const withAuth = <T>(operation: (client: ApiClient) => Promise<T>): Promise<T> =>
+  operation(createAuthedClient());
 
 const paramsToQuery = (params?: Record<string, string | number | boolean | undefined>): string => {
   const search = new URLSearchParams();
@@ -129,19 +96,11 @@ const paramsToQuery = (params?: Record<string, string | number | boolean | undef
 
 export const mobileApi = {
   auth: {
-    register: (body: RegisterRequest): Promise<{ user: AuthUser; message?: string }> =>
-      publicClient.post('/auth/register', body),
-    verifyEmail: (email: string, verificationCode: string): Promise<{ message: string }> =>
-      publicClient.post('/auth/verify-email', { email, verificationCode }),
-    login: (body: LoginRequest): Promise<LoginResponse> => publicClient.post('/auth/login', body),
-    logout: (): Promise<{ message: string }> => withAuth((client) => client.post('/auth/logout')),
+    sync: (userType: 'BARBER' | 'CLIENT'): Promise<AuthUser> =>
+      withAuth((client) => client.post('/auth/sync', { userType })),
     me: (): Promise<AuthUser> => withAuth((client) => client.get('/auth/me')),
     updateMe: (body: UpdateProfileRequest): Promise<AuthUser> =>
       withAuth((client) => client.patch('/auth/me', body)),
-    forgotPassword: (email: string): Promise<{ message: string }> =>
-      publicClient.post('/auth/forgot-password', { email }),
-    resetPassword: (body: ResetPasswordRequest): Promise<{ message: string }> =>
-      publicClient.post('/auth/reset-password', body),
   },
   notifications: {
     list: (params?: { cursor?: string; limit?: number }): Promise<NotificationPage> =>

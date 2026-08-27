@@ -18,7 +18,6 @@ let clientId = '';
 let designId = '';
 let otherDesignId = '';
 
-type LoginBody = { accessToken: string };
 type SearchBody = { barbers: Array<{ id: string; serviceCategories: string[] }> };
 type SavedBody = { savedBarbers: unknown[] };
 type SlotsBody = { slots: Array<{ id: string; isAvailable: boolean }> };
@@ -52,14 +51,8 @@ beforeAll(async () => {
   );
   serviceId = service.rows[0]?.id ?? '';
 
-  const barberLogin = await request(app)
-    .post('/auth/login')
-    .send({ email: 'phase3.barber@example.com', password: 'strong-password-123' });
-  const clientLogin = await request(app)
-    .post('/auth/login')
-    .send({ email: 'phase3.client@example.com', password: 'strong-password-123' });
-  barberToken = (barberLogin.body as LoginBody).accessToken;
-  clientToken = (clientLogin.body as LoginBody).accessToken;
+  barberToken = barber.clerkUserId;
+  clientToken = client.clerkUserId;
 
   await request(app)
     .post('/barbers/me/slots/generate')

@@ -15,7 +15,6 @@ let barberId = '';
 let serviceId = '';
 let addressId = '';
 let slotId = '';
-type LoginBody = { accessToken: string };
 type SearchBody = {
   barbers: Array<{ mobileService: { baseFee: number } | null; nextAvailableSlot: string | null }>;
 };
@@ -40,7 +39,7 @@ type BarberLocationBody = { isTracking: boolean };
 beforeAll(async () => {
   await resetTestDatabase();
   const barber = await createVerifiedUser('BARBER', 'mobile.barber@example.com');
-  await createVerifiedUser('CLIENT', 'mobile.client@example.com');
+  const client = await createVerifiedUser('CLIENT', 'mobile.client@example.com');
   barberId = await createBarberProfileFixture(barber.id);
   await pool.query("UPDATE barber_profiles SET subscription_tier='BASIC' WHERE id=$1", [barberId]);
   const service = await pool.query<{ id: string }>(
@@ -48,18 +47,8 @@ beforeAll(async () => {
     [barberId],
   );
   serviceId = service.rows[0]?.id ?? '';
-  barberToken = (
-    await request(app)
-      .post('/auth/login')
-      .send({ email: 'mobile.barber@example.com', password: 'strong-password-123' })
-      .then((response) => response.body as LoginBody)
-  ).accessToken;
-  clientToken = (
-    await request(app)
-      .post('/auth/login')
-      .send({ email: 'mobile.client@example.com', password: 'strong-password-123' })
-      .then((response) => response.body as LoginBody)
-  ).accessToken;
+  barberToken = barber.clerkUserId;
+  clientToken = client.clerkUserId;
 });
 
 afterAll(async () => closeDatabase());

@@ -1,6 +1,6 @@
 'use client';
 
-import { PasswordSchema, RegisterRequestSchema } from '@barber-saas/shared-types';
+import { useSignUp } from '@clerk/nextjs/legacy';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
@@ -10,31 +10,37 @@ import { z } from 'zod';
 
 import { AuthShell } from '@/components/auth-shell';
 import { Notice } from '@/components/notice';
+import { clerkErrorMessage } from '@/lib/clerk-error-message';
 
 type AuthRole = 'CLIENT' | 'BARBER';
-const schema = RegisterRequestSchema.extend({
-  password: PasswordSchema,
-  confirmPassword: z.string(),
-  acceptedTerms: z.boolean(),
-}).superRefine((value, context) => {
-  if (value.password !== value.confirmPassword) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['confirmPassword'],
-      message: 'Passwords must match.',
-    });
-  }
-  if (value.userType === 'BARBER' && !value.acceptedTerms) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['acceptedTerms'],
-      message: 'Accept the Barber Terms to continue.',
-    });
-  }
-});
+
+const PasswordSchema = z
+  .string()
+  .min(12, 'Password must contain at least 12 characters.')
+  .max(72, 'Password must contain at most 72 characters.');
+
+const schema = z
+  .object({
+    email: z.string().email(),
+    firstName: z.string().min(1).max(100),
+    lastName: z.string().min(1).max(100),
+    password: PasswordSchema,
+    confirmPassword: z.string(),
+    acceptedTerms: z.boolean(),
+  })
+  .superRefine((value, context) => {
+    if (value.password !== value.confirmPassword) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['confirmPassword'],
+        message: 'Passwords must match.',
+      });
+    }
+  });
 type FormValues = z.infer<typeof schema>;
 
 export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactElement {
+  const { isLoaded, signUp } = useSignUp();
   const [error, setError] = useState<string | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const isBarber = role === 'BARBER';
@@ -47,35 +53,33 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { userType: role, confirmPassword: '', acceptedTerms: false },
+    defaultValues: { confirmPassword: '', acceptedTerms: false },
   });
 
   const submit = async (values: FormValues): Promise<void> => {
     setError(null);
+    if (!isLoaded) {
+      return;
+    }
+    if (isBarber && !values.acceptedTerms) {
+      setError('Accept the Barber Terms to continue.');
+      return;
+    }
     try {
-      const response = await fetch('/api/backend/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: values.email,
-          firstName: values.firstName,
-          lastName: values.lastName,
-          password: values.password,
-          userType: role,
-        }),
+      await signUp.create({
+        emailAddress: values.email,
+        password: values.password,
+        firstName: values.firstName,
+        lastName: values.lastName,
       });
-      const body = (await response.json().catch(() => ({}))) as { message?: string };
-      if (!response.ok) {
-        setError(body.message ?? 'We could not create your account.');
-        return;
-      }
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       const query = new URLSearchParams({ email: values.email, role: role.toLowerCase() });
-      if (next?.startsWith(role === 'BARBER' ? '/barber' : '/client') === true) {
+      if (next?.startsWith(isBarber ? '/barber' : '/client') === true) {
         query.set('next', next);
       }
       window.location.assign(`/verify-email?${query.toString()}`);
-    } catch {
-      setError('The registration service could not be reached. Check that the API is running.');
+    } catch (submitError) {
+      setError(clerkErrorMessage(submitError, 'We could not create your account.'));
     }
   };
 
@@ -89,7 +93,6 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
         </p>
         <form className="form-stack" onSubmit={handleSubmit(submit)}>
           {error !== null && <Notice>{error}</Notice>}
-          <input type="hidden" value={role} {...register('userType')} />
           <div className="form-row">
             <div className="field">
               <label htmlFor={`${role}-firstName`}>First name</label>
@@ -163,9 +166,7 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
               Terms of Service.
             </label>
           )}
-          {errors.acceptedTerms?.message !== undefined && (
-            <span className="field-error">{errors.acceptedTerms.message}</span>
-          )}
+          <div id="clerk-captcha" />
           <button
             className="button button-primary button-full"
             disabled={isSubmitting}

@@ -1,3 +1,4 @@
+import { useSignUp } from '@clerk/clerk-expo';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
@@ -8,8 +9,7 @@ import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { mobileApi } from '@/lib/apiClient';
-import { authErrorMessage } from '@/lib/errors';
+import { clerkErrorMessage } from '@/lib/clerkErrorMessage';
 import { colors, typography } from '@/theme';
 
 const RegisterFormSchema = z
@@ -38,25 +38,31 @@ const fieldLabels: Record<keyof RegisterForm, string> = {
 export default function RegisterScreen(): React.ReactElement {
   const params = useLocalSearchParams<{ role?: string }>();
   const userType = params.role === 'BARBER' ? 'BARBER' : 'CLIENT';
+  const { isLoaded, signUp } = useSignUp();
   const { control, formState, handleSubmit, setError } = useForm<RegisterForm>({
     defaultValues: { confirmPassword: '', email: '', firstName: '', lastName: '', password: '' },
     resolver: zodResolver(RegisterFormSchema),
   });
 
   const onSubmit = async (values: RegisterForm): Promise<void> => {
+    if (!isLoaded) {
+      return;
+    }
     try {
-      await mobileApi.auth.register({
-        email: values.email,
+      await signUp.create({
+        emailAddress: values.email,
+        password: values.password,
         firstName: values.firstName,
         lastName: values.lastName,
-        password: values.password,
-        userType,
       });
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       router.push(
         '/(auth)/verify-email?email=' + encodeURIComponent(values.email) + '&role=' + userType,
       );
     } catch (error) {
-      setError('root', { message: authErrorMessage(error) });
+      setError('root', {
+        message: clerkErrorMessage(error, 'We could not create your account.'),
+      });
     }
   };
 

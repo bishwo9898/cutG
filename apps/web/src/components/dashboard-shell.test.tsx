@@ -3,6 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DashboardShell } from './dashboard-shell';
 
+vi.mock('@clerk/nextjs', (): object => ({
+  useClerk: (): { signOut: () => Promise<void> } => ({ signOut: vi.fn(async () => {}) }),
+}));
+
 vi.mock('next/navigation', (): object => ({
   usePathname: (): string => '/barber/dashboard/appointments',
   useRouter: (): { refresh: () => void; replace: () => void } => ({

@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-import { PasswordSchema } from './auth';
-import { AppointmentStatusEnum, PaymentStatusEnum, UserTypeEnum } from './enums';
+import { AppointmentStatusEnum, PaymentStatusEnum } from './enums';
 
 export const ApiErrorResponseSchema = z.object({
   status: z.literal('error'),
@@ -21,16 +20,6 @@ export const HealthResponseSchema = z.object({
   }),
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
-
-export const CreateUserRequestSchema = z.object({
-  email: z.string().email(),
-  password: PasswordSchema,
-  phone: z.string().min(7).max(20).optional(),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  userType: UserTypeEnum,
-});
-export type CreateUserRequest = z.infer<typeof CreateUserRequestSchema>;
 
 export const CreateAppointmentRequestSchema = z.object({
   barberId: z.string().uuid(),

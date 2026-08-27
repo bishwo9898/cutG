@@ -5,13 +5,6 @@ import { app } from '../app';
 import { closeDatabase, pool } from '../config/database';
 import { createVerifiedUser, resetTestDatabase } from '../test/fixtures';
 
-const login = async (email: string): Promise<string> => {
-  const response = await request(app)
-    .post('/auth/login')
-    .send({ email, password: 'strong-password-123' });
-  return String(response.body.accessToken);
-};
-
 beforeEach(async () => {
   await resetTestDatabase();
 });
@@ -22,10 +15,10 @@ afterAll(async () => {
 
 describe('mobile notifications API', () => {
   it('registers and disables only the authenticated user device', async () => {
-    await createVerifiedUser('CLIENT', 'customer@example.com');
-    await createVerifiedUser('BARBER', 'barber@example.com');
-    const customerToken = await login('customer@example.com');
-    const barberToken = await login('barber@example.com');
+    const customer = await createVerifiedUser('CLIENT', 'customer@example.com');
+    const barber = await createVerifiedUser('BARBER', 'barber@example.com');
+    const customerToken = customer.clerkUserId;
+    const barberToken = barber.clerkUserId;
     const device = {
       installationId: 'customer-installation-01',
       expoPushToken: 'ExponentPushToken[customer-device-token-0001]',
@@ -53,8 +46,8 @@ describe('mobile notifications API', () => {
   it('paginates inbox items and enforces notification ownership', async () => {
     const customer = await createVerifiedUser('CLIENT', 'customer@example.com');
     const barber = await createVerifiedUser('BARBER', 'barber@example.com');
-    const customerToken = await login('customer@example.com');
-    const barberToken = await login('barber@example.com');
+    const customerToken = customer.clerkUserId;
+    const barberToken = barber.clerkUserId;
 
     const created = await pool.query<{ id: string }>(
       `INSERT INTO notifications (user_id,type,title,message,related_data,created_at)

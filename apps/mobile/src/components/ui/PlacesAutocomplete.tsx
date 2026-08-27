@@ -151,7 +151,7 @@ export const PlacesAutocomplete = ({
         placeholder={placeholder}
         helperText={
           loadSuggestions === undefined && apiKey.length === 0
-            ? 'Add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to enable suggestions.'
+            ? 'Address suggestions are unavailable. You can enter the address manually.'
             : loading
               ? 'Finding addresses...'
               : undefined
