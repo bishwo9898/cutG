@@ -97,7 +97,7 @@
 }
 
 .landing-cinematic-hero-backdrop-image {
-  background-image: url('/images/barbers/barber-2.webp');
+  background-image: url('/images/barbers/cutg-hero-v1.png');
   background-position: center 28%;
   filter: saturate(0.54) contrast(0.9) brightness(1.08);
   transform: scale(1.03);
@@ -269,51 +269,136 @@
   background: var(--ivory-champagne-soft);
 }
 
-.landing-cinematic-map-aura-left {
-  background: rgba(178, 146, 98, 0.22);
+.landing-cinematic-map-card {
+  background: linear-gradient(180deg, #f4efe6 0%, #ece4d5 100%);
 }
 
-.landing-cinematic-map-aura-right {
-  background: rgba(234, 215, 211, 0.55);
-}
-
-.landing-cinematic-map-grid {
-  opacity: 0.55;
-  background-image:
-    linear-gradient(rgba(89, 70, 55, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(89, 70, 55, 0.07) 1px, transparent 1px);
-}
-
-.landing-cinematic-map-path {
-  border-color: rgba(178, 146, 98, 0.55);
-}
-
-.landing-cinematic-map-route-dot {
+.landing-cinematic-mode-toggle {
   position: absolute;
-  z-index: 1;
-  width: 9px;
-  height: 9px;
+  z-index: 2;
+  top: 14px;
+  left: 14px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--ivory-line);
   border-radius: 999px;
-  background: var(--ivory-champagne);
-  box-shadow:
-    0 0 0 5px rgba(178, 146, 98, 0.18),
-    0 2px 8px rgba(57, 45, 36, 0.28);
-  animation: landing-cinematic-travel 4.5s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  background: rgba(255, 253, 249, 0.92);
+  box-shadow: var(--ivory-shadow-sm);
+  backdrop-filter: blur(10px);
 }
 
-@keyframes landing-cinematic-travel {
-  0% {
-    left: 21%;
-    top: 74%;
+.landing-cinematic-mode-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ivory-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.landing-cinematic-mode-toggle button:hover:not(.is-active) {
+  color: var(--ivory-ink);
+  background: rgba(89, 70, 55, 0.08);
+}
+
+.landing-cinematic-mode-toggle button.is-active {
+  color: #fff;
+  background: var(--ivory-ink);
+}
+
+.landing-cinematic-route-svg {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.route-block {
+  fill: rgba(89, 70, 55, 0.07);
+  stroke: rgba(89, 70, 55, 0.14);
+  stroke-width: 1;
+}
+
+.route-park {
+  fill: rgba(140, 173, 118, 0.32);
+}
+
+.route-line-glow {
+  fill: none;
+  stroke: var(--ivory-champagne);
+  stroke-width: 11;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.32;
+  filter: blur(5px);
+}
+
+.route-line {
+  fill: none;
+  stroke: var(--ivory-ink);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.route-path-ref {
+  fill: none;
+  stroke: none;
+  opacity: 0;
+}
+
+.route-marker-moving-halo {
+  fill: var(--ivory-champagne);
+  opacity: 0.4;
+  transform-origin: center;
+  animation: route-marker-pulse 1.7s ease-in-out infinite;
+}
+
+@keyframes route-marker-pulse {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(1);
   }
   50% {
-    left: 47%;
-    top: 53%;
+    opacity: 0.14;
+    transform: scale(1.5);
   }
-  100% {
-    left: 76%;
-    top: 27%;
-  }
+}
+
+.route-marker-moving {
+  filter: drop-shadow(0 4px 8px rgba(57, 45, 36, 0.35));
+}
+
+.route-pin-shape {
+  fill: var(--ivory-ink);
+  stroke: var(--ivory-surface);
+  stroke-width: 2;
+  filter: drop-shadow(0 8px 12px rgba(57, 45, 36, 0.28));
+}
+
+.route-pin-shape-destination {
+  fill: var(--ivory-champagne);
+}
+
+.landing-cinematic-map-stop-shop {
+  left: 18px;
+  bottom: 22px;
+}
+
+.landing-cinematic-map-service-note-shop {
+  top: 24px;
+  right: 20px;
 }
 
 .landing-cinematic-map-stop small {

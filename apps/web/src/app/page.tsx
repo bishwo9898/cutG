@@ -1,10 +1,11 @@
-import { ArrowUpRight, Calendar, Check, Compass, MapPin, Scissors, Search } from 'lucide-react';
+import { ArrowUpRight, Calendar, Check, Compass, Search } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { HairDesignSlider } from '@/components/landing/hair-design-slider';
 import { HeroFlipWord } from '@/components/landing/hero-flip-word';
 import { LandingNav } from '@/components/landing/landing-nav';
+import { ServiceRouteMap } from '@/components/landing/service-route-map';
 
 export const metadata: Metadata = {
   title: 'cutG - Premium barber booking, mobile service, and AI preview',
@@ -156,33 +157,7 @@ export default function LandingPage(): React.ReactElement {
                 </div>
                 <span>Today · 3–5 PM</span>
               </div>
-              <div className="landing-cinematic-map-card" aria-hidden="true">
-                <div className="landing-cinematic-map-aura landing-cinematic-map-aura-left" />
-                <div className="landing-cinematic-map-aura landing-cinematic-map-aura-right" />
-                <div className="landing-cinematic-map-grid" />
-                <div className="landing-cinematic-map-path" />
-                <span className="landing-cinematic-map-route-dot" />
-                <div className="landing-cinematic-map-stop landing-cinematic-map-stop-origin">
-                  <span className="landing-cinematic-map-stop-icon">
-                    <Scissors size={15} />
-                  </span>
-                  <div>
-                    <strong>Barber studio</strong>
-                    <small>Kit packed</small>
-                  </div>
-                </div>
-                <div className="landing-cinematic-map-stop landing-cinematic-map-stop-destination">
-                  <span className="landing-cinematic-map-stop-icon">
-                    <MapPin size={15} />
-                  </span>
-                  <div>
-                    <strong>Your place</strong>
-                    <small>Home / office / hotel</small>
-                  </div>
-                </div>
-                <div className="landing-cinematic-map-route-pill">On the way · 12 min</div>
-                <div className="landing-cinematic-map-service-note">Chair-ready setup</div>
-              </div>
+              <ServiceRouteMap />
               <div className="landing-cinematic-timeline">
                 {[
                   ['Booked', 'Service and travel fee locked in', true],
