@@ -1,5 +1,6 @@
 'use client';
 
+import { useUser } from '@clerk/nextjs';
 import { Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -13,6 +14,7 @@ const links = [
 export function LandingNav(): React.ReactElement {
   const [isScrolled, setIsScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { isLoaded, isSignedIn, user } = useUser();
 
   useEffect(() => {
     const onScroll = (): void => {
@@ -34,6 +36,13 @@ export function LandingNav(): React.ReactElement {
     };
   }, [menuOpen]);
 
+  // Defaults to the signed-out CTAs until Clerk resolves, avoiding a blank nav flash; corrects to
+  // the signed-in state a moment later for anyone who's actually authenticated.
+  const signedIn = isLoaded && isSignedIn === true;
+  const userType = user?.publicMetadata?.userType;
+  const dashboardHref = userType === 'BARBER' ? '/barber/dashboard' : '/client';
+  const dashboardLabel = userType === 'BARBER' ? 'Barber dashboard' : 'My account';
+
   return (
     <>
       <header className={`landing-cinematic-nav${isScrolled ? ' is-scrolled' : ''}`}>
@@ -48,22 +57,33 @@ export function LandingNav(): React.ReactElement {
               {link.label}
             </Link>
           ))}
-          <Link href="/client/login">Sign in</Link>
+          {!signedIn && <Link href="/client/login">Sign in</Link>}
         </nav>
 
         <div className="landing-cinematic-nav-actions">
-          <Link
-            className="landing-cinematic-button landing-cinematic-button-ghost"
-            href="/barber/register"
-          >
-            I&apos;m a barber
-          </Link>
-          <Link
-            className="landing-cinematic-button landing-cinematic-button-primary"
-            href="/client/start"
-          >
-            Find your barber
-          </Link>
+          {signedIn ? (
+            <Link
+              className="landing-cinematic-button landing-cinematic-button-primary"
+              href={dashboardHref}
+            >
+              {dashboardLabel}
+            </Link>
+          ) : (
+            <>
+              <Link
+                className="landing-cinematic-button landing-cinematic-button-ghost"
+                href="/barber/register"
+              >
+                I&apos;m a barber
+              </Link>
+              <Link
+                className="landing-cinematic-button landing-cinematic-button-primary"
+                href="/client/start"
+              >
+                Find your barber
+              </Link>
+            </>
+          )}
           <button
             aria-expanded={menuOpen}
             aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
@@ -83,23 +103,35 @@ export function LandingNav(): React.ReactElement {
               {link.label}
             </Link>
           ))}
-          <Link href="/client/login" onClick={() => setMenuOpen(false)}>
-            Sign in
-          </Link>
-          <Link
-            className="landing-cinematic-button landing-cinematic-button-ghost"
-            href="/barber/register"
-            onClick={() => setMenuOpen(false)}
-          >
-            I&apos;m a barber
-          </Link>
-          <Link
-            className="landing-cinematic-button landing-cinematic-button-primary"
-            href="/client/start"
-            onClick={() => setMenuOpen(false)}
-          >
-            Find your barber
-          </Link>
+          {signedIn ? (
+            <Link
+              className="landing-cinematic-button landing-cinematic-button-primary"
+              href={dashboardHref}
+              onClick={() => setMenuOpen(false)}
+            >
+              {dashboardLabel}
+            </Link>
+          ) : (
+            <>
+              <Link href="/client/login" onClick={() => setMenuOpen(false)}>
+                Sign in
+              </Link>
+              <Link
+                className="landing-cinematic-button landing-cinematic-button-ghost"
+                href="/barber/register"
+                onClick={() => setMenuOpen(false)}
+              >
+                I&apos;m a barber
+              </Link>
+              <Link
+                className="landing-cinematic-button landing-cinematic-button-primary"
+                href="/client/start"
+                onClick={() => setMenuOpen(false)}
+              >
+                Find your barber
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </>

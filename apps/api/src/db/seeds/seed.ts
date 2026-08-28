@@ -1,6 +1,9 @@
 import { randomUUID } from 'crypto';
 
+import { createClerkClient } from '@clerk/backend';
 import type { Knex } from 'knex';
+
+import { env } from '../../config/env';
 
 type BarberSeed = {
   userId: string;
@@ -89,9 +92,9 @@ type AppointmentSeed = {
   distanceMiles: number | null;
 };
 
-const PASSWORD_HASH = '$2b$12$1CmZfZG/zvDqal.R7w/rOOhKrDV0BSfA7LOtUdMy29tn1RvQytqRW';
 const TEST_BARBER_EMAIL = 'barber.test@example.com';
 const TEST_CLIENT_EMAIL = 'client.test@example.com';
+export const SEED_TEST_PASSWORD = 'CutgSeedTest#2026';
 const LEGACY_SEED_EMAILS = [
   'barber1@example.com',
   'barber2@example.com',
@@ -126,6 +129,40 @@ const requireAt = <T>(items: readonly T[], index: number, label: string): T => {
   }
 
   return item;
+};
+
+/**
+ * Creates (or reuses) a real Clerk identity for a seeded test account, so it can actually sign in
+ * through the app rather than just existing as a local database row. `internalUserId` is written
+ * back to Clerk's publicMetadata immediately, matching what POST /auth/sync does for a normal
+ * sign-up, so no first-request sync round trip is needed for these accounts.
+ */
+const ensureClerkUser = async (params: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  userType: 'BARBER' | 'CLIENT';
+  internalUserId: string;
+}): Promise<string> => {
+  const clerkClient = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
+  const publicMetadata = { userType: params.userType, internalUserId: params.internalUserId };
+  const existing = await clerkClient.users.getUserList({ emailAddress: [params.email] });
+  const existingUser = existing.data[0];
+
+  if (existingUser !== undefined) {
+    await clerkClient.users.updateUserMetadata(existingUser.id, { publicMetadata });
+    return existingUser.id;
+  }
+
+  const created = await clerkClient.users.createUser({
+    emailAddress: [params.email],
+    password: SEED_TEST_PASSWORD,
+    firstName: params.firstName,
+    lastName: params.lastName,
+    publicMetadata,
+  });
+
+  return created.id;
 };
 
 const barberSeeds: BarberSeed[] = [
@@ -398,11 +435,34 @@ export async function seed(knex: Knex): Promise<void> {
     appointments.map((appointment) => [appointment.availabilitySlotId, appointment]),
   );
 
+  const barberClerkIds = await Promise.all(
+    barberSeeds.map((barber) =>
+      ensureClerkUser({
+        email: barber.email,
+        firstName: barber.firstName,
+        lastName: barber.lastName,
+        userType: 'BARBER',
+        internalUserId: barber.userId,
+      }),
+    ),
+  );
+  const clientClerkIds = await Promise.all(
+    clients.map((client) =>
+      ensureClerkUser({
+        email: client.email,
+        firstName: client.firstName,
+        lastName: client.lastName,
+        userType: 'CLIENT',
+        internalUserId: client.id,
+      }),
+    ),
+  );
+
   await knex('users').insert([
-    ...barberSeeds.map((barber) => ({
+    ...barberSeeds.map((barber, index) => ({
       id: barber.userId,
+      clerk_user_id: requireAt(barberClerkIds, index, 'barber Clerk id'),
       email: barber.email,
-      password_hash: PASSWORD_HASH,
       phone: barber.phone,
       first_name: barber.firstName,
       last_name: barber.lastName,
@@ -412,10 +472,10 @@ export async function seed(knex: Knex): Promise<void> {
       email_verified_at: new Date(),
       metadata: { seeded: true, persona: 'barber' },
     })),
-    ...clients.map((client) => ({
+    ...clients.map((client, index) => ({
       id: client.id,
+      clerk_user_id: requireAt(clientClerkIds, index, 'client Clerk id'),
       email: client.email,
-      password_hash: PASSWORD_HASH,
       phone: client.phone,
       first_name: client.firstName,
       last_name: client.lastName,

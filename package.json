@@ -60,7 +60,11 @@
       "browser-tabs-lock",
       "bufferutil",
       "core-js",
-      "utf-8-validate"
+      "esbuild",
+      "sharp",
+      "unrs-resolver",
+      "utf-8-validate",
+      "workerd"
     ]
   }
 }

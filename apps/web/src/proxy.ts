@@ -1,5 +1,5 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
-import { NextResponse, type NextRequest } from 'next/server';
+import { clerkMiddleware, createClerkClient } from '@clerk/nextjs/server';
+import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 
 type PortalRole = 'BARBER' | 'CLIENT';
 
@@ -88,12 +88,46 @@ export const applyPortalRules = (
   return NextResponse.next();
 };
 
-export const proxy = clerkMiddleware(async (auth, request) => {
+const clerkMiddlewareHandler = clerkMiddleware(async (auth, request) => {
   const { userId, sessionClaims } = await auth();
   const role = roleFromPublicMetadata(sessionClaims?.publicMetadata);
 
   return applyPortalRules(request, userId !== null, role);
 });
+
+/**
+ * `clerkMiddleware()` from @clerk/nextjs 7.8.2 does not yet work against Next.js 16's "Proxy"
+ * convention under `next dev`: it re-invokes itself in a tight loop against the dev server's
+ * internal request-forwarding until the connection is dropped ("socket hang up"). This reproduces
+ * identically with webpack and Turbopack, with a bare `clerkMiddleware()` and no custom handler,
+ * and under both the "proxy" and legacy "middleware" file conventions — it is a framework/SDK
+ * incompatibility, not application code. Production builds are unaffected (confirmed working),
+ * since this dev-server request-forwarding path doesn't exist there. In development only, talk to
+ * Clerk's lower-level `authenticateRequest` primitive directly instead of the broken wrapper.
+ */
+const authenticateInDevelopment = async (request: NextRequest): Promise<NextResponse> => {
+  const clerkClient = createClerkClient({
+    secretKey: process.env.CLERK_SECRET_KEY ?? '',
+    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '',
+  });
+  const requestState = await clerkClient.authenticateRequest(request);
+  const auth = requestState.toAuth();
+  const role = roleFromPublicMetadata(auth?.sessionClaims?.publicMetadata);
+
+  return applyPortalRules(request, (auth?.userId ?? null) !== null, role);
+};
+
+export const proxy = async (
+  request: NextRequest,
+  event: NextFetchEvent,
+): Promise<NextResponse | Response> => {
+  if (process.env.NODE_ENV === 'development') {
+    return authenticateInDevelopment(request);
+  }
+
+  const result = await clerkMiddlewareHandler(request, event);
+  return result ?? NextResponse.next();
+};
 
 export const config = {
   matcher: [

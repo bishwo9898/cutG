@@ -288,7 +288,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/shared-types
       '@clerk/nextjs':
-        specifier: ^7.8.2
+        specifier: 7.8.2
         version: 7.8.2(next@16.2.10(@playwright/test@1.61.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@hookform/resolvers':
         specifier: ^5.2.2
@@ -15051,7 +15051,7 @@ snapshots:
 
   rpc-websockets@9.3.9:
     dependencies:
-      '@swc/helpers': 0.5.15
+      '@swc/helpers': 0.5.23
       '@types/uuid': 10.0.0
       '@types/ws': 8.18.1
       buffer: 6.0.3

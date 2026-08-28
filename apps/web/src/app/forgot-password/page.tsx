@@ -29,7 +29,7 @@ export default function ForgotPasswordPage(): React.ReactElement {
     setError(null);
     setIsSubmitting(true);
     try {
-      if (clerk.session !== null) {
+      if (clerk.session !== null && clerk.session !== undefined) {
         await clerk.signOut();
       }
 

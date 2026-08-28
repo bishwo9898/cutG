@@ -45,7 +45,7 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
       return;
     }
     try {
-      if (clerk.session !== null) {
+      if (clerk.session !== null && clerk.session !== undefined) {
         await clerk.signOut();
       }
 
