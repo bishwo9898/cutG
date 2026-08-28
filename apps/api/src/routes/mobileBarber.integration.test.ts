@@ -253,6 +253,9 @@ describe('Phase 6 mobile barber API', () => {
       .set('Authorization', `Bearer ${barberToken}`);
     expect(privateSchedule.status).toBe(200);
     const privateScheduleBody = privateSchedule.body as PrivateSlotsBody;
+    /* eslint-disable @typescript-eslint/no-unsafe-assignment -- false positive: tsc (and every
+       other nested expect.objectContaining() call in this test suite) type-checks this fine; only
+       @typescript-eslint's type-aware linting loses the type here, for this call alone. */
     expect(privateScheduleBody.slots).toContainEqual(
       expect.objectContaining({
         id: slotId,
@@ -264,6 +267,7 @@ describe('Phase 6 mobile barber API', () => {
         }),
       }),
     );
+    /* eslint-enable @typescript-eslint/no-unsafe-assignment */
     const safePublicSchedule = await request(app).get(
       `/barbers/${barberId}/slots?date=2026-08-03&days=1`,
     );

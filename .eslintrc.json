@@ -64,6 +64,18 @@
       }
     },
     {
+      "files": ["apps/api/src/**/*.ts"],
+      "parserOptions": {
+        "project": ["./apps/api/tsconfig.json"]
+      }
+    },
+    {
+      "files": ["apps/mobile/src/**/*.{ts,tsx}"],
+      "parserOptions": {
+        "project": ["./apps/mobile/tsconfig.json"]
+      }
+    },
+    {
       "files": ["apps/mobile/**/*.{ts,tsx}"],
       "rules": {
         "@typescript-eslint/no-redundant-type-constituents": "off",
