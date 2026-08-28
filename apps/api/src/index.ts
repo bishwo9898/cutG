@@ -5,9 +5,15 @@ import { APP_NAME, SHUTDOWN_GRACE_PERIOD_MS } from './config/constants';
 import { closeDatabase } from './config/database';
 import { env } from './config/env';
 import { maintainHairStudio } from './services/design/hairStudioService';
-import { isCloudinaryEnabled } from './services/storage/cloudinaryStorage';
 import { dispatchPendingPushNotifications } from './services/notification/notificationService';
+import { isCloudinaryEnabled } from './services/storage/cloudinaryStorage';
 import { logger } from './utils/logger';
+
+type HairStudioMaintenance = () => Promise<{ expiredScans: number; failedGenerations: number }>;
+type NotificationDispatcher = () => Promise<void>;
+
+const runHairStudioMaintenance = maintainHairStudio as HairStudioMaintenance;
+const runNotificationDispatch = dispatchPendingPushNotifications as NotificationDispatcher;
 
 if (env.CLOUDINARY_URL.length > 0 && !isCloudinaryEnabled()) {
   logger.warn('Cloudinary is disabled because CLOUDINARY_URL is incomplete', {
@@ -25,12 +31,12 @@ const server: Server = app.listen(env.PORT, env.HOST, (): void => {
 });
 
 const maintenanceTimer = setInterval((): void => {
-  void maintainHairStudio().catch((error: unknown) => {
+  void runHairStudioMaintenance().catch((error: unknown) => {
     logger.error('Hair Studio maintenance failed', error);
   });
 }, 60 * 1000);
 maintenanceTimer.unref();
-void maintainHairStudio().catch((error: unknown) => {
+void runHairStudioMaintenance().catch((error: unknown) => {
   logger.error('Initial Hair Studio maintenance failed', error);
 });
 
@@ -38,7 +44,7 @@ let notificationDispatchRunning = false;
 const dispatchNotifications = (): void => {
   if (notificationDispatchRunning) return;
   notificationDispatchRunning = true;
-  void dispatchPendingPushNotifications().finally(() => {
+  void runNotificationDispatch().finally(() => {
     notificationDispatchRunning = false;
   });
 };

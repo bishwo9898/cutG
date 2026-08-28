@@ -1,5 +1,4 @@
 import { SyncRequestSchema, UpdateProfileRequestSchema } from '@barber-saas/shared-types';
-import { getAuth } from '@clerk/express';
 import {
   Router,
   type NextFunction,
@@ -10,7 +9,7 @@ import {
 } from 'express';
 
 import type { UpdateUserProfileInput } from '../db/queries/auth.queries';
-import { requireAuth, requireClerkSession } from '../middleware/auth';
+import { getClerkUserId, requireAuth, requireClerkSession } from '../middleware/auth';
 import { authRateLimiter } from '../middleware/rateLimit';
 import { syncUser } from '../services/auth/clerkSyncService';
 import { getCurrentUser, updateCurrentUser } from '../services/auth/userService';
@@ -32,8 +31,12 @@ authRouter.post(
   requireClerkSession,
   asyncHandler(async (request, response): Promise<void> => {
     const body = SyncRequestSchema.parse(request.body);
-    const { userId } = getAuth(request);
-    const result = await syncUser(userId as string, body.userType);
+    const userId = getClerkUserId(request);
+    if (userId === null) {
+      response.status(401).json({ error: 'No valid session provided.' });
+      return;
+    }
+    const result = await syncUser(userId, body.userType);
 
     response.json(result);
   }),

@@ -203,7 +203,7 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
       {
         text: title,
         style: 'destructive',
-        onPress: () => {
+        onPress: (): void => {
           void updateStatus
             .mutateAsync({ id: item.id, status: next, notes: notes || undefined })
             .then(async () => {

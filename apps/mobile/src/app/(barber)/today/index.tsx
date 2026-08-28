@@ -40,7 +40,7 @@ export default function TodayScreen(): React.ReactElement {
       {
         text: title,
         style: status === 'CANCELLED' ? 'destructive' : 'default',
-        onPress: () => void updateStatus.mutateAsync({ id, status }),
+        onPress: (): void => void updateStatus.mutateAsync({ id, status }),
       },
     ]);
   };

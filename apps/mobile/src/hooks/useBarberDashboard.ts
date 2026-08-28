@@ -51,10 +51,14 @@ export const useBarberSlotsPrivate = (
     staleTime: 30_000,
   });
 
-export const useBarberSchedule = () =>
+export const useBarberSchedule = (): UseQueryResult<{ schedule: ScheduleEntry[] }> =>
   useQuery({ queryKey: ['barber', 'schedule'], queryFn: mobileApi.barber.schedule });
 
-export const useUpdateBarberSchedule = () =>
+export const useUpdateBarberSchedule = (): UseMutationResult<
+  { schedule: ScheduleEntry[] },
+  Error,
+  ScheduleEntry[]
+> =>
   useMutation({
     mutationFn: (schedule: ScheduleEntry[]) => mobileApi.barber.updateSchedule(schedule),
     onSuccess: async () => {
@@ -62,7 +66,11 @@ export const useUpdateBarberSchedule = () =>
     },
   });
 
-export const useBlockBarberDate = () =>
+export const useBlockBarberDate = (): UseMutationResult<
+  { date: string },
+  Error,
+  { date: string; reason?: string }
+> =>
   useMutation({
     mutationFn: ({ date, reason }: { date: string; reason?: string }) =>
       mobileApi.barber.blockDate(date, reason),

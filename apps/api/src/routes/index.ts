@@ -7,8 +7,8 @@ import { barberRouter } from './barbers';
 import { clientRouter } from './clients';
 import { healthRouter } from './health';
 import { internalAiRouter } from './internalAi';
-import { paymentRouter } from './payments';
 import { notificationRouter } from './notifications';
+import { paymentRouter } from './payments';
 
 export const routes: ExpressRouter = Router();
 

@@ -6,13 +6,28 @@ import type { AuthenticatedRequest, AuthenticatedUser } from '../types/auth';
 
 import { AppError } from './errorHandler';
 
+export const getClerkUserId = (request: Request): string | null => {
+  const auth: unknown = getAuth(request);
+
+  if (
+    auth === null ||
+    typeof auth !== 'object' ||
+    !('userId' in auth) ||
+    (auth.userId !== null && typeof auth.userId !== 'string')
+  ) {
+    return null;
+  }
+
+  return auth.userId;
+};
+
 const authenticateRequest = async (
   request: Request,
   _response: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { userId } = getAuth(request);
+    const userId = getClerkUserId(request);
 
     if (userId === null) {
       throw new AppError(401, 'No valid session provided.', 'UNAUTHORIZED');
@@ -55,7 +70,7 @@ export const requireClerkSession: RequestHandler = (
   _response: Response,
   next: NextFunction,
 ): void => {
-  const { userId } = getAuth(request);
+  const userId = getClerkUserId(request);
 
   if (userId === null) {
     next(new AppError(401, 'No valid session provided.', 'UNAUTHORIZED'));

@@ -5,6 +5,8 @@ import { app } from '../app';
 import { closeDatabase, pool } from '../config/database';
 import { createVerifiedUser, resetTestDatabase } from '../test/fixtures';
 
+type NotificationPageBody = { notifications: unknown[]; nextCursor: string | null };
+
 beforeEach(async () => {
   await resetTestDatabase();
 });
@@ -66,16 +68,18 @@ describe('mobile notifications API', () => {
     const firstPage = await request(app)
       .get('/notifications?limit=1')
       .set('Authorization', `Bearer ${customerToken}`);
+    const firstPageBody = firstPage.body as NotificationPageBody;
     expect(firstPage.status).toBe(200);
     expect(firstPage.body).toMatchObject({ unreadCount: 2 });
-    expect(firstPage.body.notifications).toHaveLength(1);
-    expect(firstPage.body.nextCursor).toEqual(expect.any(String));
+    expect(firstPageBody.notifications).toHaveLength(1);
+    expect(firstPageBody.nextCursor).toEqual(expect.any(String));
 
     const secondPage = await request(app)
-      .get(`/notifications?limit=1&cursor=${String(firstPage.body.nextCursor)}`)
+      .get(`/notifications?limit=1&cursor=${String(firstPageBody.nextCursor)}`)
       .set('Authorization', `Bearer ${customerToken}`);
-    expect(secondPage.body.notifications).toHaveLength(1);
-    expect(secondPage.body.nextCursor).toBeNull();
+    const secondPageBody = secondPage.body as NotificationPageBody;
+    expect(secondPageBody.notifications).toHaveLength(1);
+    expect(secondPageBody.nextCursor).toBeNull();
 
     const forbidden = await request(app)
       .patch(`/notifications/${String(foreign.rows[0]?.id)}/read`)

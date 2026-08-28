@@ -32,6 +32,9 @@ type MobileConfigBody = {
   originCity: string | null;
   approximateOrigin: { latitude: number; longitude: number };
 };
+type PrivateSlotsBody = {
+  slots: Array<{ id: string; status: string; appointmentSummary?: unknown }>;
+};
 type PublicSlotsBody = { slots: Array<{ startTime: string; availableForMobile: boolean }> };
 type TimelineBody = { timeline: unknown[]; currentStatus: string; arrivedAt: string | null };
 type BarberLocationBody = { isTracking: boolean };
@@ -249,7 +252,8 @@ describe('Phase 6 mobile barber API', () => {
       .get('/barbers/me/slots?startDate=2026-08-03&endDate=2026-08-03')
       .set('Authorization', `Bearer ${barberToken}`);
     expect(privateSchedule.status).toBe(200);
-    expect(privateSchedule.body.slots).toContainEqual(
+    const privateScheduleBody = privateSchedule.body as PrivateSlotsBody;
+    expect(privateScheduleBody.slots).toContainEqual(
       expect.objectContaining({
         id: slotId,
         status: 'BOOKED',
@@ -263,8 +267,9 @@ describe('Phase 6 mobile barber API', () => {
     const safePublicSchedule = await request(app).get(
       `/barbers/${barberId}/slots?date=2026-08-03&days=1`,
     );
+    const safePublicScheduleBody = safePublicSchedule.body as PublicSlotsBody;
     expect(
-      (safePublicSchedule.body as PublicSlotsBody).slots.every(
+      safePublicScheduleBody.slots.every(
         (slot) => !Object.prototype.hasOwnProperty.call(slot, 'appointmentSummary'),
       ),
     ).toBe(true);
