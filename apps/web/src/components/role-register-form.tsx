@@ -1,5 +1,6 @@
 'use client';
 
+import { useClerk } from '@clerk/nextjs';
 import { useSignUp } from '@clerk/nextjs/legacy';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight } from 'lucide-react';
@@ -41,6 +42,7 @@ type FormValues = z.infer<typeof schema>;
 
 export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactElement {
   const { isLoaded, signUp } = useSignUp();
+  const clerk = useClerk();
   const [error, setError] = useState<string | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const isBarber = role === 'BARBER';
@@ -66,6 +68,10 @@ export function RoleRegisterForm({ role }: { role: AuthRole }): React.ReactEleme
       return;
     }
     try {
+      if (clerk.session !== null) {
+        await clerk.signOut();
+      }
+
       await signUp.create({
         emailAddress: values.email,
         password: values.password,

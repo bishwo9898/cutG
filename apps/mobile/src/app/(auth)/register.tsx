@@ -1,4 +1,4 @@
-import { useSignUp } from '@clerk/clerk-expo';
+import { getClerkInstance, useSignUp } from '@clerk/clerk-expo';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
@@ -49,6 +49,11 @@ export default function RegisterScreen(): React.ReactElement {
       return;
     }
     try {
+      const clerk = getClerkInstance();
+      if (clerk.session !== null && clerk.session !== undefined) {
+        await clerk.signOut();
+      }
+
       await signUp.create({
         emailAddress: values.email,
         password: values.password,

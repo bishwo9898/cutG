@@ -67,4 +67,12 @@ describe('dual portal proxy rules', () => {
       applyPortalRules(request('/barber/dashboard'), false, 'BARBER').headers.get('location'),
     ).toBe('http://localhost:3000/barber/login?next=%2Fbarber%2Fdashboard');
   });
+
+  it('lets an authenticated session through when the role claim is unknown, rather than wrong', () => {
+    // publicMetadata.userType only reaches the session token if the Clerk dashboard's "Customize
+    // session token" claim is configured. A signed-in user must never be locked out of their own
+    // portal just because that optional claim is missing or hasn't propagated yet.
+    expect(applyPortalRules(request('/barber/dashboard'), true, null).status).toBe(200);
+    expect(applyPortalRules(request('/client/barbers'), true, null).status).toBe(200);
+  });
 });

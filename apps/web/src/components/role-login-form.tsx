@@ -45,6 +45,10 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
       return;
     }
     try {
+      if (clerk.session !== null) {
+        await clerk.signOut();
+      }
+
       const result = await signIn.create({ identifier: values.email, password: values.password });
 
       if (result.status !== 'complete' || result.createdSessionId === null) {

@@ -27,12 +27,10 @@ services:
         value: 0
       - key: DATABASE_POOL_MAX
         value: 3
-      - key: JWT_SECRET
-        generateValue: true
-      - key: JWT_EXPIRY
-        value: 24h
-      - key: JWT_REFRESH_EXPIRY
-        value: 30d
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
       - key: WEB_APP_URL
         sync: false
       - key: MOBILE_APP_URL

@@ -69,12 +69,17 @@ export const applyPortalRules = (
     pathname === '/client/saved' ||
     pathname.startsWith('/client/profile');
 
-  if (barberProtected && (!hasSession || role !== 'BARBER')) {
+  // A `role` of null means "unknown", not "wrong" — either the Clerk session token hasn't been
+  // customized to include publicMetadata yet, or the /auth/sync claim hasn't propagated to this
+  // session token. Only redirect when the role is affirmatively known and wrong; an authenticated
+  // user with an unknown role is let through so the page (and the API's own DB-backed auth) can
+  // decide, rather than bouncing a legitimately signed-in user out of their own portal.
+  if (barberProtected && (!hasSession || role === 'CLIENT')) {
     const loginUrl = new URL('/barber/login', request.url);
     loginUrl.searchParams.set('next', pathname);
     return NextResponse.redirect(loginUrl);
   }
-  if (clientProtected && (!hasSession || role !== 'CLIENT')) {
+  if (clientProtected && (!hasSession || role === 'BARBER')) {
     const loginUrl = new URL('/client/login', request.url);
     loginUrl.searchParams.set('next', pathname);
     return NextResponse.redirect(loginUrl);

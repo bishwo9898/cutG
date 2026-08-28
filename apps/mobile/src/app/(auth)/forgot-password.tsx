@@ -23,6 +23,11 @@ export default function ForgotPasswordScreen(): React.ReactElement {
       return;
     }
     try {
+      const clerk = getClerkInstance();
+      if (clerk.session !== null && clerk.session !== undefined) {
+        await clerk.signOut();
+      }
+
       await signIn.create({ strategy: 'reset_password_email_code', identifier: email });
       setSent(true);
       setMessage('If an account exists for this email, a reset code is on its way.');

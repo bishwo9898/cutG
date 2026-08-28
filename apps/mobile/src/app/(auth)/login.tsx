@@ -36,6 +36,11 @@ export default function LoginScreen(): React.ReactElement {
       return;
     }
     try {
+      const clerk = getClerkInstance();
+      if (clerk.session !== null && clerk.session !== undefined) {
+        await clerk.signOut();
+      }
+
       const result = await signIn.create({
         identifier: values.email,
         password: values.password,

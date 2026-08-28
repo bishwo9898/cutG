@@ -1,5 +1,6 @@
 'use client';
 
+import { useClerk } from '@clerk/nextjs';
 import { useSignIn } from '@clerk/nextjs/legacy';
 import { Send } from 'lucide-react';
 import Link from 'next/link';
@@ -14,6 +15,7 @@ export default function ForgotPasswordPage(): React.ReactElement {
   const pathname = usePathname();
   const role = pathname.startsWith('/barber') ? 'barber' : 'client';
   const { isLoaded, signIn } = useSignIn();
+  const clerk = useClerk();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +29,10 @@ export default function ForgotPasswordPage(): React.ReactElement {
     setError(null);
     setIsSubmitting(true);
     try {
+      if (clerk.session !== null) {
+        await clerk.signOut();
+      }
+
       await signIn.create({ strategy: 'reset_password_email_code', identifier: email });
       setSent(true);
     } catch (submitError) {
