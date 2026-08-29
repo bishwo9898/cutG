@@ -87,6 +87,51 @@ export const findPublicUserById = async (
   return result.rows[0] ?? null;
 };
 
+export const findUnlinkedUserByEmail = async (
+  email: string,
+  client?: PoolClient,
+): Promise<UserRecord | null> => {
+  const result = await getQueryable(client).query<UserRecord>(
+    `
+      SELECT ${userColumns}
+      FROM users
+      WHERE lower(email) = lower($1)
+        AND clerk_user_id IS NULL
+        AND deleted_at IS NULL
+      LIMIT 1
+    `,
+    [email],
+  );
+
+  return result.rows[0] ?? null;
+};
+
+/**
+ * Claims a pre-existing local row for a Clerk account. `clerk_user_id IS NULL` is repeated in the
+ * WHERE clause so that two concurrent syncs cannot both claim the same row — the second one matches
+ * nothing and gets null back rather than silently stealing the first one's link.
+ */
+export const linkClerkUserId = async (
+  userId: string,
+  clerkUserId: string,
+  client?: PoolClient,
+): Promise<UserRecord | null> => {
+  const result = await getQueryable(client).query<UserRecord>(
+    `
+      UPDATE users
+      SET clerk_user_id = $2,
+          updated_at = NOW()
+      WHERE id = $1
+        AND clerk_user_id IS NULL
+        AND deleted_at IS NULL
+      RETURNING ${userColumns}
+    `,
+    [userId, clerkUserId],
+  );
+
+  return result.rows[0] ?? null;
+};
+
 export const createUserForClerkId = async (
   input: CreateUserInput,
   client?: PoolClient,

@@ -58,8 +58,25 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
 
       await setActive({ session: result.createdSessionId });
 
-      const userType = clerk.user?.publicMetadata?.userType;
-      if (userType !== undefined && userType !== role) {
+      // Sign-up is what normally creates the local account row, but a Clerk account can exist
+      // without one — a seeded account, or a sign-up whose sync failed. /auth/sync is idempotent
+      // and repairs that, so run it on every sign in. It also answers with the account's real
+      // userType, which is the authoritative role check: clerk.user is still stale this soon after
+      // setActive(), and its publicMetadata is unset for an account that never synced.
+      const syncResponse = await fetch('/api/auth/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userType: role }),
+      });
+
+      if (!syncResponse.ok) {
+        await clerk.signOut();
+        setError('We could not load your account. Please try again.');
+        return;
+      }
+
+      const account = (await syncResponse.json()) as { userType?: unknown };
+      if (account.userType !== role) {
         await clerk.signOut();
         setError(
           isBarber
