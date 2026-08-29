@@ -68,6 +68,16 @@ describe('dual portal proxy rules', () => {
     ).toBe('http://localhost:3000/barber/login?next=%2Fbarber%2Fdashboard');
   });
 
+  it('never redirects /api requests, which are matched only to give route handlers auth context', () => {
+    // /api is in the proxy matcher so clerkMiddleware() runs and `auth()` works inside route
+    // handlers (server-api.ts). Redirecting them would answer fetch() with an HTML login page
+    // instead of JSON, so every /api request must pass through regardless of session or role.
+    expect(applyPortalRules(request('/api/backend/auth/me'), false, null).status).toBe(200);
+    expect(applyPortalRules(request('/api/auth/sync'), false, null).status).toBe(200);
+    expect(applyPortalRules(request('/api/backend/clients/me'), true, 'BARBER').status).toBe(200);
+    expect(applyPortalRules(request('/api/backend/barbers/me'), true, 'CLIENT').status).toBe(200);
+  });
+
   it('lets an authenticated session through when the role claim is unknown, rather than wrong', () => {
     // publicMetadata.userType only reaches the session token if the Clerk dashboard's "Customize
     // session token" claim is configured. A signed-in user must never be locked out of their own

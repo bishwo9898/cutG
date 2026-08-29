@@ -36,6 +36,17 @@ export const applyPortalRules = (
   role: PortalRole | null,
 ): NextResponse => {
   const pathname = request.nextUrl.pathname;
+
+  // Route handlers under /api call `auth()` (see server-api.ts), which only works when
+  // clerkMiddleware() has run for the request — so /api is in the matcher below. It is matched
+  // purely to establish that auth context: the portal redirect rules are for page navigations, and
+  // answering a fetch() with a 307 to a login page would hand the caller an HTML body instead of
+  // the JSON it asked for. Let API requests through and let the route (and the API's own auth)
+  // return a real 401.
+  if (pathname === '/api' || pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
   for (const [from, to] of legacyRoutes) {
     if (pathname === from || pathname.startsWith(`${from}/`)) {
       return redirectWithPath(request, from, to, 308);
@@ -131,6 +142,8 @@ export const proxy = async (
 
 export const config = {
   matcher: [
+    // Required so `auth()` works inside /api route handlers; applyPortalRules lets these through.
+    '/api/:path*',
     '/barber/:path*',
     '/client/:path*',
     '/dashboard/:path*',
