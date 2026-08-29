@@ -7391,6 +7391,21 @@ input:checked + .toggle-track::after,
   padding: 96px 0;
 }
 
+.landing-scroll-reveal {
+  opacity: 0;
+  transform: translate3d(0, 44px, 0) scale(0.985);
+  transition:
+    opacity 600ms ease-out,
+    transform 760ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.landing-scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  will-change: auto;
+}
+
 .landing-cinematic-section-surface,
 .landing-cinematic-proof-band {
   background: rgba(255, 255, 255, 0.015);
@@ -7964,6 +7979,11 @@ input:checked + .toggle-track::after,
     width: min(100% - 28px, 1180px);
   }
 
+  .landing-scroll-reveal {
+    transform: translate3d(0, 28px, 0) scale(0.99);
+    transition-duration: 480ms, 600ms;
+  }
+
   .landing-cinematic-hero {
     padding-top: 112px;
   }
@@ -7999,6 +8019,13 @@ input:checked + .toggle-track::after,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .landing-scroll-reveal,
+  .landing-scroll-reveal.is-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
   .landing-cinematic-nav,
   .landing-cinematic-button,
   .landing-cinematic-nav-links a::after,

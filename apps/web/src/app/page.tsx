@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { HairDesignSlider } from '@/components/landing/hair-design-slider';
 import { HeroFlipWord } from '@/components/landing/hero-flip-word';
 import { LandingNav } from '@/components/landing/landing-nav';
+import { LandingSection } from '@/components/landing/landing-section';
 import { ServiceRouteMap } from '@/components/landing/service-route-map';
 
 export const metadata: Metadata = {
@@ -64,7 +65,7 @@ export default function LandingPage(): React.ReactElement {
     <main className="landing-cinematic-page">
       <LandingNav />
 
-      <section className="landing-cinematic-hero">
+      <LandingSection className="landing-cinematic-hero">
         <div className="landing-cinematic-aurora landing-cinematic-aurora-left" />
         <div className="landing-cinematic-aurora landing-cinematic-aurora-right" />
         <div className="landing-cinematic-hero-backdrop" aria-hidden="true">
@@ -97,9 +98,9 @@ export default function LandingPage(): React.ReactElement {
             </div>
           </div>
         </div>
-      </section>
+      </LandingSection>
 
-      <section className="landing-cinematic-section" id="hair-design">
+      <LandingSection className="landing-cinematic-section" id="hair-design">
         <div className="landing-cinematic-shell">
           <div className="landing-cinematic-section-heading">
             <div>
@@ -112,9 +113,9 @@ export default function LandingPage(): React.ReactElement {
           </div>
           <HairDesignSlider />
         </div>
-      </section>
+      </LandingSection>
 
-      <section
+      <LandingSection
         className="landing-cinematic-section landing-cinematic-section-surface"
         id="tracking"
       >
@@ -181,9 +182,9 @@ export default function LandingPage(): React.ReactElement {
             </div>
           </div>
         </div>
-      </section>
+      </LandingSection>
 
-      <section className="landing-cinematic-section" id="how-it-works">
+      <LandingSection className="landing-cinematic-section" id="how-it-works">
         <div className="landing-cinematic-shell">
           <div className="landing-cinematic-section-heading landing-cinematic-section-heading-centered">
             <div>
@@ -201,9 +202,9 @@ export default function LandingPage(): React.ReactElement {
             ))}
           </div>
         </div>
-      </section>
+      </LandingSection>
 
-      <section
+      <LandingSection
         className="landing-cinematic-section landing-cinematic-section-surface"
         id="for-barbers"
       >
@@ -278,9 +279,9 @@ export default function LandingPage(): React.ReactElement {
             </Link>
           </div>
         </div>
-      </section>
+      </LandingSection>
 
-      <section className="landing-cinematic-section">
+      <LandingSection className="landing-cinematic-section">
         <div className="landing-cinematic-shell landing-cinematic-final-cta">
           <div className="landing-cinematic-final-copy">
             <p className="landing-cinematic-eyebrow">Last call</p>
@@ -314,7 +315,7 @@ export default function LandingPage(): React.ReactElement {
             </article>
           </div>
         </div>
-      </section>
+      </LandingSection>
 
       <footer className="landing-cinematic-footer">
         <div className="landing-cinematic-shell">
