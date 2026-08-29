@@ -1,0 +1,18 @@
+// Lint-only project. Identical to tsconfig.json except that it resolves the workspace packages
+// from their SOURCE rather than their built dist/ output, so `pnpm lint` does not depend on
+// `pnpm build`/`pnpm typecheck` having run first. CI lints before it builds, and without this the
+// unbuilt dist/ made every shared-types import resolve to `error`, producing hundreds of bogus
+// "unsafe ... of an `error` typed value" errors. apps/web and apps/mobile already point at src/;
+// only apps/api maps to dist/, because it is the one project that actually emits.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "../..",
+    "paths": {
+      "@barber-saas/shared-types": ["packages/shared-types/src"],
+      "@barber-saas/shared-utils": ["packages/shared-utils/src"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
