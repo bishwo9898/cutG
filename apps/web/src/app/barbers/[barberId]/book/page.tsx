@@ -1,6 +1,7 @@
 'use client';
 
 import { ApiError, barberDiscoveryApi, clientApi, paymentApi } from '@barber-saas/api-client';
+import { useUser as useClerkUser } from '@clerk/nextjs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Banknote,
@@ -50,6 +51,7 @@ import type {
   TravelEstimate,
 } from '@/lib/contracts';
 import { errorMessage } from '@/lib/errors';
+import { hasAiStudioAccess } from '@/lib/features';
 
 type Profile = {
   id: string;
@@ -76,6 +78,7 @@ export default function BookBarberPage(): React.ReactElement {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: user } = useUser();
+  const { user: clerkUser } = useClerkUser();
   const [stage, setStage] = useState<Stage>('service');
   const [service, setService] = useState<PublicService | null>(null);
   const [appointmentType, setAppointmentType] = useState<AppointmentType | null>(null);
@@ -112,7 +115,10 @@ export default function BookBarberPage(): React.ReactElement {
     queryKey: ['client-payment-config'],
     queryFn: () => paymentApi.config<PaymentConfig>(browserApi),
   });
-  const savedLooks = useSavedHairDesigns(user?.userType === 'CLIENT' ? user.id : null);
+  // Passing null keeps the query disabled, so accounts without AI Hair Studio access never fetch
+  // saved looks for a step that does not show them.
+  const aiStudio = hasAiStudioAccess(clerkUser?.publicMetadata);
+  const savedLooks = useSavedHairDesigns(aiStudio && user?.userType === 'CLIENT' ? user.id : null);
   const estimate = useMutation({
     mutationFn: (coordinates: { latitude: number; longitude: number }) =>
       browserApi.post<TravelEstimate>('/barbers/me/mobile/estimate', {
@@ -410,12 +416,14 @@ export default function BookBarberPage(): React.ReactElement {
                   <div>
                     <h2>What look are you going for?</h2>
                     <p>
-                      Bring a saved AI look, describe something new, or decide with your barber.
+                      {aiStudio
+                        ? 'Bring a saved AI look, describe something new, or decide with your barber.'
+                        : 'Describe something new, or decide with your barber.'}
                     </p>
                   </div>
                 </div>
 
-                {savedLooks.isLoading ? (
+                {!aiStudio ? null : savedLooks.isLoading ? (
                   <div className="booking-style-loading">
                     <Sparkles size={18} />
                     Checking your private saved looks…
@@ -481,7 +489,8 @@ export default function BookBarberPage(): React.ReactElement {
                   </div>
                 )}
 
-                {requestedDesignId !== null &&
+                {aiStudio &&
+                  requestedDesignId !== null &&
                   savedLooks.data !== undefined &&
                   !completedLooks.some((look) => look.id === requestedDesignId) && (
                     <Notice>
@@ -855,9 +864,7 @@ export default function BookBarberPage(): React.ReactElement {
                     <span>
                       <strong>Pay online</strong>
                       <small>
-                        {cardAvailable
-                          ? 'Secure card payment'
-                          : 'Unavailable for this barber'}
+                        {cardAvailable ? 'Secure card payment' : 'Unavailable for this barber'}
                       </small>
                     </span>
                     {paymentMethod === 'CARD' && <Check size={17} />}

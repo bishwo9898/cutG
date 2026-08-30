@@ -1,6 +1,6 @@
 'use client';
 
-import { useClerk } from '@clerk/nextjs';
+import { useClerk, useUser as useClerkUser } from '@clerk/nextjs';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   CalendarDays,
@@ -19,13 +19,26 @@ import { useState } from 'react';
 
 import { BackButton } from '@/components/back-button';
 import { useUser } from '@/hooks/use-user';
+import { hasAiStudioAccess } from '@/lib/features';
 
+/**
+ * `signedOut` marks the links that still make sense without an account, and `dropdownOnly` marks
+ * the one that lives in the account dropdown instead of the desktop nav. These used to be
+ * positional slices, which silently changed meaning as soon as a link was filtered out of the list.
+ */
 const clientLinks = [
-  { href: '/client/barbers', label: 'Find barbers', icon: Search },
-  { href: '/client/design', label: 'AI Design', icon: Sparkles },
+  { href: '/client/barbers', label: 'Find barbers', icon: Search, signedOut: true },
+  // Shown only to accounts flagged for the in-progress AI Hair Studio. See lib/features.ts.
+  {
+    href: '/client/design',
+    label: 'AI Design',
+    icon: Sparkles,
+    signedOut: true,
+    aiStudioOnly: true,
+  },
   { href: '/client/appointments', label: 'Appointments', icon: CalendarDays },
   { href: '/client/saved', label: 'Saved', icon: Heart },
-  { href: '/client/profile', label: 'Profile', icon: UserRound },
+  { href: '/client/profile', label: 'Profile', icon: UserRound, dropdownOnly: true },
 ];
 
 const active = (pathname: string, href: string): boolean => pathname.startsWith(href);
@@ -39,6 +52,10 @@ export function ClientHeader(): React.ReactElement {
   const [signingOut, setSigningOut] = useState(false);
   const client = user.data?.userType === 'CLIENT' ? user.data : null;
   const initials = client === null ? '' : `${client.firstName[0] ?? ''}${client.lastName[0] ?? ''}`;
+  const { user: clerkUser } = useClerkUser();
+  const visibleLinks = clientLinks.filter(
+    (item) => item.aiStudioOnly !== true || hasAiStudioAccess(clerkUser?.publicMetadata),
+  );
 
   const signOut = async (): Promise<void> => {
     setSigningOut(true);
@@ -66,15 +83,17 @@ export function ClientHeader(): React.ReactElement {
           <span>Search by location</span>
         </Link>
         <nav className="client-primary-nav" aria-label="Customer portal">
-          {clientLinks.slice(0, 4).map((item) => (
-            <Link
-              className={active(pathname, item.href) ? 'client-nav-active' : ''}
-              href={item.href}
-              key={item.href}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {visibleLinks
+            .filter((item) => item.dropdownOnly !== true)
+            .map((item) => (
+              <Link
+                className={active(pathname, item.href) ? 'client-nav-active' : ''}
+                href={item.href}
+                key={item.href}
+              >
+                {item.label}
+              </Link>
+            ))}
         </nav>
         <div className="client-header-actions">
           {client !== null ? (
@@ -122,21 +141,22 @@ export function ClientHeader(): React.ReactElement {
         </div>
       )}
       <nav className="client-mobile-nav" aria-label="Customer mobile navigation">
-        {(client === null && !user.isLoading ? clientLinks.slice(0, 2) : clientLinks).map(
-          (item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                className={active(pathname, item.href) ? 'client-nav-active' : ''}
-                href={item.href}
-                key={item.href}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </Link>
-            );
-          },
-        )}
+        {(client === null && !user.isLoading
+          ? visibleLinks.filter((item) => item.signedOut === true)
+          : visibleLinks
+        ).map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              className={active(pathname, item.href) ? 'client-nav-active' : ''}
+              href={item.href}
+              key={item.href}
+            >
+              <Icon size={18} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
         {client === null && !user.isLoading && (
           <Link href="/client/login">
             <UserRound size={18} />

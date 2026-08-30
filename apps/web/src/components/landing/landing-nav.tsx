@@ -5,8 +5,12 @@ import { Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { AI_STUDIO_PUBLIC } from '@/lib/features';
+
 const links = [
-  { href: '#hair-design', label: 'AI Preview' },
+  // The AI Preview link points at the #hair-design section, which is hidden while the feature is
+  // still being built — keeping the link would scroll to nothing.
+  ...(AI_STUDIO_PUBLIC ? [{ href: '#hair-design', label: 'AI Preview' }] : []),
   { href: '#tracking', label: 'Mobile Service' },
   { href: '#for-barbers', label: 'For Barbers' },
 ];

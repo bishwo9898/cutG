@@ -1,6 +1,7 @@
 'use client';
 
 import { barberDiscoveryApi } from '@barber-saas/api-client';
+import { useUser as useClerkUser } from '@clerk/nextjs';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight, Car, MapPin, Search, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import Link from 'next/link';
@@ -11,12 +12,15 @@ import { ClientHeader } from '@/components/client-header';
 import { BarberCard } from '@/components/client-ui';
 import { browserApi } from '@/lib/browser-api';
 import type { Pagination, PublicBarber } from '@/lib/contracts';
+import { hasAiStudioAccess } from '@/lib/features';
 
 type BarberSearchResponse = { barbers: PublicBarber[]; pagination: Pagination };
 
 export function ClientHome(): React.ReactElement {
   const router = useRouter();
   const [query, setQuery] = useState('');
+  const { user: clerkUser } = useClerkUser();
+  const aiStudio = hasAiStudioAccess(clerkUser?.publicMetadata);
   const featured = useQuery({
     queryKey: ['featured-barbers'],
     queryFn: () =>
@@ -84,35 +88,37 @@ export function ClientHome(): React.ReactElement {
         </div>
       </section>
 
-      <section className="market-section design-home-band design-home-band-featured">
-        <div className="design-home-copy">
-          <p className="eyebrow">AI Hair Design Studio</p>
-          <h2>Preview your next cut.</h2>
-          <p>Upload a photo, choose a style, and compare a realistic preview before you book.</p>
-          <div className="design-home-proof">
-            <span>
-              <ShieldCheck size={15} /> Private gallery
-            </span>
-            <span>
-              <Sparkles size={15} /> Original vs. preview
-            </span>
+      {aiStudio && (
+        <section className="market-section design-home-band design-home-band-featured">
+          <div className="design-home-copy">
+            <p className="eyebrow">AI Hair Design Studio</p>
+            <h2>Preview your next cut.</h2>
+            <p>Upload a photo, choose a style, and compare a realistic preview before you book.</p>
+            <div className="design-home-proof">
+              <span>
+                <ShieldCheck size={15} /> Private gallery
+              </span>
+              <span>
+                <Sparkles size={15} /> Original vs. preview
+              </span>
+            </div>
+            <Link className="button button-primary" href="/client/design">
+              Try AI Design <ArrowUpRight size={16} />
+            </Link>
           </div>
-          <Link className="button button-primary" href="/client/design">
-            Try AI Design <ArrowUpRight size={16} />
-          </Link>
-        </div>
-        <div className="design-home-visual" aria-hidden="true">
-          <div className="design-home-visual-original">
-            <span>Original</span>
+          <div className="design-home-visual" aria-hidden="true">
+            <div className="design-home-visual-original">
+              <span>Original</span>
+            </div>
+            <div className="design-home-visual-preview">
+              <span>Preview</span>
+            </div>
+            <div className="design-home-visual-divider">
+              <Sparkles size={18} />
+            </div>
           </div>
-          <div className="design-home-visual-preview">
-            <span>Preview</span>
-          </div>
-          <div className="design-home-visual-divider">
-            <Sparkles size={18} />
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="market-section nearby-barbers-section">
         <div className="section-title">

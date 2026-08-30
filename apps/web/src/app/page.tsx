@@ -7,6 +7,7 @@ import { HeroFlipWord } from '@/components/landing/hero-flip-word';
 import { LandingNav } from '@/components/landing/landing-nav';
 import { LandingSection } from '@/components/landing/landing-section';
 import { ServiceRouteMap } from '@/components/landing/service-route-map';
+import { AI_STUDIO_PUBLIC } from '@/lib/features';
 
 export const metadata: Metadata = {
   title: 'cutG - Premium barber booking, mobile service, and AI preview',
@@ -100,20 +101,23 @@ export default function LandingPage(): React.ReactElement {
         </div>
       </LandingSection>
 
-      <LandingSection className="landing-cinematic-section" id="hair-design">
-        <div className="landing-cinematic-shell">
-          <div className="landing-cinematic-section-heading">
-            <div>
-              <p className="landing-cinematic-eyebrow">AI Hair Design Studio</p>
-              <h2>See it before you commit.</h2>
+      {AI_STUDIO_PUBLIC && (
+        <LandingSection className="landing-cinematic-section" id="hair-design">
+          <div className="landing-cinematic-shell">
+            <div className="landing-cinematic-section-heading">
+              <div>
+                <p className="landing-cinematic-eyebrow">AI Hair Design Studio</p>
+                <h2>See it before you commit.</h2>
+              </div>
+              <p>
+                A single realistic preview helps you align on the look before the appointment
+                begins.
+              </p>
             </div>
-            <p>
-              A single realistic preview helps you align on the look before the appointment begins.
-            </p>
+            <HairDesignSlider />
           </div>
-          <HairDesignSlider />
-        </div>
-      </LandingSection>
+        </LandingSection>
+      )}
 
       <LandingSection
         className="landing-cinematic-section landing-cinematic-section-surface"
