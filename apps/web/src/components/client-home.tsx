@@ -106,17 +106,6 @@ export function ClientHome(): React.ReactElement {
               Try AI Design <ArrowUpRight size={16} />
             </Link>
           </div>
-          <div className="design-home-visual" aria-hidden="true">
-            <div className="design-home-visual-original">
-              <span>Original</span>
-            </div>
-            <div className="design-home-visual-preview">
-              <span>Preview</span>
-            </div>
-            <div className="design-home-visual-divider">
-              <Sparkles size={18} />
-            </div>
-          </div>
         </section>
       )}
 

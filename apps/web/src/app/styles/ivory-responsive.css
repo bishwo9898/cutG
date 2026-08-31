@@ -137,13 +137,8 @@
 
   .design-home-band.design-home-band-featured {
     width: calc(100% - 28px);
-    gap: 30px;
     border-radius: 22px;
     padding: 28px 20px;
-  }
-
-  .design-home-visual {
-    min-height: 350px;
   }
 
   .nearby-barbers-panel {

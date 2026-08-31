@@ -203,12 +203,6 @@
   background: rgba(255, 255, 255, 0.55);
 }
 
-.design-home-visual {
-  border-color: var(--ivory-line-strong);
-  background: var(--ivory-surface-soft);
-  box-shadow: var(--ivory-shadow-md);
-}
-
 .nearby-barbers-view-all {
   border-color: var(--ivory-champagne);
   color: var(--ivory-ink);
