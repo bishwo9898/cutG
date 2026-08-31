@@ -208,10 +208,13 @@ export default function BookBarberPage(): React.ReactElement {
   const filteredSlots = useMemo(() => {
     if (service === null) return [];
     return (slots.data?.slots ?? []).filter((candidate) => {
+      // Times that are booked or already past are kept so the picker can show them struck through
+      // rather than leaving unexplained gaps in the day. They can never be selected, because the
+      // API already reports isAvailable false for them.
+      if (!candidate.isAvailable) return true;
       const start = new Date(`${candidate.date}T${candidate.startTime}:00`).getTime();
       const end = new Date(`${candidate.date}T${candidate.endTime}:00`).getTime();
       return (
-        candidate.isAvailable &&
         (end - start) / 60_000 >= service.durationMinutes &&
         (!isMobile || estimate.data === undefined || candidate.availableForMobile === true)
       );

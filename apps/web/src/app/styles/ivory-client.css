@@ -28,7 +28,10 @@
 }
 
 .market-page .eyebrow,
-.market-page .rating-row,
+.market-page .rating-row {
+  color: var(--ivory-champagne-text);
+}
+
 .market-page .stars {
   color: var(--ivory-champagne);
 }

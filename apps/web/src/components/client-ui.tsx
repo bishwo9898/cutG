@@ -186,15 +186,19 @@ export function SlotPicker({
   travelMinutes?: number;
   onSelect: (slot: PublicSlot) => void;
 }): React.ReactElement {
-  const available = useMemo(
+  // Every slot the barber has published is kept, not just the bookable ones: a booked or already
+  // passed time is shown in place, struck through and unclickable, so the customer sees the real
+  // shape of the day instead of a grid with unexplained gaps.
+  const ordered = useMemo(
     () =>
-      slots
-        .filter((slot) => slot.isAvailable)
-        .sort((left, right) =>
-          `${left.date}T${left.startTime}`.localeCompare(`${right.date}T${right.startTime}`),
-        ),
+      [...slots].sort((left, right) =>
+        `${left.date}T${left.startTime}`.localeCompare(`${right.date}T${right.startTime}`),
+      ),
     [slots],
   );
+  const available = useMemo(() => ordered.filter((slot) => slot.isAvailable), [ordered]);
+  // Only days that still have something bookable are offered in the rail — a day that is entirely
+  // booked or entirely in the past is not worth navigating to.
   const dates = useMemo(() => [...new Set(available.map((slot) => slot.date))], [available]);
   const selectedSlotDate = available.find((slot) => slot.id === selectedId)?.date;
   const [selectedDate, setSelectedDate] = useState<string | null>(
@@ -212,7 +216,8 @@ export function SlotPicker({
   if (available.length === 0) return <p className="muted">No available slots for this range.</p>;
   const selectedDateIndex = selectedDate === null ? -1 : dates.indexOf(selectedDate);
   const selectedDateValue = selectedDate === null ? null : new Date(`${selectedDate}T12:00:00`);
-  const selectedSlots = available.filter((slot) => slot.date === selectedDate);
+  const selectedSlots = ordered.filter((slot) => slot.date === selectedDate);
+  const bookableCount = selectedSlots.filter((slot) => slot.isAvailable).length;
 
   return (
     <div className="compact-calendar">
@@ -273,7 +278,9 @@ export function SlotPicker({
             day: 'numeric',
           })}
         </strong>
-        <span>{selectedSlots.length} times</span>
+        <span>
+          {bookableCount} {bookableCount === 1 ? 'time' : 'times'} available
+        </span>
       </div>
       <div className="compact-time-grid">
         {selectedSlots.map((slot) => {
@@ -282,19 +289,48 @@ export function SlotPicker({
             durationMinutes === undefined
               ? slotEndsAt(slot.date, slot.endTime)
               : appointmentEndsAt(slot.date, slot.startTime, durationMinutes);
+          const past = slot.status === 'PAST' || slot.isPast === true;
+          const booked = slot.status === 'BOOKED';
+          const disabled = !slot.isAvailable;
+          const reason = past
+            ? 'This time has already passed'
+            : booked
+              ? 'Already booked'
+              : 'Not available';
           return (
             <button
-              className={selectedId === slot.id ? 'is-selected' : ''}
+              aria-disabled={disabled}
+              aria-label={
+                disabled
+                  ? `${formatTimeRange(start, end)} — ${reason}`
+                  : formatTimeRange(start, end)
+              }
+              className={[
+                selectedId === slot.id ? 'is-selected' : '',
+                past ? 'is-past' : '',
+                booked ? 'is-booked' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              disabled={disabled}
               key={slot.id}
               onClick={() => onSelect(slot)}
-              title={formatTimeRange(start, end)}
+              title={
+                disabled
+                  ? `${formatTimeRange(start, end)} — ${reason}`
+                  : formatTimeRange(start, end)
+              }
               type="button"
             >
               <strong>
                 {start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
               </strong>
-              {durationMinutes !== undefined && <small>{durationMinutes} min</small>}
-              {travelMinutes !== undefined && slot.availableForMobile === true && (
+              {disabled ? (
+                <small>{past ? 'Passed' : booked ? 'Booked' : 'Unavailable'}</small>
+              ) : (
+                durationMinutes !== undefined && <small>{durationMinutes} min</small>
+              )}
+              {!disabled && travelMinutes !== undefined && slot.availableForMobile === true && (
                 <small>Travel-ready</small>
               )}
             </button>

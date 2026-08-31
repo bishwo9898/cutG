@@ -15,6 +15,11 @@
   --ivory-blush: #ead7d3;
   --ivory-blush-soft: #f6eae7;
   --ivory-champagne: #b29262;
+  /* Text-safe champagne. The base tone is a decorative one — at 11px on the ivory surfaces it only
+     reaches ~2.6:1, well under the 4.5:1 small text needs. This darker step of the same hue clears
+     4.5:1 on every ivory background, so use it whenever champagne is carrying words rather than
+     drawing a border or filling a shape. */
+  --ivory-champagne-text: #776242;
   --ivory-champagne-soft: #ede2cf;
   --ivory-success: #476a57;
   --ivory-warning: #8b6938;

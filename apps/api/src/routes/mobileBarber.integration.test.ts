@@ -6,9 +6,11 @@ import { closeDatabase, pool } from '../config/database';
 import {
   createBarberProfileFixture,
   createVerifiedUser,
+  nextOpenBookingDate,
   resetTestDatabase,
 } from '../test/fixtures';
 
+const bookingDate = nextOpenBookingDate();
 let barberToken = '';
 let clientToken = '';
 let barberId = '';
@@ -111,7 +113,10 @@ describe('Phase 6 mobile barber API', () => {
   });
 
   it('geocodes, defaults, lists, and updates owned client addresses', async () => {
-    await request(app).post('/clients/me/locations/search').send({ query: 'Danville, KY' }).expect(401);
+    await request(app)
+      .post('/clients/me/locations/search')
+      .send({ query: 'Danville, KY' })
+      .expect(401);
     const locationSearch = await request(app)
       .post('/clients/me/locations/search')
       .set('Authorization', `Bearer ${clientToken}`)
@@ -181,16 +186,16 @@ describe('Phase 6 mobile barber API', () => {
     const generated = await request(app)
       .post('/barbers/me/slots/generate')
       .set('Authorization', `Bearer ${barberToken}`)
-      .send({ startDate: '2026-08-03', endDate: '2026-08-03' });
+      .send({ startDate: bookingDate, endDate: bookingDate });
     expect(generated.status).toBe(200);
     const slots = await pool.query<{ id: string }>(
-      "SELECT id FROM availability_slots WHERE barber_id=$1 AND slot_date='2026-08-03' AND start_time='10:00'",
-      [barberId],
+      "SELECT id FROM availability_slots WHERE barber_id=$1 AND slot_date=$2 AND start_time='10:00'",
+      [barberId, bookingDate],
     );
     slotId = slots.rows[0]?.id ?? '';
 
     const publicSlots = await request(app).get(
-      `/barbers/${barberId}/slots?date=2026-08-03&days=1&mobileService=true&travelMinutes=14`,
+      `/barbers/${barberId}/slots?date=${bookingDate}&days=1&mobileService=true&travelMinutes=14`,
     );
     expect(publicSlots.status).toBe(200);
     const publicSlotsBody = publicSlots.body as PublicSlotsBody;
@@ -249,7 +254,7 @@ describe('Phase 6 mobile barber API', () => {
     const appointmentId = (booked.body as AppointmentBody).id;
 
     const privateSchedule = await request(app)
-      .get('/barbers/me/slots?startDate=2026-08-03&endDate=2026-08-03')
+      .get(`/barbers/me/slots?startDate=${bookingDate}&endDate=${bookingDate}`)
       .set('Authorization', `Bearer ${barberToken}`);
     expect(privateSchedule.status).toBe(200);
     const privateScheduleBody = privateSchedule.body as PrivateSlotsBody;
@@ -269,7 +274,7 @@ describe('Phase 6 mobile barber API', () => {
     );
     /* eslint-enable @typescript-eslint/no-unsafe-assignment */
     const safePublicSchedule = await request(app).get(
-      `/barbers/${barberId}/slots?date=2026-08-03&days=1`,
+      `/barbers/${barberId}/slots?date=${bookingDate}&days=1`,
     );
     const safePublicScheduleBody = safePublicSchedule.body as PublicSlotsBody;
     expect(

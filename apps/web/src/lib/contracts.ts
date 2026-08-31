@@ -171,7 +171,10 @@ export type PublicSlot = {
   date: string;
   startTime: string;
   endTime: string;
+  /** Bookable right now: free, and not already in the past. */
   isAvailable: boolean;
+  isPast?: boolean;
+  status?: 'AVAILABLE' | 'BOOKED' | 'PAST';
   availableForMobile?: boolean;
 };
 

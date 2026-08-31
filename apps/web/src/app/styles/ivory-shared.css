@@ -25,7 +25,7 @@
 
 .eyebrow,
 .landing-cinematic-eyebrow {
-  color: var(--ivory-champagne);
+  color: var(--ivory-champagne-text);
   font-size: 11px;
   font-weight: 750;
   letter-spacing: 0.18em;

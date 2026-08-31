@@ -1,7 +1,16 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, CalendarCheck, CheckCircle2, Clock3, RefreshCw, Save, Trash2, UserRound } from 'lucide-react';
+import {
+  Ban,
+  CalendarCheck,
+  CheckCircle2,
+  Clock3,
+  RefreshCw,
+  Save,
+  Trash2,
+  UserRound,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -32,6 +41,7 @@ type PrivateSlot = {
   startTime: string;
   endTime: string;
   status: 'AVAILABLE' | 'BOOKED' | 'BLOCKED';
+  isPast?: boolean;
   appointmentSummary?: {
     appointmentId: string;
     customerName: string;
@@ -62,7 +72,13 @@ export default function AvailabilityPage(): React.ReactElement {
     queryFn: () =>
       browserApi.get<{
         slots: PrivateSlot[];
-        summary: { totalSlots: number; available: number; booked: number; blocked: number };
+        summary: {
+          totalSlots: number;
+          available: number;
+          past?: number;
+          booked: number;
+          blocked: number;
+        };
       }>(`/barbers/me/slots?startDate=${range.startDate}&endDate=${range.endDate}`),
   });
 
@@ -375,9 +391,15 @@ export default function AvailabilityPage(): React.ReactElement {
             </p>
           </div>
           <div className="availability-legend" aria-label="Schedule legend">
-            <span className="is-available"><CheckCircle2 size={14} /> Available</span>
-            <span className="is-booked"><UserRound size={14} /> Booked</span>
-            <span className="is-blocked"><Ban size={14} /> Blocked</span>
+            <span className="is-available">
+              <CheckCircle2 size={14} /> Available
+            </span>
+            <span className="is-booked">
+              <UserRound size={14} /> Booked
+            </span>
+            <span className="is-blocked">
+              <Ban size={14} /> Blocked
+            </span>
           </div>
         </div>
         <div className="panel-body availability-days">
@@ -401,13 +423,19 @@ export default function AvailabilityPage(): React.ReactElement {
                         day: 'numeric',
                       })}
                     </strong>
-                    <small>{daySlots.length} times</small>
+                    <small>
+                      {daySlots.length} times
+                      {daySlots.some((slot) => slot.isPast === true) &&
+                        ` · ${daySlots.filter((slot) => slot.isPast !== true && slot.status === 'AVAILABLE').length} still open`}
+                    </small>
                   </div>
                 </header>
                 <div className="availability-slot-grid">
                   {daySlots.map((slot) => (
                     <article
-                      className={`availability-slot is-${slot.status.toLowerCase()}`}
+                      className={`availability-slot is-${slot.status.toLowerCase()}${
+                        slot.isPast === true ? ' is-past' : ''
+                      }`}
                       key={slot.id}
                     >
                       <div className="availability-slot-time">
@@ -415,17 +443,30 @@ export default function AvailabilityPage(): React.ReactElement {
                         <strong>{slot.startTime}</strong>
                         <span>– {slot.endTime}</span>
                       </div>
-                      {slot.status === 'AVAILABLE' && (
-                        <span className="availability-slot-state"><CheckCircle2 size={14} /> Available</span>
-                      )}
+                      {slot.status === 'AVAILABLE' &&
+                        (slot.isPast === true ? (
+                          <span className="availability-slot-state">
+                            <Clock3 size={14} /> Passed
+                          </span>
+                        ) : (
+                          <span className="availability-slot-state">
+                            <CheckCircle2 size={14} /> Available
+                          </span>
+                        ))}
                       {slot.status === 'BLOCKED' && (
-                        <span className="availability-slot-state"><Ban size={14} /> Blocked</span>
+                        <span className="availability-slot-state">
+                          <Ban size={14} /> Blocked
+                        </span>
                       )}
                       {slot.status === 'BOOKED' && (
                         <>
-                          <span className="availability-slot-state"><UserRound size={14} /> Booked</span>
+                          <span className="availability-slot-state">
+                            <UserRound size={14} /> Booked
+                          </span>
                           <div className="availability-booking-summary">
-                            <strong>{slot.appointmentSummary?.customerName ?? 'Customer booking'}</strong>
+                            <strong>
+                              {slot.appointmentSummary?.customerName ?? 'Customer booking'}
+                            </strong>
                             <span>{slot.appointmentSummary?.serviceName ?? 'Service'}</span>
                             <small>
                               {(slot.appointmentSummary?.status ?? 'BOOKED').replaceAll('_', ' ')}

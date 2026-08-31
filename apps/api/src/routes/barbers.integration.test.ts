@@ -6,6 +6,8 @@ import { closeDatabase } from '../config/database';
 import {
   createBarberProfileFixture,
   createVerifiedUser,
+  nextOpenBookingDate,
+  previousOpenDate,
   resetTestDatabase,
 } from '../test/fixtures';
 
@@ -83,6 +85,37 @@ describe('Phase 2 barber API', () => {
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
     expect((second.body as GenerateBody).generated).toBe(0);
+  });
+
+  it('marks slots whose time has passed as unavailable, and keeps future ones bookable', async () => {
+    // createAppointment refuses a slot in the past, so the public list has to agree with it.
+    // Before this, a customer could pick this morning's 9am and only find out on submit.
+    const past = previousOpenDate();
+    const future = nextOpenBookingDate();
+    for (const day of [past, future]) {
+      await request(app)
+        .post('/barbers/me/slots/generate')
+        .set('Authorization', `Bearer ${barberToken}`)
+        .send({ startDate: day, endDate: day });
+    }
+
+    type Slot = { isAvailable: boolean; isPast: boolean; status: string };
+    const read = async (day: string): Promise<Slot[]> => {
+      const response = await request(app).get(`/barbers/${barberId}/slots?date=${day}&days=1`);
+      expect(response.status).toBe(200);
+      return (response.body as { slots: Slot[] }).slots;
+    };
+
+    const passed = await read(past);
+    expect(passed.length).toBeGreaterThan(0);
+    expect(passed.every((slot) => slot.isPast)).toBe(true);
+    expect(passed.every((slot) => !slot.isAvailable)).toBe(true);
+    expect(passed.every((slot) => slot.status === 'PAST')).toBe(true);
+
+    const upcoming = await read(future);
+    expect(upcoming.length).toBeGreaterThan(0);
+    expect(upcoming.every((slot) => !slot.isPast)).toBe(true);
+    expect(upcoming.every((slot) => slot.isAvailable && slot.status === 'AVAILABLE')).toBe(true);
   });
 
   it('saves a mapped shop location, suggests it, and exposes it as a public business address', async () => {

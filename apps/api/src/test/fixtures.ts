@@ -19,10 +19,7 @@ export const resetTestDatabase = async (): Promise<void> => {
  * `clerk_user_id`. Integration tests authenticate by mocking `@clerk/express`'s `getAuth` to
  * return this `clerkUserId` rather than by signing a real Clerk session token.
  */
-export const createVerifiedUser = async (
-  userType: UserType,
-  email: string,
-): Promise<TestUser> => {
+export const createVerifiedUser = async (userType: UserType, email: string): Promise<TestUser> => {
   const clerkUserId = `user_test_${randomUUID()}`;
   const result = await pool.query<{ id: string; email: string }>(
     `
@@ -46,6 +43,37 @@ export const createVerifiedUser = async (
   }
 
   return { ...user, clerkUserId };
+};
+
+/**
+ * A bookable date for the barber fixture, which opens Mondays only.
+ *
+ * Slots in the past are not bookable — the public list reports them unavailable and
+ * createAppointment rejects them — so tests cannot use a fixed calendar date. A hard-coded one
+ * works until the day it silently drifts into the past, and then fails for reasons that have
+ * nothing to do with the behaviour under test. This always returns a Monday at least a week out.
+ */
+export const nextOpenBookingDate = (): string => {
+  const day = new Date();
+  day.setHours(12, 0, 0, 0);
+  day.setDate(day.getDate() + 7);
+  while (day.getDay() !== 1) {
+    day.setDate(day.getDate() + 1);
+  }
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+};
+
+/** The mirror of nextOpenBookingDate: a Monday that is definitely already behind us. */
+export const previousOpenDate = (): string => {
+  const day = new Date();
+  day.setHours(12, 0, 0, 0);
+  day.setDate(day.getDate() - 7);
+  while (day.getDay() !== 1) {
+    day.setDate(day.getDate() - 1);
+  }
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
 };
 
 export const createBarberProfileFixture = async (userId: string): Promise<string> => {

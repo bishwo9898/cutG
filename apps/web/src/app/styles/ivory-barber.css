@@ -966,6 +966,31 @@
     repeating-linear-gradient(-45deg, transparent 0 8px, rgba(154, 80, 77, 0.08) 8px 12px),
     var(--status-closed-bg);
 }
+
+/* A time that has already gone by is history, not capacity. Kept visible so the day still reads
+   in full, but muted and struck through so it never looks like an open slot. Placed after the
+   status rules so it wins over .is-available's green treatment. */
+.availability-slot.is-past {
+  border-color: var(--ivory-line);
+  border-style: dashed;
+  background: var(--ivory-surface-soft);
+}
+
+.availability-slot.is-past .availability-slot-time strong {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.availability-slot.is-past .availability-slot-time,
+.availability-slot.is-past .availability-slot-state {
+  color: var(--ivory-muted);
+}
+
+/* A booked slot keeps its identity even once it has passed - the barber still needs to see who
+   it was - so only its border is muted, not the booking summary. */
+.availability-slot.is-past.is-booked {
+  opacity: 0.72;
+}
 .availability-slot-time {
   display: flex;
   gap: 5px;

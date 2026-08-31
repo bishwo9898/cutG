@@ -150,6 +150,13 @@ const ensureClerkUser = async (params: {
   const existingUser = existing.data[0];
 
   if (existingUser !== undefined) {
+    // Reset the password too. The Clerk account outlives any single seed run, so without this the
+    // documented SEED_TEST_PASSWORD silently stops being the way in as soon as it is changed here
+    // or in Clerk, and re-seeding would not put it back.
+    await clerkClient.users.updateUser(existingUser.id, {
+      password: SEED_TEST_PASSWORD,
+      skipPasswordChecks: true,
+    });
     await clerkClient.users.updateUserMetadata(existingUser.id, { publicMetadata });
     return existingUser.id;
   }

@@ -6,9 +6,11 @@ import { closeDatabase, pool } from '../config/database';
 import {
   createBarberProfileFixture,
   createVerifiedUser,
+  nextOpenBookingDate,
   resetTestDatabase,
 } from '../test/fixtures';
 
+const bookingDate = nextOpenBookingDate();
 let barberToken = '';
 let clientToken = '';
 let barberId = '';
@@ -57,8 +59,8 @@ beforeAll(async () => {
   await request(app)
     .post('/barbers/me/slots/generate')
     .set('Authorization', `Bearer ${barberToken}`)
-    .send({ startDate: '2026-08-03', endDate: '2026-08-03' });
-  const slots = await request(app).get(`/barbers/${barberId}/slots?date=2026-08-03&days=1`);
+    .send({ startDate: bookingDate, endDate: bookingDate });
+  const slots = await request(app).get(`/barbers/${barberId}/slots?date=${bookingDate}&days=1`);
   slotId = (slots.body as SlotsBody).slots.find((slot) => slot.isAvailable)?.id ?? '';
   const design = await pool.query<{ id: string }>(
     `INSERT INTO client_hair_designs
@@ -184,7 +186,7 @@ describe('Phase 3 client discovery and booking API', () => {
     expect(cancelled.status).toBe(200);
     expect((cancelled.body as CancelBody).slotFreed).toBe(true);
 
-    const slots = await request(app).get(`/barbers/${barberId}/slots?date=2026-08-03&days=1`);
+    const slots = await request(app).get(`/barbers/${barberId}/slots?date=${bookingDate}&days=1`);
     expect((slots.body as SlotsBody).slots.find((slot) => slot.id === slotId)?.isAvailable).toBe(
       true,
     );

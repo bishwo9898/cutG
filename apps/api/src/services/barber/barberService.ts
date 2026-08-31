@@ -440,13 +440,18 @@ export const generateSlots = async (userId: string, startDate: string, endDate: 
   };
 };
 
-const mapPrivateSlot = (row: Row) => ({
+/** Same wall-clock convention as getPublicSlots and the booking guard, so both sides agree. */
+const slotIsPast = (row: Row, now: number): boolean =>
+  new Date(`${date(row.slot_date)}T${time(row.start_time)}:00`).getTime() <= now;
+
+const mapPrivateSlot = (row: Row, now: number) => ({
   id: row.id,
   date: date(row.slot_date),
   dayName: dayName(isoDayOfWeek(date(row.slot_date))),
   startTime: time(row.start_time),
   endTime: time(row.end_time),
   status: row.status,
+  isPast: slotIsPast(row, now),
   appointmentSummary:
     row.appointment_id === null || row.appointment_id === undefined
       ? undefined
@@ -471,12 +476,16 @@ export const listSlots = async (userId: string, startDate: string, endDate: stri
      ORDER BY sl.slot_date,sl.start_time`,
     [profile.id, startDate, endDate],
   );
+  const now = Date.now();
   const count = (status: string) => rows.filter((row) => row.status === status).length;
   return {
-    slots: rows.map(mapPrivateSlot),
+    slots: rows.map((row) => mapPrivateSlot(row, now)),
     summary: {
       totalSlots: rows.length,
-      available: count('AVAILABLE'),
+      // "Available" means still bookable. A free slot whose time has passed is not, so counting it
+      // told the barber they had open capacity that no customer could actually take.
+      available: rows.filter((row) => row.status === 'AVAILABLE' && !slotIsPast(row, now)).length,
+      past: rows.filter((row) => slotIsPast(row, now)).length,
       booked: count('BOOKED'),
       blocked: count('BLOCKED'),
     },
@@ -1057,9 +1066,17 @@ export const getPublicSlots = async (
   const inventoryByTime = new Map(
     inventory.map((slotRow) => [`${date(slotRow.slot_date)}:${time(slotRow.start_time)}`, slotRow]),
   );
+  const now = Date.now();
   return {
     slots: rows.map((row) => {
-      const isAvailable = row.status === 'AVAILABLE';
+      const slotDate = date(row.slot_date);
+      const slotStart = time(row.start_time);
+      // Mirrors the guard in clientService.createAppointment exactly — same naive local wall time,
+      // parsed in the API process's zone — so the list can never offer a slot that booking would
+      // then reject with SLOT_NOT_AVAILABLE.
+      const isPast = new Date(`${slotDate}T${slotStart}:00`).getTime() <= now;
+      const isBooked = row.status === 'BOOKED';
+      const isAvailable = row.status === 'AVAILABLE' && !isPast;
       const durationMinutes = Number(row.duration_minutes);
       const required =
         travelMinutes === undefined
@@ -1090,10 +1107,18 @@ export const getPublicSlots = async (
             });
       return {
         id: row.id,
-        date: date(row.slot_date),
-        startTime: time(row.start_time),
+        date: slotDate,
+        startTime: slotStart,
         endTime: time(row.end_time),
         isAvailable,
+        isPast,
+        // Booked slots are still returned so the customer can see the day is genuinely filling up
+        // rather than silently missing times; the UI shows them struck through and unclickable.
+        status: isPast
+          ? ('PAST' as const)
+          : isBooked
+            ? ('BOOKED' as const)
+            : ('AVAILABLE' as const),
         ...(availableForMobile === undefined ? {} : { availableForMobile }),
       };
     }),
