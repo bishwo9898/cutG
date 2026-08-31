@@ -42,7 +42,9 @@
   color: var(--ivory-ink);
 }
 
-.sidebar-user span {
+/* :not(.avatar) matters — the avatar is also a span in here, and this rule outranks .avatar's own
+   colour, which left the barber's initials in muted grey on the near-black circle. */
+.sidebar-user span:not(.avatar) {
   color: var(--ivory-muted);
 }
 
@@ -438,9 +440,11 @@
   background: var(--ivory-champagne-soft);
 }
 
+/* .shop-map-hint is deliberately absent here: it is a light pill floating on the dark map, and it
+   already sets its own white text. Including it in this muted group turned it into grey on a dark
+   green pill (1.9:1), which made the drag hint unreadable over the map. */
 .shop-location-status,
 .shop-preview-note,
-.shop-map-hint,
 .shop-location-results small,
 .shop-address-heading small,
 .shop-address-heading > span,

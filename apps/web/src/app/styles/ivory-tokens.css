@@ -8,7 +8,10 @@
   --ivory-on-ink: #fffdf9;
   --ivory-on-ink-muted: #ded6cc;
   --ivory-ink-soft: #37312d;
-  --ivory-muted: #746b64;
+  /* Nudged 5% darker than the original #746b64 so secondary text clears 4.5:1 on every ivory
+     surface, not just the lightest ones - it was failing on the barber sidebar (4.22) and the
+     soft surface (4.40). */
+  --ivory-muted: #6e665f;
   --ivory-faint: #a69a91;
   --ivory-line: #ddd4ca;
   --ivory-line-strong: #c9bbae;

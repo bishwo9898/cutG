@@ -2904,7 +2904,9 @@ a {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 6px 9px;
-  color: var(--muted);
+  /* Deliberately not --muted: this badge keeps a near-black fill, so the muted grey it used to
+     inherit only reached 3.4:1 against it. */
+  color: #fffdf9;
   background: #11110f;
   font-size: 11px;
   font-weight: 800;
@@ -10887,7 +10889,9 @@ input:checked + .toggle-track::after,
   place-items: center;
   align-content: center;
   gap: 8px;
-  color: #938a79;
+  /* Was #938a79, which is only 3.2:1 on the dashed placeholder's light fill. Inherit the muted
+     token instead so this empty-state label stays readable. */
+  color: var(--ivory-muted, #6e665f);
   font-size: 12px;
 }
 
