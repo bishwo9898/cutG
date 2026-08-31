@@ -22,6 +22,8 @@ restricted values:
 
 ```env
 EXPO_PUBLIC_API_URL=https://YOUR-RENDER-SERVICE.onrender.com
+# Required — the app will not start without it. Same Clerk application as the web app and API.
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=restricted_mobile_key
 EXPO_PUBLIC_EAS_PROJECT_ID=your_eas_project_id

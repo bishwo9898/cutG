@@ -138,8 +138,11 @@ export type AvailabilitySlot = {
   startTime: string;
   endTime: string;
   durationMinutes?: number;
-  status?: 'AVAILABLE' | 'BOOKED' | 'BLOCKED';
+  status?: 'AVAILABLE' | 'BOOKED' | 'BLOCKED' | 'PAST';
+  /** Bookable right now: free, and not already in the past. */
   isAvailable?: boolean;
+  /** Set by the API for slots whose start time has already gone by. */
+  isPast?: boolean;
   appointment?: AppointmentSummary | null;
   appointmentSummary?: {
     appointmentId: string;
