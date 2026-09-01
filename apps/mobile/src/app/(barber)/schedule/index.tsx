@@ -130,58 +130,76 @@ export default function ScheduleScreen(): React.ReactElement {
       ) : null}
       {list.map((slot) => {
         const state = slot.status ?? (slot.isAvailable === true ? 'AVAILABLE' : 'BLOCKED');
+        // A free slot whose time has gone by is history, not capacity — showing it as "Available"
+        // with a green tick told the barber they had openings nobody could book. A booked slot
+        // keeps its identity once passed, because the barber still needs to see who it was.
+        const passed = slot.isPast === true;
+        const spent = passed && state !== 'BOOKED';
         return (
           <Card
             key={slot.id}
-            style={
-              state === 'BOOKED'
-                ? styles.bookedCard
-                : state === 'BLOCKED'
-                  ? styles.blockedCard
-                  : styles.availableCard
-            }
+            style={[
+              spent
+                ? styles.passedCard
+                : state === 'BOOKED'
+                  ? styles.bookedCard
+                  : state === 'BLOCKED'
+                    ? styles.blockedCard
+                    : styles.availableCard,
+              passed && state === 'BOOKED' ? styles.passedBooked : null,
+            ]}
           >
             <View style={styles.slotRow}>
               <View style={styles.timeRow}>
                 <Ionicons color={colors.textSecondary} name="time-outline" size={18} />
-                <Text style={styles.time}>
+                <Text style={[styles.time, spent && styles.timeSpent]}>
                   {slot.startTime} – {slot.endTime}
                 </Text>
               </View>
               <View
                 style={[
                   styles.stateBadge,
-                  state === 'AVAILABLE'
-                    ? styles.availableBadge
-                    : state === 'BOOKED'
-                      ? styles.bookedBadge
-                      : styles.blockedBadge,
+                  spent
+                    ? styles.passedBadge
+                    : state === 'AVAILABLE'
+                      ? styles.availableBadge
+                      : state === 'BOOKED'
+                        ? styles.bookedBadge
+                        : styles.blockedBadge,
                 ]}
               >
                 <Ionicons
                   color={
-                    state === 'AVAILABLE'
-                      ? colors.success
-                      : state === 'BOOKED'
-                        ? colors.warning
-                        : colors.error
+                    spent
+                      ? colors.textSecondary
+                      : state === 'AVAILABLE'
+                        ? colors.success
+                        : state === 'BOOKED'
+                          ? colors.warning
+                          : colors.error
                   }
                   name={
-                    state === 'AVAILABLE'
-                      ? 'checkmark-circle'
-                      : state === 'BOOKED'
-                        ? 'person'
-                        : 'ban'
+                    spent
+                      ? 'time-outline'
+                      : state === 'AVAILABLE'
+                        ? 'checkmark-circle'
+                        : state === 'BOOKED'
+                          ? 'person'
+                          : 'ban'
                   }
                   size={14}
                 />
                 <Text
                   style={[
                     styles.status,
-                    state === 'AVAILABLE' ? styles.available : styles.unavailable,
+                    spent
+                      ? styles.spentText
+                      : state === 'AVAILABLE'
+                        ? styles.available
+                        : styles.unavailable,
                   ]}
                 >
-                  {humanLabel(state)}
+                  {spent ? 'Passed' : humanLabel(state)}
                 </Text>
               </View>
             </View>
@@ -336,4 +354,9 @@ const styles = StyleSheet.create({
   timeRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
   title: { ...typography.h3, color: colors.textPrimary },
   unavailable: { color: colors.warning },
+  passedCard: { backgroundColor: colors.background, borderColor: colors.border },
+  passedBooked: { opacity: 0.72 },
+  passedBadge: { backgroundColor: colors.background, borderColor: colors.border },
+  spentText: { color: colors.textSecondary },
+  timeSpent: { color: colors.textSecondary, textDecorationLine: 'line-through' },
 });
