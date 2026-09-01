@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   consentRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   consentText: { ...typography.bodySmall, color: colors.textPrimary, flex: 1 },
   error: { ...typography.bodySmall, color: colors.error },
-  eyebrow: { ...typography.caption, color: colors.accentLight, letterSpacing: 1.4 },
+  eyebrow: { ...typography.caption, color: colors.goldText, letterSpacing: 1.4 },
   hero: { ...typography.h1, color: colors.textPrimary },
   meta: { ...typography.bodySmall, color: colors.textSecondary },
   placeholder: {

@@ -1,3 +1,4 @@
+import { useUser } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,13 +12,15 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useBarberSearch } from '@/hooks/useBarbers';
 import { listFromResponse } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
-import { mobileFeatures } from '@/lib/features';
+import { hasAiStudioAccess } from '@/lib/features';
 
 const categories = ['haircut', 'beard', 'shave', 'combo', 'kids'];
 
 export default function DiscoverScreen(): React.ReactElement {
   const featured = useBarberSearch({ limit: 8 });
   const barbers = listFromResponse(featured.data ?? {});
+  const { user } = useUser();
+  const aiStudio = hasAiStudioAccess(user?.publicMetadata);
 
   return (
     <Screen
@@ -40,7 +43,7 @@ export default function DiscoverScreen(): React.ReactElement {
               onPress={() => router.push('/(client)/discover/search')}
             />
           </View>
-          {mobileFeatures.hairStudio ? (
+          {aiStudio ? (
             <View style={styles.heroAction}>
               <Button
                 icon={<Ionicons color={colors.textSecondary} name="sparkles-outline" size={17} />}
@@ -148,6 +151,6 @@ const styles = StyleSheet.create({
   },
   sectionMeta: {
     ...typography.caption,
-    color: colors.textMuted,
+    color: colors.textSecondary,
   },
 });

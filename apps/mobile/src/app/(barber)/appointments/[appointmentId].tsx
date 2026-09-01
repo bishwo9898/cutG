@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
   },
   timelineDotDone: { backgroundColor: colors.statusConfirmed, borderColor: colors.statusConfirmed },
   timelineRow: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.sm },
-  timelineTime: { ...typography.caption, color: colors.textMuted },
+  timelineTime: { ...typography.caption, color: colors.textSecondary },
   total: { ...typography.h2, color: colors.textPrimary },
   trackingDot: { borderRadius: 999, height: 10, width: 10 },
   trackingDotActive: { backgroundColor: colors.statusConfirmed },

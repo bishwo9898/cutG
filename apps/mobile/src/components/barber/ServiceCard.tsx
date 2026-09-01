@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   },
   price: {
     ...typography.h3,
-    color: colors.gold,
+    color: colors.goldText,
   },
   row: {
     alignItems: 'flex-start',

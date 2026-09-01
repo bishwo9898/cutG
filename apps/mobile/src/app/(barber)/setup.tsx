@@ -147,6 +147,6 @@ const styles = StyleSheet.create({
   },
   meta: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs },
   row: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-  step: { ...typography.caption, color: colors.gold, fontWeight: '800', letterSpacing: 1.2 },
+  step: { ...typography.caption, color: colors.goldText, fontWeight: '800', letterSpacing: 1.2 },
   title: { ...typography.h3, color: colors.textPrimary },
 });

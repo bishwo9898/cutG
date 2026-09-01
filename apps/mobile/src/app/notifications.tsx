@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   },
   message: { ...typography.bodySmall, color: colors.textSecondary },
   pressed: { backgroundColor: '#F1ECE5', transform: [{ scale: 0.995 }] },
-  time: { ...typography.caption, color: colors.textMuted },
+  time: { ...typography.caption, color: colors.textSecondary },
   title: { ...typography.label, color: colors.textPrimary },
   unread: { borderColor: colors.gold },
 });

@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
   },
   helper: {
     ...typography.caption,
-    color: colors.textMuted,
+    color: colors.textSecondary,
   },
   input: {
     ...typography.body,

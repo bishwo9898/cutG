@@ -1,2 +1,8 @@
 .expo/
 dist/
+
+# Continuous Native Generation: android/ and ios/ are regenerated from app.config.js by
+# `expo prebuild` (which `expo run:*` triggers). Committing them would fork the native config
+# away from app.config.js, which stays the single source of truth.
+android/
+ios/

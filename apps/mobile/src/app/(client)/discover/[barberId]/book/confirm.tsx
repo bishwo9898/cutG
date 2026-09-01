@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   payText: { flex: 1 },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
   title: { ...typography.h3, color: colors.textPrimary },
-  total: { ...typography.h3, color: colors.gold },
+  total: { ...typography.h3, color: colors.goldText },
   value: { ...typography.body, color: colors.textPrimary },
   warning: { ...typography.bodySmall, color: colors.warning, marginTop: spacing.md },
 });

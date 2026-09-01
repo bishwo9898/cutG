@@ -170,7 +170,7 @@ export default function HairPhotoScreen(): React.ReactElement {
 
 const styles = StyleSheet.create({
   captureOptions: { gap: spacing.md },
-  change: { ...typography.button, color: colors.accentLight, textAlign: 'center' },
+  change: { ...typography.button, color: colors.goldText, textAlign: 'center' },
   dropzone: {
     alignItems: 'center',
     borderColor: colors.border,

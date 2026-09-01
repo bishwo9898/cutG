@@ -192,7 +192,7 @@ export const PlacesAutocomplete = ({
 const styles = StyleSheet.create({
   error: { ...typography.bodySmall, color: colors.error },
   flex: { flex: 1 },
-  helper: { ...typography.caption, color: colors.textMuted },
+  helper: { ...typography.caption, color: colors.textSecondary },
   manualSuggestion: { backgroundColor: colors.surfaceRaised },
   suggestion: {
     alignItems: 'center',

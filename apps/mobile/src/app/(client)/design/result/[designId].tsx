@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   error: { ...typography.bodySmall, color: colors.error },
   eyebrow: {
     ...typography.caption,
-    color: colors.accentLight,
+    color: colors.goldText,
     letterSpacing: 1.2,
     textAlign: 'center',
   },
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   loaderTitle: { ...typography.h2, color: colors.textPrimary, textAlign: 'center' },
   meta: { ...typography.bodySmall, color: colors.textSecondary, textAlign: 'center' },
   progressFill: { backgroundColor: colors.accent, borderRadius: 4, height: 6 },
-  progressValue: { ...typography.label, color: colors.accentLight },
+  progressValue: { ...typography.label, color: colors.goldText },
   progressTrack: {
     backgroundColor: colors.surfaceRaised,
     borderRadius: 4,

@@ -4,10 +4,10 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "android": "expo start --android",
+    "android": "expo run:android",
     "build": "pnpm typecheck",
     "dev": "expo start",
-    "ios": "expo start --ios",
+    "ios": "expo run:ios",
     "start": "expo start",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",

@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   meta: { ...typography.bodySmall, color: colors.textSecondary },
-  note: { ...typography.bodySmall, color: colors.accentLight },
+  note: { ...typography.bodySmall, color: colors.goldText },
   styleCard: {
     backgroundColor: colors.surface,
     borderColor: colors.border,

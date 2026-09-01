@@ -67,7 +67,7 @@ export default function PaymentScreen(): React.ReactElement {
 const styles = StyleSheet.create({
   amount: {
     ...typography.h2,
-    color: colors.gold,
+    color: colors.goldText,
     marginTop: spacing.sm,
   },
   error: {

@@ -16,8 +16,10 @@ export default function ClientLayout(): React.ReactElement {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.gold,
-        tabBarInactiveTintColor: colors.textMuted,
+        // Tab tints colour the label as well as the icon, so these use the text-safe tones:
+        // the decorative gold reads at 2.9:1 and textMuted at 2.7:1 against the bar.
+        tabBarActiveTintColor: colors.goldText,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginBottom: 4 },
         tabBarStyle: {
           backgroundColor: colors.surface,

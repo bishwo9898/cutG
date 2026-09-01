@@ -74,7 +74,7 @@ export default function ServicesScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  count: { ...typography.caption, color: colors.textMuted },
+  count: { ...typography.caption, color: colors.textSecondary },
   flex: { flex: 1 },
   heading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   section: { gap: spacing.sm },

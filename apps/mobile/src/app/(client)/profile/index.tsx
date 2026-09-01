@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   },
   version: {
     ...typography.caption,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
 });

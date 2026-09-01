@@ -207,6 +207,6 @@ const styles = StyleSheet.create({
   row: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
   selected: { borderColor: colors.success },
   title: { ...typography.h3, color: colors.textPrimary },
-  total: { ...typography.h3, color: colors.gold, marginTop: spacing.sm },
+  total: { ...typography.h3, color: colors.goldText, marginTop: spacing.sm },
   warningCard: { borderColor: colors.warning },
 });

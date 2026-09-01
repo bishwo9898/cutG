@@ -202,10 +202,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.sm,
   },
-  coordinates: { ...typography.caption, color: colors.textMuted },
+  coordinates: { ...typography.caption, color: colors.textSecondary },
   error: { ...typography.bodySmall, color: colors.error },
   flex: { flex: 1 },
-  hint: { ...typography.caption, color: colors.textMuted },
+  hint: { ...typography.caption, color: colors.textSecondary },
   locationButton: {
     alignItems: 'center',
     borderColor: colors.border,

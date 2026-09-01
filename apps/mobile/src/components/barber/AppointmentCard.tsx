@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   },
   price: {
     ...typography.label,
-    color: colors.gold,
+    color: colors.goldText,
   },
   pressable: { borderRadius: 12 },
   pressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },

@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   },
   statIndex: {
     ...typography.caption,
-    color: colors.textMuted,
+    color: colors.textSecondary,
   },
   statLabel: {
     ...typography.caption,

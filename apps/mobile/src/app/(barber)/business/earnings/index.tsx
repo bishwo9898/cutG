@@ -69,6 +69,6 @@ const styles = StyleSheet.create({
   },
   value: {
     ...typography.h1,
-    color: colors.gold,
+    color: colors.goldText,
   },
 });
