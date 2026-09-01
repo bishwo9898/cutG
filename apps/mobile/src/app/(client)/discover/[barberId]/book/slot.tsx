@@ -1,4 +1,4 @@
-import { addDays, format } from 'date-fns';
+import { format } from 'date-fns';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
@@ -9,9 +9,12 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useBarberServices, useBarberSlots } from '@/hooks/useBarbers';
+import { bookableDays, slotsForDay } from '@/lib/booking';
 import type { AvailabilitySlot } from '@/lib/types';
 import { listFromResponse } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
+
+const BOOKING_WINDOW_DAYS = 14;
 
 export default function SelectSlotScreen(): React.ReactElement {
   const params = useLocalSearchParams<{
@@ -30,28 +33,29 @@ export default function SelectSlotScreen(): React.ReactElement {
   const isMobile = params.appointmentType === 'mobile';
   const hasTravelEstimate =
     isMobile && params.estimateUnavailable !== 'true' && Number(params.travelMinutes) > 0;
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [date, setDate] = useState<string | null>(null);
   const [slot, setSlot] = useState<AvailabilitySlot | null>(null);
   const services = useBarberServices(barberId);
-  const slots = useBarberSlots(
-    barberId,
-    date,
-    hasTravelEstimate
-      ? {
-          mobileService: true,
-          travelMinutes: Number(params.travelMinutes ?? 0),
-        }
-      : {},
-  );
+  // One request for the whole window rather than one per day, so the date strip can be built from
+  // what the barber has actually published instead of guessing.
+  const slots = useBarberSlots(barberId, format(new Date(), 'yyyy-MM-dd'), {
+    days: BOOKING_WINDOW_DAYS,
+    ...(hasTravelEstimate
+      ? { mobileService: true, travelMinutes: Number(params.travelMinutes ?? 0) }
+      : {}),
+  });
   const service = listFromResponse(services.data ?? {}).find((item) => item.id === serviceId);
+  const allSlots = listFromResponse(slots.data ?? {});
+
+  // Only days with something still bookable are offered. The strip used to be a flat 14 days from
+  // today, which advertised the barber's closed days and any day whose times had all passed, and
+  // only revealed it after a tap. See lib/booking.ts.
   const days = useMemo(
-    () =>
-      Array.from({ length: 14 }, (_, index) => format(addDays(new Date(), index), 'yyyy-MM-dd')),
-    [],
+    () => bookableDays(allSlots, hasTravelEstimate),
+    [allSlots, hasTravelEstimate],
   );
-  const slotList = listFromResponse(slots.data ?? {}).filter(
-    (item) => !hasTravelEstimate || item.availableForMobile === true,
-  );
+  const selectedDate = date ?? days[0] ?? null;
+  const slotList = slotsForDay(allSlots, selectedDate, hasTravelEstimate);
 
   return (
     <Screen
@@ -81,14 +85,22 @@ export default function SelectSlotScreen(): React.ReactElement {
               setDate(item);
               setSlot(null);
             }}
-            variant={item === date ? 'primary' : 'secondary'}
+            variant={item === selectedDate ? 'primary' : 'secondary'}
           />
         ))}
       </ScrollView>
-      <Text style={styles.date}>{format(new Date(date + 'T00:00:00'), 'EEEE, MMMM d')}</Text>
-      {slotList.length === 0 && !slots.isLoading ? (
-        <EmptyState title="No slots" message="Try another date." />
-      ) : null}
+      {selectedDate === null ? (
+        slots.isLoading ? null : (
+          <EmptyState
+            title="No times available"
+            message="This barber has nothing open in the next two weeks."
+          />
+        )
+      ) : (
+        <Text style={styles.date}>
+          {format(new Date(selectedDate + 'T00:00:00'), 'EEEE, MMMM d')}
+        </Text>
+      )}
       <SlotGrid
         slots={slotList}
         selectedSlotId={slot?.id}
@@ -103,7 +115,7 @@ export default function SelectSlotScreen(): React.ReactElement {
             const next = new URLSearchParams({
               serviceId,
               slotId: slot.id,
-              date,
+              date: selectedDate ?? '',
               appointmentType: isMobile ? 'mobile' : 'shop',
             });
             if (params.addressId !== undefined) next.set('addressId', params.addressId);
