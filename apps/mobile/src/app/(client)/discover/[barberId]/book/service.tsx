@@ -13,7 +13,12 @@ export default function SelectServiceScreen(): React.ReactElement {
     designId?: string;
   }>();
   const services = useBarberServices(barberId);
-  const list = listFromResponse(services.data ?? {}).filter((service) => service.isActive);
+  // The public endpoint already returns only active services and omits isActive entirely, so
+  // filtering on it truthily discarded every service and left the first booking step claiming the
+  // barber had published none. Drop only what is explicitly deactivated.
+  const list = listFromResponse(services.data ?? {}).filter(
+    (service) => service.isActive !== false,
+  );
 
   return (
     <Screen

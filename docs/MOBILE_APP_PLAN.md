@@ -96,12 +96,18 @@ analysis would have found:
   `/images/barbers/barber-1.webp`, which mean nothing on a device, and the `!== null` check meant
   the placeholder never appeared — 260px of dead space on the profile, blank circles on cards.
   `lib/media.ts` now only passes through URIs a device can fetch.
+- **Booking was impossible: step 1 claimed the barber had published no services.** Same root cause
+  as the badge — the step filtered on the truthiness of `isActive`, which the public endpoint omits,
+  so every service was discarded. All four now appear and the flow proceeds.
+
+Verified on the device afterwards: the date strip offers Sep 3, 4, 5 then jumps to Sep 8, correctly
+skipping the weekend the barber does not work, and today's remaining times are bookable while the
+API reports `isPast` false for them. That is the round-2 slot work confirmed outside of tests.
 
 ## Queue, roughly in order
 
-1. **Finish the walkthrough.** The booking flow (service → style → type → slot → confirm), the
-   barber portal, appointments and profile have not been exercised on the device yet. The date
-   strip and slot-grid work from round 2 in particular has only been verified by tests.
+1. **Finish the walkthrough.** Confirmed as far as the slot picker. Still unexercised on device:
+   the confirm/payment steps, the whole barber portal, appointments, saved and profile.
 2. **Decide what to do about seeded images.** They live in `apps/web/public`, so the phone can
    never load them. Either serve them from the API or ship local placeholder assets — right now
    every seeded barber shows "No photo yet".
