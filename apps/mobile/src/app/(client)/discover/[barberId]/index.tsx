@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ReviewCard } from '@/components/barber/ReviewCard';
@@ -18,6 +19,7 @@ import {
   useSaveBarber,
 } from '@/hooks/useBarbers';
 import { listFromResponse } from '@/lib/types';
+import { remoteImageUri } from '@/lib/media';
 import { colors, spacing, typography } from '@/theme';
 
 const tabs = ['Services', 'Availability', 'Reviews'] as const;
@@ -39,6 +41,7 @@ export default function BarberProfileScreen(): React.ReactElement {
   const serviceList = listFromResponse(services.data ?? {});
   const slotList = listFromResponse(slots.data ?? {});
   const reviewList = listFromResponse(reviews.data ?? {});
+  const heroUri = remoteImageUri(profile.data?.profilePhotoUrl);
 
   if (profile.data === undefined && profile.isLoading)
     return (
@@ -61,10 +64,15 @@ export default function BarberProfileScreen(): React.ReactElement {
       }}
     >
       <View style={styles.heroWrap}>
-        {profile.data.profilePhotoUrl !== null ? (
-          <Image source={{ uri: profile.data.profilePhotoUrl }} style={styles.hero} />
+        {heroUri !== null ? (
+          <Image source={{ uri: heroUri }} style={styles.hero} />
         ) : (
-          <View style={styles.heroFallback} />
+          // Not just an empty block: without a photo this was 260px of blank canvas that read as a
+          // rendering failure rather than a barber who has not uploaded one yet.
+          <View style={styles.heroFallback}>
+            <Ionicons color={colors.textSecondary} name="cut-outline" size={40} />
+            <Text style={styles.heroFallbackText}>No photo yet</Text>
+          </View>
         )}
         <Pressable
           style={styles.heart}
@@ -142,8 +150,17 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   heroFallback: {
+    alignItems: 'center',
     backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderWidth: 1,
+    gap: spacing.sm,
     height: 260,
+    justifyContent: 'center',
+  },
+  heroFallbackText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
   heroWrap: {
     borderRadius: 8,

@@ -177,7 +177,7 @@ curl http://localhost:4000/barbers?mobileOnly=true
 curl http://localhost:4000/barbers/<barber-profile-id>
 ```
 
-Use `barber.test@example.com` and `client.test@example.com` with `password123`. Both accounts are
+Use `barber.test@example.com` and `client.test@example.com` with `CutgTest2026!`. Both accounts are
 seeded in Danville, Kentucky so mobile visits can be tested locally from both sides without leaving
 the same area. Barber Test is the fully eligible local test barber: PREMIUM, verified, mobile
 enabled, fake Stripe Connect flags enabled, a flat $15 travel fee, and a 10-mile radius. Client Test

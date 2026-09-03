@@ -1,5 +1,6 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
 
+import { remoteImageUri } from '@/lib/media';
 import { colors, typography } from '@/theme';
 
 type AvatarProps = {
@@ -18,8 +19,10 @@ const initials = (name: string): string =>
 
 export const Avatar = ({ name, imageUrl, size = 48 }: AvatarProps): React.ReactElement => {
   const style = { height: size, width: size, borderRadius: size / 2 };
-  if (imageUrl !== undefined && imageUrl !== null && imageUrl.length > 0) {
-    return <Image source={{ uri: imageUrl }} style={[styles.image, style]} />;
+  // A root-relative path would render as a blank circle instead of falling back to the initials.
+  const uri = remoteImageUri(imageUrl);
+  if (uri !== null) {
+    return <Image source={{ uri }} style={[styles.image, style]} />;
   }
   return (
     <View style={[styles.fallback, style]}>

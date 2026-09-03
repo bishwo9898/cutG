@@ -28,7 +28,7 @@ Completed, cancelled, and no-show appointments are terminal. Cancelling releases
 
 ## Demo Accounts
 
-After `pnpm db:seed`, use password `password123` with:
+After `pnpm db:seed`, use password `CutgTest2026!` with:
 
 ```text
 barber.test@example.com

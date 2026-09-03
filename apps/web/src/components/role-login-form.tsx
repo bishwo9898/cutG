@@ -35,7 +35,7 @@ export function RoleLoginForm({ role }: { role: AuthRole }): React.ReactElement 
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
-    ...(fieldTestMode ? { defaultValues: { email: testEmail, password: 'password123' } } : {}),
+    ...(fieldTestMode ? { defaultValues: { email: testEmail, password: 'CutgTest2026!' } } : {}),
     resolver: zodResolver(schema),
   });
 

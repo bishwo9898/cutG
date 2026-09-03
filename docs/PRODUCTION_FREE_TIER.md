@@ -53,7 +53,7 @@ DATABASE_URL='paste-the-neon-pooled-url-here' \
 pnpm --filter @barber-saas/api db:seed
 ```
 
-This creates demo accounts whose password is `password123`. Treat them as public test fixtures,
+This creates demo accounts whose password is `CutgTest2026!`. Treat them as public test fixtures,
 never as real accounts. Running the seed again replaces only seeded fixture data and can erase
 appointments created against those fixtures. Do not leave `ALLOW_PRODUCTION_TEST_SEED` set on
 Render.

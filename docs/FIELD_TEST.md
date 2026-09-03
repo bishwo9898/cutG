@@ -11,8 +11,8 @@ email:
 
 | Role   | Email                     | Password      |
 | ------ | ------------------------- | ------------- |
-| Client | `client.test@example.com` | `password123` |
-| Barber | `barber.test@example.com` | `password123` |
+| Client | `client.test@example.com` | `CutgTest2026!` |
+| Barber | `barber.test@example.com` | `CutgTest2026!` |
 
 The seed also creates a confirmed mobile appointment, a service destination, travel buffers, and an
 enabled mobile-service configuration for the barber.

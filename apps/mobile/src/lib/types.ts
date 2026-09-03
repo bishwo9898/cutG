@@ -127,7 +127,9 @@ export type BarberService = {
   price: number;
   durationMinutes: number;
   category: ServiceCategory;
-  isActive: boolean;
+  // Optional: the public services endpoint returns only active services and omits this field.
+  // Absent means "not stated", which is not the same as inactive.
+  isActive?: boolean;
 };
 
 export type AvailabilitySlot = {

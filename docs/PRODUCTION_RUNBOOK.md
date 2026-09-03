@@ -79,8 +79,8 @@ test cohort's appointments and generated IDs.
 
 Seed logins:
 
-- Client: `client.test@example.com` / `password123`
-- Barber: `barber.test@example.com` / `password123`
+- Client: `client.test@example.com` / `CutgTest2026!`
+- Barber: `barber.test@example.com` / `CutgTest2026!`
 
 Change this shared test password before a public beta or restrict the test deployment with Vercel
 Deployment Protection.

@@ -343,7 +343,7 @@ Phase 10 AI Hair Studio adds:
 - 24-hour raw-scan retention cleanup and no automatic retry after uncertain paid provider submission
 - Versioned hair-only prompts that preserve identity and prohibit sensitive-trait inference
 
-Seed accounts use password `password123`:
+Seed accounts use password `CutgTest2026!`:
 
 - `barber.test@example.com` (`Barber Test`)
 - `client.test@example.com` (`Client Test`)

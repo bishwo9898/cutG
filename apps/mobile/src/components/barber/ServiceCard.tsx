@@ -24,7 +24,10 @@ export const ServiceCard = ({ service, onPress }: ServiceCardProps): React.React
           <View style={styles.badges}>
             <Badge label={service.category} tone="default" />
             <Badge label={service.durationMinutes + ' min'} tone="info" />
-            {!service.isActive ? <Badge label="Inactive" tone="warning" /> : null}
+            {/* Only when the barber has actually deactivated it. The public services endpoint
+                returns just the active ones and omits isActive entirely, so a bare falsy check
+                stamped "Inactive" on every service a customer saw. */}
+            {service.isActive === false ? <Badge label="Inactive" tone="warning" /> : null}
           </View>
         </View>
         <Text style={styles.price}>{'$' + service.price.toFixed(2)}</Text>

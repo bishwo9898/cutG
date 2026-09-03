@@ -92,7 +92,7 @@ make setup
 make dev
 ```
 
-Use `client.test@example.com` with `password123`. The matching fully eligible Danville mobile barber
+Use `client.test@example.com` with `CutgTest2026!`. The matching fully eligible Danville mobile barber
 is `barber.test@example.com` with the same password.
 
 Recommended flow:

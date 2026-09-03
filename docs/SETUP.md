@@ -191,8 +191,8 @@ Connect onboarding for the barber from the barber payment dashboard. Card paymen
 for barbers without charges enabled; cash remains available.
 
 For local UI testing, seed data creates exactly one fake, Danville-based, payment-ready PREMIUM
-barber: `barber.test@example.com` / `password123`. The matching client is
-`client.test@example.com` / `password123`. The barber's local-only Stripe Connect flags are only a
+barber: `barber.test@example.com` / `CutgTest2026!`. The matching client is
+`client.test@example.com` / `CutgTest2026!`. The barber's local-only Stripe Connect flags are only a
 development convenience. Real destination charges still require real Stripe credentials, Connect
 onboarding, and webhook delivery.
 

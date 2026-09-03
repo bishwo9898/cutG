@@ -94,7 +94,14 @@ type AppointmentSeed = {
 
 const TEST_BARBER_EMAIL = 'barber.test@example.com';
 const TEST_CLIENT_EMAIL = 'client.test@example.com';
-export const SEED_TEST_PASSWORD = 'CutgSeedTest#2026';
+// Keep this in sync with the credentials shown in the local UI, smoke tests, and setup docs.
+// `ensureClerkUser` reapplies it to existing Clerk identities on every seed run.
+//
+// It must also survive Clerk's breached-password check. `skipPasswordChecks` only applies when the
+// password is *written*, so an obvious value like "password123" seeds without complaint and then
+// fails at sign in with "Password has been found in an online data breach" — the seeded accounts
+// become unusable while looking perfectly seeded. Keep this off the common-password lists.
+export const SEED_TEST_PASSWORD = 'CutgTest2026!';
 const LEGACY_SEED_EMAILS = [
   'barber1@example.com',
   'barber2@example.com',
