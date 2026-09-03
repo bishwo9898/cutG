@@ -23,17 +23,39 @@ export type ApiClientOptions = {
   baseUrl: string;
   fetch?: typeof fetch;
   headers?: HeadersInit | (() => HeadersInit | Promise<HeadersInit>);
+  /**
+   * Abort a request that has not settled in this many milliseconds. Off by default so existing
+   * callers are unaffected.
+   *
+   * This covers resolving the headers as well as the fetch itself, which matters when the header
+   * callback fetches an auth token: a stalled token refresh otherwise hangs before any request is
+   * even sent, so nothing times out, no error is raised, and every later call queues behind it.
+   * On mobile that showed up as a Confirm button spinning forever while the app went silent.
+   */
+  timeoutMs?: number;
 };
+
+/** Thrown when a request exceeds `timeoutMs`, so callers can tell a stall from a server error. */
+export class ApiTimeoutError extends Error {
+  public constructor(public readonly timeoutMs: number) {
+    super(`The request timed out after ${timeoutMs}ms.`);
+    this.name = 'ApiTimeoutError';
+  }
+}
 
 export class ApiClient {
   private readonly baseUrl: string;
   private readonly fetcher: typeof fetch;
   private readonly headers?: ApiClientOptions['headers'];
+  // Explicit `| undefined` rather than `?:` — exactOptionalPropertyTypes rejects assigning a
+  // possibly-undefined option to an optional field.
+  private readonly timeoutMs: number | undefined;
 
   public constructor(options: ApiClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
     this.fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.headers = options.headers;
+    this.timeoutMs = options.timeoutMs;
   }
 
   public get<T>(path: string, init?: RequestInit): Promise<T> {
@@ -71,10 +93,37 @@ export class ApiClient {
   }
 
   private async request<T>(path: string, init: RequestInit): Promise<T> {
+    const { timeoutMs } = this;
+
+    if (timeoutMs === undefined) {
+      return this.send<T>(path, init);
+    }
+
+    // Deliberately races the whole operation, not just the fetch: the stall this guards against
+    // happens while resolving auth headers, before fetch is ever called, so an AbortSignal handed
+    // to fetch alone would never fire.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const controller = new AbortController();
+    const timeout = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(new ApiTimeoutError(timeoutMs));
+      }, timeoutMs);
+    });
+
+    try {
+      return await Promise.race([this.send<T>(path, init, controller.signal), timeout]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+  }
+
+  private async send<T>(path: string, init: RequestInit, signal?: AbortSignal): Promise<T> {
     const configuredHeaders =
       typeof this.headers === 'function' ? await this.headers() : (this.headers ?? {});
     const response = await this.fetcher(`${this.baseUrl}${path}`, {
       ...init,
+      ...(signal === undefined ? {} : { signal }),
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',

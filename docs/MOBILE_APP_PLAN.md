@@ -1,6 +1,6 @@
 # Mobile app — working plan
 
-Last updated: September 3, 2026
+Last updated: September 3, 2026 (round 4)
 
 A running tracker for the `apps/mobile` work, so each round can pick up without re-deriving
 context. `docs/MOBILE.md` stays the reference for the runtime, env, and build story; this file is
@@ -104,10 +104,35 @@ Verified on the device afterwards: the date strip offers Sep 3, 4, 5 then jumps 
 skipping the weekend the barber does not work, and today's remaining times are bookable while the
 API reports `isPast` false for them. That is the round-2 slot work confirmed outside of tests.
 
+**Round 4 — booked an appointment end to end, and found the app could freeze permanently.**
+
+The customer journey now completes on a real device: discover → barber → service → shop/mobile →
+slot → review → confirm → appointment detail, with the row landing in the database.
+
+Getting there surfaced the most serious bug so far. Confirm sat on "Confirming…" forever, and the
+API log showed **no POST at all** — then nothing else either. The app had gone completely silent 29
+minutes earlier, including its periodic notification poll.
+
+The cause: `ApiClient` resolves auth headers with `await this.headers()`, which calls Clerk's
+`getToken()`, and **nothing in the stack had a timeout**. When that token refresh stalled, the
+request was never sent, no error was raised, and every later authenticated call queued behind the
+same stalled promise. The UI showed a spinner with no way back short of killing the app.
+
+`ApiClient` now takes an optional `timeoutMs`, which mobile sets to 20s. It deliberately races the
+whole operation rather than passing an `AbortSignal` to `fetch`, because the stall happens *before*
+fetch is reached — an abort signal alone would never have fired. Timeouts surface as
+`ApiTimeoutError` and are translated into "That took too long. Check your connection and try
+again." Off by default, so the web app is unaffected until it opts in.
+
+Also confirmed on device: the slot grid re-fetches and marks newly-passed times as "Passed" while
+you sit on the screen — 13:30 was bookable at 1:12pm and struck through by 1:57pm — and tapping a
+passed slot does nothing, leaving Continue disabled.
+
 ## Queue, roughly in order
 
-1. **Finish the walkthrough.** Confirmed as far as the slot picker. Still unexercised on device:
-   the confirm/payment steps, the whole barber portal, appointments, saved and profile.
+1. **Walk the barber portal.** Still completely unexercised on device — today, appointments,
+   schedule, services, business, payments, earnings, subscription, profile, setup. The customer
+   side is now covered end to end.
 2. **Decide what to do about seeded images.** They live in `apps/web/public`, so the phone can
    never load them. Either serve them from the API or ship local placeholder assets — right now
    every seeded barber shows "No photo yet".
@@ -133,3 +158,9 @@ API reports `isPast` false for them. That is the round-2 slot work confirmed out
   before assuming a crash.
 - Only JDK 23 is installed. Gradle has been fine with it; if a native build starts failing on
   class-file versions, a JDK 17 is the usual fix.
+- **Changing a shared package needs a rebuild before the device sees it.** Metro resolves
+  `@barber-saas/api-client` through `main: dist/index.js`, not `src`, so edits are invisible on the
+  phone until `pnpm --filter @barber-saas/api-client build`. Vitest is aliased to `src`, so tests
+  can pass while the running app still has the old code.
+- If the app hangs on a spinner and the API log goes quiet, the token refresh has stalled. Force
+  stop and relaunch clears it. The 20s timeout now turns that into a visible error instead.

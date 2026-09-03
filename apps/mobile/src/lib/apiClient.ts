@@ -71,11 +71,20 @@ const defaultDevelopmentApiUrl =
 
 export const MOBILE_API_URL = process.env.EXPO_PUBLIC_API_URL ?? defaultDevelopmentApiUrl;
 
-const publicClient = new ApiClient({ baseUrl: MOBILE_API_URL });
+/**
+ * Phones lose connectivity mid-request and auth token refreshes can stall, and fetch has no
+ * default timeout — a stalled request otherwise leaves a spinner on screen forever with no error
+ * and no way back. Every later authenticated call queues behind it too, so the whole app goes
+ * quiet. Anything slower than this is treated as a failure the UI can report and the user retry.
+ */
+const REQUEST_TIMEOUT_MS = 20_000;
+
+const publicClient = new ApiClient({ baseUrl: MOBILE_API_URL, timeoutMs: REQUEST_TIMEOUT_MS });
 
 const createAuthedClient = (): ApiClient =>
   new ApiClient({
     baseUrl: MOBILE_API_URL,
+    timeoutMs: REQUEST_TIMEOUT_MS,
     headers: async (): Promise<Record<string, string>> => {
       const token = await getClerkInstance().session?.getToken();
       return token === null || token === undefined ? {} : { Authorization: 'Bearer ' + token };
