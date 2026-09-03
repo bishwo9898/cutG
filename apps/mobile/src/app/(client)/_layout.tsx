@@ -32,7 +32,15 @@ export default function ClientLayout(): React.ReactElement {
       <Tabs.Screen name="discover" options={{ title: 'Discover', tabBarIcon: tabIcon('search') }} />
       <Tabs.Screen
         name="appointments"
-        options={{ title: 'Appointments', tabBarIcon: tabIcon('calendar') }}
+        options={{
+          title: 'Appointments',
+          tabBarIcon: tabIcon('calendar'),
+          // A booking detail is pushed into this tab from elsewhere (the barber's Today list,
+          // the customer's booking confirmation). Without this the tab keeps that detail as its
+          // top screen for the rest of the session, so tapping Appointments never reaches the
+          // list again — there is no way back to it but the hardware back button.
+          popToTopOnBlur: true,
+        }}
       />
       <Tabs.Screen name="saved" options={{ title: 'Saved', tabBarIcon: tabIcon('heart') }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tabIcon('person') }} />

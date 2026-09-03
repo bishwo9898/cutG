@@ -695,7 +695,7 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
 
 export const getAppointment = async (userId: string, appointmentId: string) => {
   const rows = await query<Row>(
-    `SELECT a.*,s.name AS service_name,u.first_name,u.last_name,u.phone,
+    `SELECT a.*,s.name AS service_name,u.first_name,u.last_name,u.phone,u.email,
       bp.address AS shop_address,bp.city AS shop_city,bp.state AS shop_state,
       bp.zip_code AS shop_zip,bp.latitude AS shop_latitude,bp.longitude AS shop_longitude,
       mbc.origin_latitude AS mobile_origin_latitude,

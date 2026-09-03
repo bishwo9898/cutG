@@ -48,7 +48,7 @@ export const AppointmentCard = ({
     >
       <Card>
         <View style={styles.row}>
-          <Avatar imageUrl={appointment.barberPhotoUrl} name={name} />
+          <Avatar imageUrl={mode === 'client' ? appointment.barberPhotoUrl : null} name={name} />
           <View style={styles.body}>
             <View style={styles.titleRow}>
               <Text style={styles.title}>{name}</Text>
@@ -97,7 +97,15 @@ const styles = StyleSheet.create({
   },
   pressable: { borderRadius: 12 },
   pressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
-  review: { ...typography.label, color: colors.statusOnTheWay, marginTop: spacing.xs },
+  // Ink with a champagne underline, matching the web's .text-link. statusOnTheWay made this
+  // read as a default browser link, and as an "on the way" badge, in an ivory/black/gold app.
+  review: {
+    ...typography.label,
+    color: colors.textPrimary,
+    marginTop: spacing.xs,
+    textDecorationColor: colors.gold,
+    textDecorationLine: 'underline',
+  },
   row: {
     flexDirection: 'row',
     gap: spacing.md,

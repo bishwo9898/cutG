@@ -66,7 +66,10 @@ function AppShell(): React.ReactElement {
   }, [user?.id]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    // The ivory belongs on the root view too: the navigator paints its own light-theme white
+    // behind the first screen, so a cold start flashed white between the ivory splash and the
+    // ivory app while Clerk finished loading.
+    <GestureHandlerRootView style={{ backgroundColor: colors.background, flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="dark" />
         <PaymentProvider>

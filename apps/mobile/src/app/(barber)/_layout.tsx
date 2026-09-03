@@ -32,7 +32,15 @@ export default function BarberLayout(): React.ReactElement {
       <Tabs.Screen name="today" options={{ title: 'Today', tabBarIcon: tabIcon('today') }} />
       <Tabs.Screen
         name="appointments"
-        options={{ title: 'Appointments', tabBarIcon: tabIcon('calendar-outline') }}
+        options={{
+          title: 'Appointments',
+          tabBarIcon: tabIcon('calendar-outline'),
+          // A booking detail is pushed into this tab from elsewhere (the barber's Today list,
+          // the customer's booking confirmation). Without this the tab keeps that detail as its
+          // top screen for the rest of the session, so tapping Appointments never reaches the
+          // list again — there is no way back to it but the hardware back button.
+          popToTopOnBlur: true,
+        }}
       />
       <Tabs.Screen
         name="schedule"

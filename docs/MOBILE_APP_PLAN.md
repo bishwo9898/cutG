@@ -1,6 +1,6 @@
 # Mobile app — working plan
 
-Last updated: September 3, 2026 (round 4)
+Last updated: September 3, 2026 (round 5)
 
 A running tracker for the `apps/mobile` work, so each round can pick up without re-deriving
 context. `docs/MOBILE.md` stays the reference for the runtime, env, and build story; this file is
@@ -84,7 +84,7 @@ analysis would have found:
 
 - **Seed accounts could not sign in at all.** `SEED_TEST_PASSWORD` had been set to `password123`,
   which Clerk rejects at sign-in as a breached password. `skipPasswordChecks` only applies when the
-  password is *written*, so seeding succeeded and the accounts were simply unusable. Now
+  password is _written_, so seeding succeeded and the accounts were simply unusable. Now
   `CutgTest2026!`, consistent across the seed, the web field-test default, and nine docs.
 - **The customer tab bar had 14 tabs.** `discover/`, `appointments/` and `profile/` had no
   `_layout.tsx`, so expo-router hoisted every nested route into the tab navigator — the bar filled
@@ -119,7 +119,7 @@ request was never sent, no error was raised, and every later authenticated call 
 same stalled promise. The UI showed a spinner with no way back short of killing the app.
 
 `ApiClient` now takes an optional `timeoutMs`, which mobile sets to 20s. It deliberately races the
-whole operation rather than passing an `AbortSignal` to `fetch`, because the stall happens *before*
+whole operation rather than passing an `AbortSignal` to `fetch`, because the stall happens _before_
 fetch is reached — an abort signal alone would never have fired. Timeouts surface as
 `ApiTimeoutError` and are translated into "That took too long. Check your connection and try
 again." Off by default, so the web app is unaffected until it opts in.
@@ -128,11 +128,62 @@ Also confirmed on device: the slot grid re-fetches and marks newly-passed times 
 you sit on the screen — 13:30 was bookable at 1:12pm and struck through by 1:57pm — and tapping a
 passed slot does nothing, leaving Continue disabled.
 
+**Round 5 — walked the barber portal, and found the booking clock was wrong.**
+
+The barber side had never been opened on a device. Signed in as the seeded barber against a local
+API and went through today, the booking detail, appointments, calendar, business, services and
+profile. Nine finds, two of them serious.
+
+- **Bookings were stored at the wrong time.** `scheduled_at` was selected as a bare timestamp,
+  which node-pg parses into a JS `Date` in the _server's_ zone; writing that `Date` back into the
+  `timestamptz` column re-encoded it as an instant. A 14:00 slot booked from a UTC-4 machine landed
+  as `18:00+00`. On a UTC server the two conversions cancel and nothing looks wrong, which is why
+  this survived — but the barber's calendar (which reads the slot) and Today list (which reads the
+  appointment) were four hours apart on the same customer. The slot time is now carried as text so
+  Postgres parses the wall clock once. `bookingTime.integration.test.ts` pins it, and pins its own
+  `TZ` to `America/New_York` so a UTC CI box cannot hide the regression. The seed had the identical
+  bug and is fixed the same way.
+- **The booking screen showed a different time again**, this time by calling
+  `new Date(scheduledAt).toLocaleTimeString()`. `scheduledAt` is a wall clock parked in the Z slot,
+  not an instant, so formatting it locally shifts it. `lib/appointmentTime.ts` reads the components
+  out of the string; `appointmentTime.test.ts` covers it in three zones. Timestamps that really are
+  instants (created, confirmed, journey pings) still convert to local, correctly.
+- **The customer's email rendered as `undefined`**, as a tappable `mailto:undefined` link. The
+  detail query selected `u.first_name, u.last_name, u.phone` but not `u.email`, and the mapper does
+  `String(row.email)`. The list query next to it had always selected it.
+- **The map ate every vertical drag that started on it**, and it is a 220px band across the middle
+  of the screen — so the barber could not scroll past it to Confirm, Decline, or the notes field.
+  `scrollEnabled={false}` hands the pan back to the page.
+- **The Appointments tab could get permanently stuck on a booking detail.** Opening a booking from
+  Today pushes it into the _appointments_ tab's stack, so that tab then opened on the detail for
+  the rest of the session and the list was unreachable except by hardware back. `popToTopOnBlur`
+  on that tab, both portals.
+- **The barber profile's name and bio were placeholders, not values.** The fields looked filled in
+  but were empty, so editing the bio alone sent `businessName: ''` — which the API rejects, since
+  the name is required. They now seed from the loaded profile, and an empty name is caught with a
+  reason before the request goes out.
+- **Blue links and a navigation arrow on things that do not navigate.** Links borrowed
+  `statusOnTheWay`, which reads as an unstyled browser link in an ivory app; they now match the
+  web's `.text-link` (ink text, champagne underline). `Badge` picks its glyph from its tone, so
+  `tone="info"` put a navigation arrow on a service's duration, on a default address, and on an
+  online-payments marker. `Badge` takes an `icon` override now and those three say what they mean.
+- **The barber's own photo sat beside the customer's name** on every barber-side appointment card.
+  `barberPhotoUrl` is only ever populated by the client service, so it was always undefined and the
+  initials fallback hid it — it would have surfaced the moment the field was filled in.
+- **A cold start flashed white** between the ivory splash and the ivory app, because the navigator
+  paints its light-theme background behind the first screen. The root view is ivory now.
+
+Not bugs, checked and cleared: Earnings and Subscription are absent from the Business hub because
+they are behind `EXPO_PUBLIC_ENABLE_EARNINGS` / `_SUBSCRIPTIONS`, like the AI studio. The blank
+grey map is the missing `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`, not a layout fault.
+
 ## Queue, roughly in order
 
-1. **Walk the barber portal.** Still completely unexercised on device — today, appointments,
-   schedule, services, business, payments, earnings, subscription, profile, setup. The customer
-   side is now covered end to end.
+1. **The web has the same `scheduledAt` bug, in nine places.** `new Date(appointment.scheduledAt)`
+   with a local format appears in `dashboard/page.tsx`, `dashboard/appointments/page.tsx` and its
+   `[appointmentId]` detail, `appointments/[appointmentId]/page.tsx`, and `client-ui.tsx`. Vercel
+   renders these in the _viewer's_ zone, so a customer outside the shop's zone is being told the
+   wrong appointment time today. Mobile's `lib/appointmentTime.ts` is the shape of the fix.
 2. **Decide what to do about seeded images.** They live in `apps/web/public`, so the phone can
    never load them. Either serve them from the API or ship local placeholder assets — right now
    every seeded barber shows "No photo yet".
@@ -164,3 +215,18 @@ passed slot does nothing, leaving Continue disabled.
   can pass while the running app still has the old code.
 - If the app hangs on a spinner and the API log goes quiet, the token refresh has stalled. Force
   stop and relaunch clears it. The 20s timeout now turns that into a visible error instead.
+- **`scheduledAt` is a wall clock, not an instant.** The API emits the booked time in the `Z` slot
+  (`2026-09-04T11:00:00.000Z` means 11am on the barber's clock), and `scheduledDate`/`startTime`
+  are literal slices of that string. Never hand it to `new Date()` and format it locally — use
+  `lib/appointmentTime.ts`. Genuine instants (`createdAt`, `confirmedAt`, journey pings) are
+  ordinary UTC and should keep converting.
+- **Running the API integration tests wipes the local dev database.** `resetTestDatabase()` is not
+  scoped to a test schema, so a test run mid-walkthrough deletes whatever you were looking at on
+  the phone. Reseed (`pnpm --filter @barber-saas/api db:seed`) before picking the walk back up.
+- **Clerk takes the best part of a minute to initialise on the emulator.** A cold start sits on a
+  blank screen far longer than feels reasonable. Wait 60s before concluding anything is wrong.
+- `tsx watch` sometimes fails to free port 4000 when a source edit triggers a restart
+  (`EADDRINUSE`, "Process didn't exit in 5s"). `lsof -ti tcp:4000 | xargs kill -9` and restart.
+- **`pnpm format` rewrites the whole repository**, not the files you touched — it reformatted 24
+  unrelated files in this round and they had to be reverted one by one. Format the files you
+  changed (`pnpm exec prettier --write <paths>`) or check with `pnpm format:check`.

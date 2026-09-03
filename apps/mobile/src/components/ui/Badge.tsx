@@ -6,6 +6,12 @@ import { colors, spacing, typography } from '@/theme';
 type BadgeProps = {
   label: string;
   tone?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'gold' | 'arrived' | 'completed';
+  /**
+   * Each tone carries a default glyph chosen for the appointment status it names — `info` means
+   * ON_THE_WAY, so it draws a navigation arrow. Callers borrowing a tone for its colour alone
+   * should pass their own glyph, or the badge says something the label does not.
+   */
+  icon?: keyof typeof Ionicons.glyphMap;
 };
 
 const toneColors = {
@@ -51,7 +57,7 @@ const toneColors = {
   },
 };
 
-export const Badge = ({ label, tone = 'default' }: BadgeProps): React.ReactElement => (
+export const Badge = ({ label, tone = 'default', icon }: BadgeProps): React.ReactElement => (
   <View
     accessibilityLabel={label}
     style={[
@@ -62,7 +68,8 @@ export const Badge = ({ label, tone = 'default' }: BadgeProps): React.ReactEleme
     <Ionicons
       color={toneColors[tone].text}
       name={
-        tone === 'success'
+        icon ??
+        (tone === 'success'
           ? 'checkmark-circle'
           : tone === 'warning'
             ? 'time'
@@ -76,7 +83,7 @@ export const Badge = ({ label, tone = 'default' }: BadgeProps): React.ReactEleme
                     ? 'checkmark-done-circle'
                     : tone === 'gold'
                       ? 'cut'
-                      : 'ellipse'
+                      : 'ellipse')
       }
       size={14}
     />

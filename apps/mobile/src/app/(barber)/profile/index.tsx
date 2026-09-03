@@ -1,7 +1,7 @@
 import { useClerk } from '@clerk/clerk-expo';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, Text } from 'react-native';
 
 import { Screen } from '@/components/layout/Screen';
@@ -26,11 +26,28 @@ export default function BarberProfileScreen(): React.ReactElement {
   const [bio, setBio] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const seeded = useRef(false);
+
+  // The saved name and bio used to appear only as placeholders, so the fields read as filled in
+  // while actually being empty: the barber had to retype their own business name to change a word
+  // of the bio, and saving a bio alone sent businessName: '' — which the API rejects, since the
+  // name is required. Seed the inputs once from the profile so the real text is what gets edited.
+  useEffect(() => {
+    if (seeded.current || profile.data === undefined) return;
+    seeded.current = true;
+    setBusinessName(profile.data.businessName ?? '');
+    setBio(profile.data.bio ?? '');
+  }, [profile.data]);
 
   const save = async (): Promise<void> => {
+    const nextName = businessName.trim();
+    const nextBio = bio.trim();
+    if (nextName.length === 0) {
+      setMessage('Your business name is what customers search for, so it cannot be empty.');
+      return;
+    }
     try {
-      if (businessName.length > 0 || bio.length > 0)
-        await mobileApi.barber.updateProfile({ businessName, bio });
+      await mobileApi.barber.updateProfile({ businessName: nextName, bio: nextBio });
       if (photoUrl.length > 0) await mobileApi.barber.uploadPhoto(photoUrl);
       setMessage('Profile updated.');
       await profile.refetch();
@@ -76,14 +93,14 @@ export default function BarberProfileScreen(): React.ReactElement {
         label="Business name"
         value={businessName}
         onChangeText={setBusinessName}
-        placeholder={profile.data?.businessName ?? 'Business name'}
+        placeholder="Business name"
       />
       <Input
         label="Bio"
         value={bio}
         onChangeText={setBio}
         multiline
-        placeholder={profile.data?.bio ?? 'Tell customers about your shop'}
+        placeholder="Tell customers about your shop"
       />
       {photoUrl.length > 0 ? (
         <Image

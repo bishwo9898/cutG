@@ -61,7 +61,7 @@ export default function ClientAddressesScreen(): React.ReactElement {
             <View style={styles.flex}>
               <View style={styles.titleRow}>
                 <Text style={styles.title}>{address.label}</Text>
-                {address.isDefault ? <Badge label="Default" tone="info" /> : null}
+                {address.isDefault ? <Badge icon="star" label="Default" tone="default" /> : null}
               </View>
               <Text style={styles.meta}>{address.addressLine1}</Text>
               {address.addressLine2 !== null && address.addressLine2 !== undefined ? (

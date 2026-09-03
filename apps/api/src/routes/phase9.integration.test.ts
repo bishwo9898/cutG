@@ -65,6 +65,9 @@ describe('Phase 9 GPS tracking and hair designs', () => {
     expect(detail.body).toMatchObject({
       id: appointmentId,
       isMobileService: true,
+      // The detail query once omitted u.email, so the barber's booking screen rendered a
+      // "mailto:undefined" link where the customer's address belongs.
+      client: { email: 'phase9.client@example.com' },
       location: { kind: 'MOBILE', addressLine1: '10 Client St' },
       pricing: { serviceFee: 32, travelFee: 0, total: 32, currency: 'USD' },
       journey: {

@@ -62,6 +62,13 @@ type AppointmentSeed = {
   serviceId: string;
   availabilitySlotId: string;
   scheduledAt: Date;
+  /**
+   * The wall clock the slot publishes, as text. `scheduledAt` is a local Date and is only used
+   * for deriving nearby instants (confirmedAt); writing it straight into the timestamptz column
+   * re-encoded it through the seeding machine's zone, so an 11:00 slot landed at 15:00+00 and the
+   * barber's calendar showed the appointment four hours from the slot it belongs to.
+   */
+  scheduledWallClock: string;
   durationMinutes: number;
   status: 'PENDING' | 'CONFIRMED' | 'ON_THE_WAY' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
   paymentStatus: 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED';
@@ -326,6 +333,7 @@ const buildAppointments = (clients: ClientSeed[], slots: SlotSeed[]): Appointmen
   returnBuffer.travelBufferKind = 'RETURN';
 
   const scheduledAt = toDateAtTime(new Date(`${slot.slotDate}T12:00:00`), slot.startTime);
+  const scheduledWallClock = `${slot.slotDate}T${slot.startTime}:00`;
 
   return [
     {
@@ -335,6 +343,7 @@ const buildAppointments = (clients: ClientSeed[], slots: SlotSeed[]): Appointmen
       serviceId: service.id,
       availabilitySlotId: slot.id,
       scheduledAt,
+      scheduledWallClock,
       durationMinutes: service.durationMinutes,
       status: 'CONFIRMED',
       paymentStatus: 'PENDING',
@@ -644,7 +653,7 @@ export async function seed(knex: Knex): Promise<void> {
       barber_id: appointment.barberId,
       service_id: appointment.serviceId,
       availability_slot_id: appointment.availabilitySlotId,
-      scheduled_at: appointment.scheduledAt,
+      scheduled_at: appointment.scheduledWallClock,
       duration_minutes: appointment.durationMinutes,
       status: appointment.status,
       payment_status: appointment.paymentStatus,

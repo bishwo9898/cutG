@@ -338,7 +338,12 @@ export const bookAppointment = async (clientId: string, input: BookAppointmentRe
     }
 
     const slotRows = await query<Row>(
-      `SELECT *,(slot_date::timestamp + start_time)::timestamp AS scheduled_at
+      // Emitted as text on purpose. As a bare timestamp, node-pg parses it into a JS Date in the
+      // *server's* zone, and inserting that Date into the timestamptz column re-encodes it as an
+      // instant — so a 14:00 slot booked from a UTC-4 machine was stored as 18:00+00 and the
+      // barber's calendar and Today list disagreed about the same appointment by four hours.
+      // Keeping it a string means Postgres parses the wall clock once, in the session zone.
+      `SELECT *,to_char(slot_date::timestamp + start_time,'YYYY-MM-DD"T"HH24:MI:SS') AS scheduled_at
        FROM availability_slots
        WHERE id = $1 AND barber_id = $2
        FOR UPDATE`,

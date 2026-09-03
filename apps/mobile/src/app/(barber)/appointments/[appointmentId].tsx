@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useBarberAppointment, useUpdateAppointmentStatus } from '@/hooks/useBarberDashboard';
 import { useLocationBroadcast } from '@/hooks/useLocationBroadcast';
+import { formatWallClockDate, formatWallClockTime } from '@/lib/appointmentTime';
 import { errorMessage } from '@/lib/errors';
 import { openNavigation } from '@/lib/maps';
 import {
@@ -287,11 +288,7 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
         </View>
         <View style={styles.factGrid}>
           <Text style={styles.meta}>
-            {new Date(item.scheduledAt).toLocaleDateString()} at{' '}
-            {new Date(item.scheduledAt).toLocaleTimeString([], {
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
+            {formatWallClockDate(item.scheduledAt)} at {formatWallClockTime(item.scheduledAt)}
           </Text>
           <Text style={styles.meta}>{item.durationMinutes} minutes</Text>
           <Text style={styles.meta}>
@@ -354,6 +351,12 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
               <MapView
                 ref={mapRef}
                 style={styles.map}
+                // Without this the map swallows every vertical drag that starts on it, and a
+                // 220px band across the middle of the screen becomes a scroll dead zone — the
+                // barber could not reach Confirm, Decline or the notes field below it.
+                scrollEnabled={false}
+                rotateEnabled={false}
+                pitchEnabled={false}
                 initialRegion={{
                   latitude: coordinates.latitude,
                   longitude: coordinates.longitude,
@@ -361,11 +364,11 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
                   longitudeDelta: 0.06,
                 }}
               >
-                {item.journey.routeOrigin != null ? (
+                {item.isMobileService && item.journey.routeOrigin != null ? (
                   <Marker coordinate={item.journey.routeOrigin} pinColor={colors.statusOnTheWay} />
                 ) : null}
                 <Marker coordinate={coordinates} pinColor={colors.statusArrived} />
-                {routeCoordinates.length >= 2 ? (
+                {item.isMobileService && routeCoordinates.length >= 2 ? (
                   <Polyline
                     coordinates={routeCoordinates}
                     strokeColor={colors.statusOnTheWay}
@@ -373,7 +376,7 @@ export default function BarberAppointmentDetailScreen(): React.ReactElement {
                   />
                 ) : null}
               </MapView>
-              {routeCoordinates.length >= 2 ? (
+              {item.isMobileService && routeCoordinates.length >= 2 ? (
                 <Text style={styles.meta}>Shortest available driving route shown.</Text>
               ) : null}
               <Button
@@ -564,10 +567,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: spacing.lg,
   },
+  // Mirrors the web's .text-link: ink text with a champagne underline. It used to borrow
+  // statusOnTheWay, which read as an unstyled browser link against the ivory palette.
   link: {
     ...typography.body,
-    color: colors.statusOnTheWay,
+    color: colors.textPrimary,
     marginTop: spacing.sm,
+    textDecorationColor: colors.gold,
     textDecorationLine: 'underline',
   },
   map: { borderRadius: 12, height: 220, marginVertical: spacing.md, overflow: 'hidden' },
@@ -613,7 +619,7 @@ const styles = StyleSheet.create({
   trackingDot: { borderRadius: 999, height: 10, width: 10 },
   trackingDotActive: { backgroundColor: colors.statusConfirmed },
   trackingDotWarning: { backgroundColor: colors.statusPending },
-  trackingHelp: { ...typography.caption, color: colors.statusOnTheWay, marginTop: spacing.md },
+  trackingHelp: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.md },
   trackingRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
   warning: { ...typography.bodySmall, color: colors.statusPending, marginTop: spacing.md },
 });

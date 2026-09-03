@@ -28,16 +28,28 @@ const availability = (value: string | null): string => {
   return `Next ${slot.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
 };
 
-export const BarberCard = ({ barber, compact = false, href }: BarberCardProps): React.ReactElement => (
+export const BarberCard = ({
+  barber,
+  compact = false,
+  href,
+}: BarberCardProps): React.ReactElement => (
   <Pressable onPress={() => router.push(href ?? '/(client)/discover/' + barber.id)}>
     {({ pressed }) => (
       <Card style={{ ...(compact ? styles.compact : {}), ...(pressed ? styles.pressed : {}) }}>
         <View style={styles.row}>
-          <Avatar imageUrl={barber.profilePhotoUrl} name={barber.businessName} size={compact ? 48 : 58} />
+          <Avatar
+            imageUrl={barber.profilePhotoUrl}
+            name={barber.businessName}
+            size={compact ? 48 : 58}
+          />
           <View style={styles.body}>
             <View style={styles.titleRow}>
-              <Text numberOfLines={1} style={styles.title}>{barber.businessName}</Text>
-              {barber.isVerified ? <Ionicons color={colors.info} name="shield-checkmark" size={17} /> : null}
+              <Text numberOfLines={1} style={styles.title}>
+                {barber.businessName}
+              </Text>
+              {barber.isVerified ? (
+                <Ionicons color={colors.info} name="shield-checkmark" size={17} />
+              ) : null}
             </View>
             <Text numberOfLines={1} style={styles.meta}>
               {[barber.city, barber.state].filter(Boolean).join(', ') || 'Local barber'}
@@ -49,17 +61,27 @@ export const BarberCard = ({ barber, compact = false, href }: BarberCardProps): 
               {barber.totalReviews > 0 ? (
                 <>
                   <StarRating value={Math.round(barber.averageRating)} />
-                  <Text style={styles.meta}>{barber.averageRating.toFixed(1)} ({barber.totalReviews})</Text>
+                  <Text style={styles.meta}>
+                    {barber.averageRating.toFixed(1)} ({barber.totalReviews})
+                  </Text>
                 </>
-              ) : <Text style={styles.newLabel}>New</Text>}
+              ) : (
+                <Text style={styles.newLabel}>New</Text>
+              )}
             </View>
             <Text style={styles.price}>
-              {barber.lowestServicePrice === null ? 'Services available' : `From $${barber.lowestServicePrice.toFixed(2)}`}
+              {barber.lowestServicePrice === null
+                ? 'Services available'
+                : `From $${barber.lowestServicePrice.toFixed(2)}`}
             </Text>
             <Text style={styles.availability}>{availability(barber.nextAvailableSlot)}</Text>
             <View style={styles.badges}>
-              {barber.mobileService?.isEnabled === true ? <Badge label="✓ Mobile visits" tone="success" /> : null}
-              {barber.onlinePaymentsAvailable === true ? <Badge label="✓ Online payments" tone="info" /> : null}
+              {barber.mobileService?.isEnabled === true ? (
+                <Badge label="✓ Mobile visits" tone="success" />
+              ) : null}
+              {barber.onlinePaymentsAvailable === true ? (
+                <Badge icon="card" label="Online payments" tone="success" />
+              ) : null}
             </View>
           </View>
         </View>
