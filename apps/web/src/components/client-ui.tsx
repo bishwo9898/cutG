@@ -1,6 +1,7 @@
 'use client';
 
 import { clientApi } from '@barber-saas/api-client';
+import { formatWallClock } from '@barber-saas/shared-utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
@@ -478,7 +479,7 @@ export function AppointmentCard({
           <AppointmentStatusBadge status={appointment.status} />
         </div>
         <p>
-          {new Date(appointment.scheduledAt).toLocaleString([], {
+          {formatWallClock(appointment.scheduledAt, {
             dateStyle: 'medium',
             timeStyle: 'short',
           })}

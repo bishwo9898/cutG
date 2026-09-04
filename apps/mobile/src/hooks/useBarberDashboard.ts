@@ -2,6 +2,8 @@ import { format } from 'date-fns';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 
+import { usePagedQuery } from '@/hooks/usePagedQuery';
+import type { PagedFilters, PagedQueryResult } from '@/hooks/usePagedQuery';
 import { mobileApi } from '@/lib/apiClient';
 import { queryClient } from '@/lib/queryClient';
 import type { UpdateBarberProfileRequest, UpdateServiceRequest } from '@barber-saas/shared-types';
@@ -32,6 +34,12 @@ export const useBarberAppointments = (
     queryKey: ['barber', 'appointments', filters],
     queryFn: () => mobileApi.barber.appointments(filters),
   });
+
+/** Walks every page of the barber's bookings. See `usePagedQuery`. */
+export const usePagedBarberAppointments = (
+  filters: PagedFilters,
+): PagedQueryResult<AppointmentSummary> =>
+  usePagedQuery(['barber', 'appointments', 'paged'], mobileApi.barber.appointments, filters);
 
 export const useBarberAppointment = (
   appointmentId: string,

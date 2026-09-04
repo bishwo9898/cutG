@@ -597,8 +597,16 @@ export const listAppointments = async (userId: string, filters: AppointmentFilte
     values.push(filters.startDate, filters.endDate);
     where.push(`a.scheduled_at::date BETWEEN $${values.length - 1} AND $${values.length}`);
   }
+  if (filters.search !== undefined) {
+    values.push(`%${filters.search}%`);
+    where.push(`(u.first_name || ' ' || u.last_name) ILIKE $${values.length}`);
+  }
+  // The customer join is in the count query too, so the total agrees with the rows when the
+  // barber is searching by name.
   const countRows = await query<Row>(
-    `SELECT COUNT(*)::int AS total FROM appointments a WHERE ${where.join(' AND ')}`,
+    `SELECT COUNT(*)::int AS total
+     FROM appointments a JOIN users u ON u.id=a.client_id
+     WHERE ${where.join(' AND ')}`,
     values,
   );
   values.push(filters.limit, (filters.page - 1) * filters.limit);

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatWallClock, formatWallClockTime } from '@barber-saas/shared-utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarDays,
@@ -256,17 +257,12 @@ export default function AppointmentsPage(): React.ReactElement {
                         <small>{appointment.durationMinutes} minutes</small>
                       </td>
                       <td>
-                        {new Date(appointment.scheduledAt).toLocaleDateString([], {
+                        {formatWallClock(appointment.scheduledAt, {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
                         })}
-                        <small>
-                          {new Date(appointment.scheduledAt).toLocaleTimeString([], {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })}
-                        </small>
+                        <small>{formatWallClockTime(appointment.scheduledAt)}</small>
                       </td>
                       <td>
                         <span className="appointment-type-label">
@@ -312,7 +308,7 @@ export default function AppointmentsPage(): React.ReactElement {
                   <div className="appointment-card-facts">
                     <span>
                       <CalendarDays size={15} />
-                      {new Date(appointment.scheduledAt).toLocaleString([], {
+                      {formatWallClock(appointment.scheduledAt, {
                         month: 'short',
                         day: 'numeric',
                         hour: 'numeric',

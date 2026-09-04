@@ -13,6 +13,7 @@
   "dependencies": {
     "@barber-saas/api-client": "workspace:*",
     "@barber-saas/shared-types": "workspace:*",
+    "@barber-saas/shared-utils": "workspace:*",
     "@clerk/nextjs": "7.8.2",
     "@hookform/resolvers": "^5.2.2",
     "@mediapipe/tasks-vision": "1.0.0",

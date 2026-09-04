@@ -51,16 +51,32 @@ export const wallClockDate = (scheduledAt: string): Date | null => {
     : new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
 };
 
-/** "Thu, Sep 3" — the day the appointment sits on, never shifted by the reader's timezone. */
-export const formatWallClockDate = (scheduledAt: string): string => {
+/**
+ * Formats the booked wall clock with the caller's own `Intl` options. Falls back to the raw value
+ * rather than printing "Invalid Date" when the string is not an appointment timestamp.
+ */
+export const formatWallClock = (
+  scheduledAt: string,
+  options: Intl.DateTimeFormatOptions,
+): string => {
   const date = wallClockDate(scheduledAt);
-  if (date === null) return scheduledAt;
-  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return date === null ? scheduledAt : date.toLocaleString(undefined, options);
 };
 
+/** "Thu, Sep 3" — the day the appointment sits on, never shifted by the reader's timezone. */
+export const formatWallClockDate = (scheduledAt: string): string =>
+  formatWallClock(scheduledAt, { weekday: 'short', month: 'short', day: 'numeric' });
+
 /** "6:00 PM" — the time on the barber's clock. */
-export const formatWallClockTime = (scheduledAt: string): string => {
+export const formatWallClockTime = (scheduledAt: string): string =>
+  formatWallClock(scheduledAt, { hour: 'numeric', minute: '2-digit' });
+
+/**
+ * True when the appointment has not happened yet. Compares naive local times, which is the same
+ * convention the API's booking guard uses — the wall clock is the barber's, and "has it passed"
+ * only makes sense on that clock.
+ */
+export const isWallClockInFuture = (scheduledAt: string, now: Date = new Date()): boolean => {
   const date = wallClockDate(scheduledAt);
-  if (date === null) return scheduledAt;
-  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return date !== null && date.getTime() > now.getTime();
 };

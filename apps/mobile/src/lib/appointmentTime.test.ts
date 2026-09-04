@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+// The implementation lives in @barber-saas/shared-utils so the web app cannot drift from it.
+// It is exercised from here because that package has no test runner of its own, and vitest is
+// aliased to the package's source, so this covers the real code rather than a stale dist.
 import {
   formatWallClockDate,
   formatWallClockTime,
   wallClock,
   wallClockDate,
-} from './appointmentTime';
+} from '@barber-saas/shared-utils';
 
 describe('wallClock', () => {
   it('reads the components the API wrote, ignoring the Z', () => {

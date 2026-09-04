@@ -300,6 +300,9 @@ export const AppointmentFilterSchema = z
     date: DateStringSchema.optional(),
     startDate: DateStringSchema.optional(),
     endDate: DateStringSchema.optional(),
+    // Matched against the customer's name. The barber's list is paginated, so filtering the
+    // rows already on screen would only ever search the first page.
+    search: z.string().trim().min(1).max(100).optional(),
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().positive().max(50).default(20),
   })

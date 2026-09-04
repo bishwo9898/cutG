@@ -1,6 +1,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 
+import { usePagedQuery } from '@/hooks/usePagedQuery';
+import type { PagedFilters, PagedQueryResult } from '@/hooks/usePagedQuery';
 import { mobileApi } from '@/lib/apiClient';
 import { queryClient } from '@/lib/queryClient';
 import type {
@@ -21,6 +23,10 @@ export const useBarberSearch = (
     queryKey: ['barbers', 'search', params],
     queryFn: () => mobileApi.discovery.search(params),
   });
+
+/** Walks every page of discovery results. See `usePagedQuery`. */
+export const usePagedBarberSearch = (params: PagedFilters): PagedQueryResult<PublicBarber> =>
+  usePagedQuery(['barbers', 'search', 'paged'], mobileApi.discovery.search, params);
 
 export const useBarberProfile = (barberId: string): UseQueryResult<BarberProfile> =>
   useQuery({

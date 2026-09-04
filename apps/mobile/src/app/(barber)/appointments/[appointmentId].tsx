@@ -13,7 +13,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useBarberAppointment, useUpdateAppointmentStatus } from '@/hooks/useBarberDashboard';
 import { useLocationBroadcast } from '@/hooks/useLocationBroadcast';
-import { formatWallClockDate, formatWallClockTime } from '@/lib/appointmentTime';
+import { formatWallClockDate, formatWallClockTime } from '@barber-saas/shared-utils';
 import { errorMessage } from '@/lib/errors';
 import { openNavigation } from '@/lib/maps';
 import {

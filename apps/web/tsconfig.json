@@ -19,7 +19,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@barber-saas/api-client": ["../../packages/api-client/src"],
-      "@barber-saas/shared-types": ["../../packages/shared-types/src"]
+      "@barber-saas/shared-types": ["../../packages/shared-types/src"],
+      "@barber-saas/shared-utils": ["../../packages/shared-utils/src"]
     }
   },
   "include": [

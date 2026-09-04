@@ -11,6 +11,9 @@ export default defineConfig({
       '@barber-saas/shared-types': fileURLToPath(
         new URL('../../packages/shared-types/src/index.ts', import.meta.url),
       ),
+      '@barber-saas/shared-utils': fileURLToPath(
+        new URL('../../packages/shared-utils/src/index.ts', import.meta.url),
+      ),
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },

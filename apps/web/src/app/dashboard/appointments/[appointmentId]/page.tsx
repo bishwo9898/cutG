@@ -1,6 +1,7 @@
 'use client';
 
 import type { BarberAppointmentDetail } from '@barber-saas/shared-types';
+import { formatWallClock, formatWallClockTime } from '@barber-saas/shared-utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -188,7 +189,7 @@ export default function AppointmentReviewPage(): React.ReactElement {
             <div className="appointment-detail-facts">
               <span>
                 <CalendarDays size={16} />
-                {new Date(item.scheduledAt).toLocaleDateString([], {
+                {formatWallClock(item.scheduledAt, {
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric',
@@ -197,11 +198,7 @@ export default function AppointmentReviewPage(): React.ReactElement {
               </span>
               <span>
                 <Clock3 size={16} />
-                {new Date(item.scheduledAt).toLocaleTimeString([], {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                })}{' '}
-                · {item.durationMinutes} minutes
+                {formatWallClockTime(item.scheduledAt)} · {item.durationMinutes} minutes
               </span>
               <span>
                 <MapPin size={16} />

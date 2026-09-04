@@ -2,6 +2,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 import type { BookAppointmentRequest, CreateReviewRequest } from '@barber-saas/shared-types';
 
+import { usePagedQuery } from '@/hooks/usePagedQuery';
+import type { PagedFilters, PagedQueryResult } from '@/hooks/usePagedQuery';
 import { mobileApi } from '@/lib/apiClient';
 import { queryClient } from '@/lib/queryClient';
 import type { AppointmentSummary, BarberLocation, Paginated, Review } from '@/lib/types';
@@ -15,6 +17,12 @@ export const useClientAppointments = (
     queryKey: ['appointments', 'client', filters],
     queryFn: () => mobileApi.client.appointments(filters),
   });
+
+/** Walks every page of the customer's bookings. See `usePagedQuery`. */
+export const usePagedClientAppointments = (
+  filters: PagedFilters,
+): PagedQueryResult<AppointmentSummary> =>
+  usePagedQuery(['appointments', 'client', 'paged'], mobileApi.client.appointments, filters);
 
 export const useClientAppointment = (appointmentId: string): UseQueryResult<AppointmentSummary> =>
   useQuery({

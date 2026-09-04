@@ -1,6 +1,7 @@
 'use client';
 
 import { clientApi, paymentApi } from '@barber-saas/api-client';
+import { formatWallClock, isWallClockInFuture } from '@barber-saas/shared-utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarClock,
@@ -111,7 +112,7 @@ export default function AppointmentDetailPage(): React.ReactElement {
   const canCancel =
     data !== undefined &&
     ['PENDING', 'CONFIRMED'].includes(data.status) &&
-    new Date(data.scheduledAt).getTime() > Date.now() &&
+    isWallClockInFuture(data.scheduledAt) &&
     !(data.paymentMethod === 'CARD' && payment.data?.status === 'SUCCEEDED');
   const canReview = data?.status === 'COMPLETED' && data.review === null;
   const canPay =
@@ -123,10 +124,7 @@ export default function AppointmentDetailPage(): React.ReactElement {
   const scheduledDate =
     data === undefined
       ? null
-      : new Date(data.scheduledAt).toLocaleString([], {
-          dateStyle: 'medium',
-          timeStyle: 'short',
-        });
+      : formatWallClock(data.scheduledAt, { dateStyle: 'medium', timeStyle: 'short' });
   const serviceAddressLabel =
     serviceAddress == null
       ? null

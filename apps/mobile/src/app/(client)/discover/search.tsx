@@ -8,11 +8,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { MarketplaceBarberResult, ShopLocationSuggestion } from '@barber-saas/shared-types';
 
 import { BarberCard } from '@/components/barber/BarberCard';
-import { Screen } from '@/components/layout/Screen';
+import { PagedList } from '@/components/layout/PagedList';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Button } from '@/components/ui/Button';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { Input } from '@/components/ui/Input';
+import { usePagedQuery } from '@/hooks/usePagedQuery';
 import { mobileApi } from '@/lib/apiClient';
 import type { PublicBarber } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
@@ -87,15 +87,17 @@ export default function SearchResultsScreen(): React.ReactElement {
       ...(category === '' ? {} : { category: category as never }),
       ...(distance >= 50 || location === null ? {} : { maxDistanceMiles: distance }),
       ...(maxPrice >= 200 ? {} : { maxPrice }),
-      page: 1,
-      limit: 48,
+      limit: 24,
     }),
     [category, distance, location, maxPrice],
   );
-  const results = useQuery({
-    queryKey: ['marketplace-search', request],
-    queryFn: () => mobileApi.discovery.marketplaceSearch(request),
-  });
+  // The marketplace can return far more barbers than fit in one response, and the screen used to
+  // ask for a single page of 48 and stop — past that, matching barbers were simply invisible.
+  const results = usePagedQuery(
+    ['marketplace-search'],
+    mobileApi.discovery.marketplaceSearch,
+    request,
+  );
   const design = useQuery({
     queryKey: ['hair-design', params.designId],
     queryFn: () => mobileApi.client.design(params.designId ?? ''),
@@ -131,15 +133,10 @@ export default function SearchResultsScreen(): React.ReactElement {
     setPermissionMessage(null);
   };
 
-  const barbers = (results.data?.barbers ?? []).map(toCard);
+  const barbers = useMemo(() => results.items.map(toCard), [results.items]);
 
-  return (
-    <Screen
-      refreshing={results.isFetching}
-      onRefresh={() => {
-        void results.refetch();
-      }}
-    >
+  const header = (
+    <View style={styles.header}>
       <ScreenHeader
         showBack
         title="Find your barber"
@@ -243,21 +240,24 @@ export default function SearchResultsScreen(): React.ReactElement {
           value={maxPrice}
         />
       </View>
+    </View>
+  );
 
-      {barbers.length === 0 && !results.isLoading ? (
-        <EmptyState
-          title="No matches yet"
-          message="Try Any distance or Any price to see more barbers."
-        />
-      ) : null}
-      {barbers.map((barber) => (
+  return (
+    <PagedList<PublicBarber>
+      query={{ ...results, items: barbers }}
+      header={header}
+      keyExtractor={(barber) => barber.id}
+      renderItem={(barber) => (
         <BarberCard
           barber={barber}
           href={`/(client)/discover/${barber.id}${params.designId ? `?designId=${params.designId}` : ''}`}
-          key={barber.id}
         />
-      ))}
-    </Screen>
+      )}
+      emptyIcon="search"
+      emptyTitle="No matches yet"
+      emptyMessage="Try Any distance or Any price to see more barbers."
+    />
   );
 }
 
@@ -291,6 +291,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   filterTitle: { ...typography.label, color: colors.textPrimary },
+  header: { gap: spacing.md, marginBottom: spacing.md },
   muted: { ...typography.bodySmall, color: colors.textSecondary },
   pressed: { backgroundColor: '#F6EAE7', opacity: 0.95 },
   sliderHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },

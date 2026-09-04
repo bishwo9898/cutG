@@ -1,6 +1,6 @@
 # Mobile app — working plan
 
-Last updated: September 3, 2026 (round 5)
+Last updated: September 4, 2026 (round 6)
 
 A running tracker for the `apps/mobile` work, so each round can pick up without re-deriving
 context. `docs/MOBILE.md` stays the reference for the runtime, env, and build story; this file is
@@ -177,13 +177,45 @@ Not bugs, checked and cleared: Earnings and Subscription are absent from the Bus
 they are behind `EXPO_PUBLIC_ENABLE_EARNINGS` / `_SUBSCRIPTIONS`, like the AI studio. The blank
 grey map is the missing `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`, not a layout fault.
 
+**Round 6 — the lists were built for a demo, not for a business.**
+
+This round was aimed at what breaks as the app fills up rather than at what is visibly wrong now.
+Two things were, and both were silent.
+
+- **Every list in the app fetched exactly one page and never said so.** All of these endpoints are
+  paginated and default to 20 rows, but the screens fired a single un-paged request and rendered
+  whatever came back. A barber with more than 20 bookings could not reach the rest of them; a
+  customer with a long history saw only the recent slice; the marketplace asked for 48 results and
+  stopped, so past 48 matching barbers the remainder were invisible. Nothing on screen hinted that
+  anything had been left out. `usePagedQuery` walks the pages, and `nextPageParam` (tested on its
+  own, because both ways of getting it wrong are quiet) decides when to stop.
+- **Every list also mounted every row at once**, as children of a ScrollView — there was not one
+  FlatList in the codebase. That is fine for eight seeded barbers and ruinous for a year of
+  bookings: the screen takes longer to open with every appointment ever taken, scrolling drops
+  frames, and memory climbs until Android reclaims the app. `PagedList` renders only what is on
+  screen and pulls the next page as the end approaches.
+- **The barber's customer search only searched the page already on screen.** Typing a real
+  customer's name returned "No appointments" whenever that booking happened to be on page 2. The
+  filter moved into the query (`search` on `AppointmentFilterSchema`), the field is debounced so
+  it is one request per pause rather than per keystroke, and the count is computed with the same
+  join so the footer cannot promise rows the list will not show.
+- **The web was telling customers the wrong appointment time**, in nine places, and had been all
+  along. It formats `scheduledAt` in the *viewer's* browser, so anyone not in their barber's
+  timezone saw the hour shifted — and the "cancel this booking" test compared the same value
+  against `Date.now()`, so the button could vanish hours early. The wall-clock helper moved to
+  `@barber-saas/shared-utils` and both apps use it now, rather than two copies drifting apart.
+
+Verified on a device with 46 seeded bookings: pages 1, 2 and 3 fetched as the list scrolled, the
+footer settled on "All 46 results", and the request log stopped there rather than asking for page
+4 forever.
+
 ## Queue, roughly in order
 
-1. **The web has the same `scheduledAt` bug, in nine places.** `new Date(appointment.scheduledAt)`
-   with a local format appears in `dashboard/page.tsx`, `dashboard/appointments/page.tsx` and its
-   `[appointmentId]` detail, `appointments/[appointmentId]/page.tsx`, and `client-ui.tsx`. Vercel
-   renders these in the _viewer's_ zone, so a customer outside the shop's zone is being told the
-   wrong appointment time today. Mobile's `lib/appointmentTime.ts` is the shape of the fix.
+1. **The remaining unbounded lists.** `PagedList` covers the barber's and customer's appointments
+   and the marketplace. Still rendering everything into a ScrollView: the barber's Calendar (a full
+   day of slots, and the passed ones pile up as the day goes on), saved barbers, notifications,
+   reviews on a barber's profile, and the services list. None of them hurt yet; the calendar will
+   first.
 2. **Decide what to do about seeded images.** They live in `apps/web/public`, so the phone can
    never load them. Either serve them from the API or ship local placeholder assets — right now
    every seeded barber shows "No photo yet".
@@ -227,6 +259,15 @@ grey map is the missing `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`, not a layout fault.
   blank screen far longer than feels reasonable. Wait 60s before concluding anything is wrong.
 - `tsx watch` sometimes fails to free port 4000 when a source edit triggers a restart
   (`EADDRINUSE`, "Process didn't exit in 5s"). `lsof -ti tcp:4000 | xargs kill -9` and restart.
+- **A shared package's `dist` is what actually runs, in the API as well as on the phone.** Adding
+  `search` to a zod schema in `shared-types` looked like it worked — the request went out, the
+  endpoint answered 200 — but the API was validating against the stale `dist`, and zod strips keys
+  it does not know about, so the filter silently did nothing and every row came back. Run
+  `pnpm --filter @barber-saas/shared-types build` after touching a shared package. The
+  "says nothing matched rather than falling back to everything" test exists to catch this shape.
+- **`adb shell pm clear` wipes the dev client too.** It takes the Clerk session in SecureStore and
+  the remembered Metro URL with it, which costs a sign-in and a couple of minutes. `am force-stop`
+  is enough to clear an in-memory React Query cache.
 - **`pnpm format` rewrites the whole repository**, not the files you touched — it reformatted 24
   unrelated files in this round and they had to be reverted one by one. Format the files you
   changed (`pnpm exec prettier --write <paths>`) or check with `pnpm format:check`.

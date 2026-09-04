@@ -1,6 +1,7 @@
 'use client';
 
 import { ApiError } from '@barber-saas/api-client';
+import { formatWallClock } from '@barber-saas/shared-utils';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarCheck, Scissors, Star, UserRoundPlus } from 'lucide-react';
 import Link from 'next/link';
@@ -138,7 +139,12 @@ export default function DashboardPage(): React.ReactElement {
                         {appointment.client.firstName} {appointment.client.lastName}
                       </td>
                       <td>{appointment.service.name}</td>
-                      <td>{new Date(appointment.scheduledAt).toLocaleString()}</td>
+                      <td>
+                        {formatWallClock(appointment.scheduledAt, {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })}
+                      </td>
                       <td>
                         <span className="badge">{appointment.status}</span>
                       </td>
