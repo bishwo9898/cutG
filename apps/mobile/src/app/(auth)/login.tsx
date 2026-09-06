@@ -10,7 +10,7 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { clerkErrorMessage } from '@/lib/clerkErrorMessage';
-import { colors, typography } from '@/theme';
+import { colors, spacing, typography } from '@/theme';
 
 const LoginFormSchema = z.object({
   email: z.string().email('Enter a valid email address.'),
@@ -19,15 +19,32 @@ const LoginFormSchema = z.object({
 
 type LoginForm = z.infer<typeof LoginFormSchema>;
 
+/**
+ * Mirrors the web's `NEXT_PUBLIC_FIELD_TEST_MODE`: with the flag on, the seeded accounts are
+ * already in the fields. Off by default and absent from production builds, since the value is
+ * inlined at bundle time.
+ *
+ * This is not only a convenience. Typing a full email into a slow emulator drops characters, so
+ * every device check began with two minutes of retyping credentials — which is the sort of
+ * friction that quietly stops anyone from testing on a device at all.
+ */
+const fieldTestMode = process.env.EXPO_PUBLIC_FIELD_TEST_MODE === 'true';
+const fieldTestPassword = 'CutgTest2026!';
+
 export default function LoginScreen(): React.ReactElement {
   const params = useLocalSearchParams<{ role?: string }>();
   const expectedRole = params.role === 'BARBER' ? 'BARBER' : 'CLIENT';
   const { isLoaded, signIn, setActive } = useSignIn();
   const { control, formState, handleSubmit, setError } = useForm<LoginForm>({
-    defaultValues: {
-      email: '',
-      password: '',
-    },
+    defaultValues: fieldTestMode
+      ? {
+          email: expectedRole === 'BARBER' ? 'barber.test@example.com' : 'client.test@example.com',
+          password: fieldTestPassword,
+        }
+      : {
+          email: '',
+          password: '',
+        },
     resolver: zodResolver(LoginFormSchema),
   });
 
@@ -80,6 +97,12 @@ export default function LoginScreen(): React.ReactElement {
           expectedRole === 'BARBER' ? 'Open your business workspace.' : 'Manage your bookings.'
         }
       />
+      {fieldTestMode ? (
+        <Text style={styles.fieldTest}>
+          Field-test mode: the seeded {expectedRole === 'BARBER' ? 'barber' : 'customer'} account is
+          filled in.
+        </Text>
+      ) : null}
       <Controller
         control={control}
         name="email"
@@ -143,5 +166,15 @@ const styles = StyleSheet.create({
   error: {
     ...typography.bodySmall,
     color: colors.error,
+  },
+  fieldTest: {
+    ...typography.bodySmall,
+    backgroundColor: colors.statusConfirmedSurface,
+    borderColor: colors.statusConfirmed,
+    borderRadius: 10,
+    borderWidth: 1,
+    color: colors.statusConfirmed,
+    overflow: 'hidden',
+    padding: spacing.md,
   },
 });

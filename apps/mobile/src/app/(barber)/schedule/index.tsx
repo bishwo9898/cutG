@@ -21,6 +21,7 @@ import {
 import { mobileApi } from '@/lib/apiClient';
 import { errorMessage } from '@/lib/errors';
 import { humanLabel } from '@/lib/formatters';
+import { isSpent, slotState, summariseDay, summaryLabel } from '@/lib/schedule';
 import { listFromResponse } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
 
@@ -40,6 +41,7 @@ export default function ScheduleScreen(): React.ReactElement {
   const [draft, setDraft] = useState<ScheduleEntry[]>(defaultSchedule);
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [showEarlier, setShowEarlier] = useState(false);
   const days = useMemo(
     () =>
       Array.from({ length: 14 }, (_, index) => format(addDays(new Date(), index), 'yyyy-MM-dd')),
@@ -50,6 +52,15 @@ export default function ScheduleScreen(): React.ReactElement {
   const updateSchedule = useUpdateBarberSchedule();
   const blockDate = useBlockBarberDate();
   const list = listFromResponse(slots.data ?? {});
+  const day = useMemo(() => summariseDay(list), [list]);
+  // Collapse the morning again when the barber moves to another day, or a day they had expanded
+  // would keep other days expanded too.
+  const visible = showEarlier ? [...day.spent, ...day.live] : day.live;
+
+  const selectDay = (next: string): void => {
+    setDate(next);
+    setShowEarlier(false);
+  };
 
   const openSchedule = (): void => {
     const saved = schedule.data?.schedule ?? [];
@@ -101,7 +112,7 @@ export default function ScheduleScreen(): React.ReactElement {
           <Button
             key={item}
             title={format(new Date(`${item}T00:00:00`), 'EEE d')}
-            onPress={() => setDate(item)}
+            onPress={() => selectDay(item)}
             variant={item === date ? 'primary' : 'secondary'}
           />
         ))}
@@ -122,19 +133,39 @@ export default function ScheduleScreen(): React.ReactElement {
         </View>
       </View>
       {message !== null ? <Text style={styles.notice}>{message}</Text> : null}
+      {list.length > 0 ? (
+        <View style={styles.dayBar}>
+          <Text style={styles.dayCount}>{summaryLabel(day)}</Text>
+          {day.spent.length > 0 ? (
+            <Text
+              accessibilityRole="button"
+              onPress={() => setShowEarlier((current) => !current)}
+              style={styles.disclose}
+            >
+              {showEarlier
+                ? 'Hide earlier'
+                : `Show ${day.spent.length} earlier ${day.spent.length === 1 ? 'time' : 'times'}`}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
       {list.length === 0 && !slots.isLoading ? (
         <EmptyState
           title="No slots for this day"
           message="Update working hours to make this day bookable."
         />
       ) : null}
-      {list.map((slot) => {
-        const state = slot.status ?? (slot.isAvailable === true ? 'AVAILABLE' : 'BLOCKED');
-        // A free slot whose time has gone by is history, not capacity — showing it as "Available"
-        // with a green tick told the barber they had openings nobody could book. A booked slot
-        // keeps its identity once passed, because the barber still needs to see who it was.
+      {list.length > 0 && visible.length === 0 ? (
+        <EmptyState
+          icon="checkmark-done"
+          title="That is the day done"
+          message="Every slot has been and gone. Tomorrow is a tap away on the strip above."
+        />
+      ) : null}
+      {visible.map((slot) => {
+        const state = slotState(slot);
         const passed = slot.isPast === true;
-        const spent = passed && state !== 'BOOKED';
+        const spent = isSpent(slot);
         return (
           <Card
             key={slot.id}
@@ -331,6 +362,22 @@ const styles = StyleSheet.create({
   error: { ...typography.bodySmall, color: colors.error },
   flex: { flex: 1 },
   meta: { ...typography.bodySmall, color: colors.textSecondary },
+  dayBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.md,
+    justifyContent: 'space-between',
+  },
+  dayCount: {
+    ...typography.label,
+    color: colors.textPrimary,
+  },
+  disclose: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    textDecorationColor: colors.gold,
+    textDecorationLine: 'underline',
+  },
   notice: {
     ...typography.bodySmall,
     backgroundColor: colors.statusConfirmedSurface,

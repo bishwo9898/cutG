@@ -6,7 +6,14 @@ import { stopBackgroundLocationTracking } from '@/services/locationTrackingStora
 export type AuthState = {
   user: AuthUser | null;
   isLoading: boolean;
+  /**
+   * False when the account could not be loaded because the API was out of reach — as opposed to
+   * because nobody is signed in. Without the distinction the app cannot tell "you have no account"
+   * from "your train went into a tunnel", and it used to answer both with the welcome screen.
+   */
+  reachable: boolean;
   setUser: (user: AuthUser | null) => void;
+  setUnreachable: () => void;
   updateUser: (user: AuthUser) => void;
   clearAuth: () => Promise<void>;
 };
@@ -20,10 +27,12 @@ export type AuthState = {
 export const useAuthStore = create<AuthState>((set, get) => ({
   clearAuth: async (): Promise<void> => {
     await stopBackgroundLocationTracking();
-    set({ user: null, isLoading: false });
+    set({ user: null, isLoading: false, reachable: true });
   },
   isLoading: true,
-  setUser: (user: AuthUser | null): void => set({ user, isLoading: false }),
+  reachable: true,
+  setUser: (user: AuthUser | null): void => set({ user, isLoading: false, reachable: true }),
+  setUnreachable: (): void => set({ isLoading: false, reachable: false }),
   updateUser: (user: AuthUser): void => set({ user: { ...get().user, ...user } }),
   user: null,
 }));

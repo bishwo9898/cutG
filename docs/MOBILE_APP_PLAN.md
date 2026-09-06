@@ -1,6 +1,6 @@
 # Mobile app — working plan
 
-Last updated: September 4, 2026 (round 6)
+Last updated: September 6, 2026 (round 7)
 
 A running tracker for the `apps/mobile` work, so each round can pick up without re-deriving
 context. `docs/MOBILE.md` stays the reference for the runtime, env, and build story; this file is
@@ -209,13 +209,56 @@ Verified on a device with 46 seeded bookings: pages 1, 2 and 3 fetched as the li
 footer settled on "All 46 results", and the request log stopped there rather than asking for page
 4 forever.
 
+**Round 7 — the app now survives a bad network, which it categorically did not.**
+
+The theme was perceived speed, and it turned into something more important. The query cache lived
+only in memory, so every cold start was a spinner on every screen. It is now written to disk and
+restored on launch — with `expo-file-system`, which is already linked, so this cost no native
+rebuild on a project whose first Gradle build took 55 minutes.
+
+Getting there surfaced the worst bug of the round, and it was sitting in plain sight.
+
+- **Any network hiccup at launch signed the user out.** `AuthBridge` fetched `/auth/me` and, on
+  *any* failure, called `setUser(null)` — which routes to the welcome screen. So a barber opening
+  the app in a basement was told their account was gone, with a perfectly valid Clerk session in
+  secure storage. Confirmed on a device: with the API unreachable, a cold start landed a signed-in
+  barber on "Find your barber". `isAuthRejection` now separates "the server turned you down" (401,
+  403 — let go of the account) from "we never reached the server" (keep it), and `/auth/me` reads
+  through the persisted cache so the profile survives the restart. Verified with the API killed
+  outright: the barber stays signed in, lands on their own Today screen, and the Calendar renders
+  the full day — 1 booked, 15 open — entirely from disk.
+- **The persisted cache could have leaked between accounts.** Two mechanisms guard it: a buster
+  keyed to the Clerk user id, and an in-memory clear when the account changes. The first was
+  broken in a way only a device would show — signing in *during* a session left the cache tagged
+  `signed-out`, because the provider keeps the buster it mounted with, so the next signed-out
+  visitor would have restored a barber's customer list. The persistence layer is keyed on the user
+  id now, so signing in or out starts a fresh cycle under the right buster. Checked all four
+  states on the device: correct buster cold, correct buster after an in-session sign-in, and the
+  cache file *gone* after sign-out.
+- **What is written out is deliberately partial.** `cachePolicy.ts` keeps successful list and
+  profile queries and refuses live location pings, payment intents and address autocomplete —
+  a restored GPS ping would put a stale pin on a customer's map, and a restored Stripe intent
+  would fail mid-checkout.
+- **The barber's calendar opened on a wall of struck-through mornings.** Every afternoon, every
+  day, they scrolled past a spent morning to reach anything actionable. The day now leads with a
+  summary — "2 booked", "1 booked · 15 open" — and tucks the passed slots behind "Show 14 earlier
+  times". Note the count only ever names openings a customer could still take; counting spent ones
+  claimed availability nobody could book.
+- **Mobile had no field-test prefill, though the web has had one for months.** Typing a full email
+  into a slow emulator drops characters, so every device check began with two minutes of retyping
+  credentials — friction that quietly stops anyone testing on a device at all.
+  `EXPO_PUBLIC_FIELD_TEST_MODE` mirrors the web's flag and is off by default.
+
+Not done, and worth saying plainly: the calendar was **not** virtualised. A day is bounded by
+working hours — sixteen slots, forty-eight at the very worst — so a FlatList there would be
+ceremony, not a fix. The queue entry that called it the next list to hurt was wrong about why.
+
 ## Queue, roughly in order
 
 1. **The remaining unbounded lists.** `PagedList` covers the barber's and customer's appointments
-   and the marketplace. Still rendering everything into a ScrollView: the barber's Calendar (a full
-   day of slots, and the passed ones pile up as the day goes on), saved barbers, notifications,
-   reviews on a barber's profile, and the services list. None of them hurt yet; the calendar will
-   first.
+   and the marketplace. Still rendering everything into a ScrollView: notifications and a barber's
+   reviews are the two that can genuinely grow without limit. Saved barbers, services and the
+   calendar are all bounded by something real and can stay as they are.
 2. **Decide what to do about seeded images.** They live in `apps/web/public`, so the phone can
    never load them. Either serve them from the API or ship local placeholder assets — right now
    every seeded barber shows "No photo yet".
@@ -247,6 +290,10 @@ footer settled on "All 46 results", and the request log stopped there rather tha
   can pass while the running app still has the old code.
 - If the app hangs on a spinner and the API log goes quiet, the token refresh has stalled. Force
   stop and relaunch clears it. The 20s timeout now turns that into a visible error instead.
+- **A cold start on this emulator takes about a minute**, nearly all of it Clerk. That masks the
+  persistence work: the cache is restored in milliseconds, but you will not *see* it as "instant"
+  here. To prove it does anything, kill the API and cold start — the app should stay signed in and
+  render from disk.
 - **`scheduledAt` is a wall clock, not an instant.** The API emits the booked time in the `Z` slot
   (`2026-09-04T11:00:00.000Z` means 11am on the barber's clock), and `scheduledDate`/`startTime`
   are literal slices of that string. Never hand it to `new Date()` and format it locally — use
