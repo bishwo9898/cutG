@@ -72,22 +72,27 @@ const appVersion = String(expoConstants.expoConfig?.version ?? '0.0.0');
  *
  * Query keys name the query, not the account: every barber's dashboard is
  * `['barber','appointments','today']`. Without this, signing out and back in as someone else on
- * the same phone — a shop tablet, a borrowed handset — serves the previous account's customers,
- * names and phone numbers from cache while the new request is still in flight. The disk cache is
- * separated by `cacheBuster`; this is the memory half of the same guarantee.
+ * the same phone — a shop tablet, a borrowed handset — could serve the previous account's
+ * customers, names and phone numbers from cache. The disk cache is separated by `cacheBuster`;
+ * this is the memory half of the same guarantee.
  *
- * Done during render rather than in an effect so that no screen ever paints the wrong person's
- * data, not even for a single frame.
+ * An effect is late enough here, even though it runs after the next screen has mounted. Changing
+ * accounts always passes through signed out — the sign-in screen calls `signOut()` before it
+ * calls `signIn()` — so the clear happens while the auth screens are showing, well before any
+ * screen that could read another person's data exists. Doing it during render instead, which is
+ * where this started, updates other components mid-render and React says so.
  */
 const useCacheScopedToAccount = (userId: string | null | undefined): void => {
   const previous = useRef<{ id: string | null } | null>(null);
-  // `undefined` means Clerk has not said who this is yet. Treating that as "signed out" would
-  // clear the cache we have only just restored, on every single launch.
-  if (userId === undefined) return;
-  if (previous.current !== null && previous.current.id !== userId) {
-    queryClient.clear();
-  }
-  previous.current = { id: userId };
+  useEffect(() => {
+    // `undefined` means Clerk has not said who this is yet. Treating that as "signed out" would
+    // clear the cache we have only just restored, on every single launch.
+    if (userId === undefined) return;
+    if (previous.current !== null && previous.current.id !== userId) {
+      queryClient.clear();
+    }
+    previous.current = { id: userId };
+  }, [userId]);
 };
 
 function PersistedQueries({
