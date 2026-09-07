@@ -1,6 +1,6 @@
 # Mobile app — working plan
 
-Last updated: September 6, 2026 (round 7)
+Last updated: September 7, 2026 (round 8)
 
 A running tracker for the `apps/mobile` work, so each round can pick up without re-deriving
 context. `docs/MOBILE.md` stays the reference for the runtime, env, and build story; this file is
@@ -253,19 +253,52 @@ Not done, and worth saying plainly: the calendar was **not** virtualised. A day 
 working hours — sixteen slots, forty-eight at the very worst — so a FlatList there would be
 ceremony, not a fix. The queue entry that called it the next list to hurt was wrong about why.
 
+**Round 8 — the customer's side, which had not been walked since round 4.**
+
+The barber portal got three rounds of attention; the customer journey is where the volume will be.
+
+- **Tapping a barber showed a full-screen "Loading profile"** — on the most-travelled transition in
+  the app, and for no reason: the card the customer had just tapped already carried the name,
+  photo, rating, city and price. Four requests fired and they watched a placeholder. `BarberProfile`
+  is `PublicBarber` plus optional fields, so a list row *is* a valid partial profile;
+  `findBarberInCache` digs the row out of whatever list they came from and seeds the query with it.
+  The header now paints instantly and the services and reviews fill in behind it. It is
+  `placeholderData` rather than `initialData` on purpose — the real request must still run.
+- **A barber with no reviews was drawn as five empty stars and "0.0 (0)".** That reads as a *bad*
+  rating rather than an absent one, which is the worst possible first impression for someone who
+  just joined a marketplace. The cards already said "New"; the profile does now too.
+- **The availability grid ran 09:00 to 16:30 and then started over at 09:00.** The profile asks for
+  slots without naming a day, so the API answers with several, and they were rendered as one flat
+  grid — the customer had no way to tell which "09:00" was which, on the screen they use to decide
+  when to book. `groupSlotsByDay` splits them and each day carries its date.
+- **List rows were not memoised**, so every scroll tick re-rendered each visible card along with
+  its avatar and badges. `BarberCard`, `AppointmentCard` and `ServiceCard` are memoised now; their
+  props come straight from the query cache and are stable.
+- **"✓ Mobile visits" carried two checkmarks** — a literal one in the label and the badge's own.
+  The same fault as "✓ Online payments" last round; this was the one I missed.
+
+Checked and cleared: barber photos showing "No photo yet" is seed data only. `UpdateBarberPhotoSchema`
+requires an absolute URL and the mobile upload posts the actual bytes, so a real barber's photo
+works — only the three seeded ones point at `apps/web/public`, which a phone cannot reach.
+
 ## Queue, roughly in order
 
-1. **The remaining unbounded lists.** `PagedList` covers the barber's and customer's appointments
+1. **`expo-image` for the discovery feed.** The app uses React Native's `Image` everywhere, so
+   there is no shared cache, no placeholder while a photo loads, and no memory ceiling on a long
+   scroll — all of which a marketplace feed feels. Deliberately not done this round: it is a native
+   module, so it needs a prebuild and a Gradle rebuild, and the first one on this project took 55
+   minutes. Worth doing as its own piece of work rather than wedged into a feature round.
+2. **The remaining unbounded lists.** `PagedList` covers the barber's and customer's appointments
    and the marketplace. Still rendering everything into a ScrollView: notifications and a barber's
    reviews are the two that can genuinely grow without limit. Saved barbers, services and the
    calendar are all bounded by something real and can stay as they are.
-2. **Decide what to do about seeded images.** They live in `apps/web/public`, so the phone can
+3. **Decide what to do about seeded images.** They live in `apps/web/public`, so the phone can
    never load them. Either serve them from the API or ship local placeholder assets — right now
    every seeded barber shows "No photo yet".
-3. **Migrate `@clerk/clerk-expo` → `@clerk/expo`.** Deprecation warning on every boot.
-4. **`npx expo install --check`.** 17 packages may need aligning; expo is 57.0.15 vs 57.0.19.
-5. **Empty and error states** sweep, now that the date strip can legitimately be empty.
-6. **Component tests.** There is no setup, which is why logic keeps being extracted to `lib/`.
+4. **Migrate `@clerk/clerk-expo` → `@clerk/expo`.** Deprecation warning on every boot.
+5. **`npx expo install --check`.** 17 packages may need aligning; expo is 57.0.15 vs 57.0.19.
+6. **Empty and error states** sweep, now that the date strip can legitimately be empty.
+7. **Component tests.** There is no setup, which is why logic keeps being extracted to `lib/`.
    `@testing-library/react-native` would let the screens themselves be covered.
 
 ## Notes that will save time later

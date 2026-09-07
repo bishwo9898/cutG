@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -24,7 +25,7 @@ const formatDate = (date: string): string => {
   }
 };
 
-export const AppointmentCard = ({
+const AppointmentCardComponent = ({
   appointment,
   mode,
   onPrimaryAction,
@@ -81,6 +82,13 @@ export const AppointmentCard = ({
     </Pressable>
   );
 };
+
+/**
+ * Memoised because these are rows in a virtualised list: without it, every scroll tick that
+ * re-renders the list re-renders each visible card and its avatar and badges with it. The props
+ * are stable — the appointment object comes straight from the query cache.
+ */
+export const AppointmentCard = memo(AppointmentCardComponent);
 
 const styles = StyleSheet.create({
   body: {

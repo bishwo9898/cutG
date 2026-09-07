@@ -1,6 +1,7 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 
+import { findBarberInCache } from '@/lib/barberCache';
 import { usePagedQuery } from '@/hooks/usePagedQuery';
 import type { PagedFilters, PagedQueryResult } from '@/hooks/usePagedQuery';
 import { mobileApi } from '@/lib/apiClient';
@@ -28,12 +29,22 @@ export const useBarberSearch = (
 export const usePagedBarberSearch = (params: PagedFilters): PagedQueryResult<PublicBarber> =>
   usePagedQuery(['barbers', 'search', 'paged'], mobileApi.discovery.search, params);
 
-export const useBarberProfile = (barberId: string): UseQueryResult<BarberProfile> =>
-  useQuery({
+export const useBarberProfile = (barberId: string): UseQueryResult<BarberProfile> => {
+  const queryClient = useQueryClient();
+  return useQuery({
     queryKey: ['barbers', barberId],
     queryFn: () => mobileApi.discovery.profile(barberId),
     enabled: barberId.length > 0,
+    // Open on the row the customer just tapped instead of a full-screen "Loading profile". It is
+    // placeholderData rather than initialData on purpose: this is a partial profile, so the real
+    // request must still run, and the screen can tell the difference via isPlaceholderData.
+    placeholderData: () =>
+      findBarberInCache(
+        queryClient.getQueriesData({ queryKey: ['barbers'] }).map(([, data]) => data),
+        barberId,
+      ),
   });
+};
 
 export const useBarberServices = (barberId: string): UseQueryResult<Paginated<BarberService>> =>
   useQuery({

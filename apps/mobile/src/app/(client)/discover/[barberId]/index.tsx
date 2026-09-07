@@ -18,7 +18,10 @@ import {
   useBarberSlots,
   useSaveBarber,
 } from '@/hooks/useBarbers';
+import { groupSlotsByDay } from '@/lib/schedule';
 import { listFromResponse } from '@/lib/types';
+import { formatWallClockDate } from '@barber-saas/shared-utils';
+
 import { remoteImageUri } from '@/lib/media';
 import { colors, spacing, typography } from '@/theme';
 
@@ -85,10 +88,19 @@ export default function BarberProfileScreen(): React.ReactElement {
       </View>
       <Text style={styles.title}>{profile.data.businessName}</Text>
       <View style={styles.row}>
-        <StarRating value={Math.round(profile.data.averageRating)} />
-        <Text style={styles.meta}>
-          {profile.data.averageRating.toFixed(1)} ({profile.data.totalReviews})
-        </Text>
+        {/* A barber with no reviews yet was drawn as five empty stars and "0.0 (0)", which reads
+            as a bad rating rather than an absent one — the worst possible first impression for
+            someone who has just joined. The cards already say "New"; this matches them. */}
+        {profile.data.totalReviews > 0 ? (
+          <>
+            <StarRating value={Math.round(profile.data.averageRating)} />
+            <Text style={styles.meta}>
+              {profile.data.averageRating.toFixed(1)} ({profile.data.totalReviews})
+            </Text>
+          </>
+        ) : (
+          <Text style={styles.newLabel}>New</Text>
+        )}
         {profile.data.isVerified ? <Badge label="Verified" tone="success" /> : null}
       </View>
       <Text style={styles.meta}>
@@ -114,9 +126,16 @@ export default function BarberProfileScreen(): React.ReactElement {
             />
           ))
         : null}
-      {tab === 'Availability' ? (
-        <SlotGrid slots={slotList} onSelect={() => router.push(bookingPath)} />
-      ) : null}
+      {tab === 'Availability'
+        ? groupSlotsByDay(slotList).map((day) => (
+            <View key={day.date} style={styles.slotDay}>
+              <Text style={styles.slotDayLabel}>
+                {formatWallClockDate(`${day.date}T00:00:00Z`)}
+              </Text>
+              <SlotGrid slots={day.slots} onSelect={() => router.push(bookingPath)} />
+            </View>
+          ))
+        : null}
       {tab === 'Reviews'
         ? reviewList.map((review) => <ReviewCard key={review.id} review={review} />)
         : null}
@@ -126,6 +145,17 @@ export default function BarberProfileScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
+  slotDay: {
+    gap: spacing.sm,
+  },
+  slotDayLabel: {
+    ...typography.label,
+    color: colors.textPrimary,
+  },
+  newLabel: {
+    ...typography.label,
+    color: colors.goldText,
+  },
   body: {
     ...typography.body,
     color: colors.textSecondary,

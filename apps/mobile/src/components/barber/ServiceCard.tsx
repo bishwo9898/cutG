@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Badge } from '@/components/ui/Badge';
@@ -10,7 +11,7 @@ type ServiceCardProps = {
   onPress?: () => void;
 };
 
-export const ServiceCard = ({ service, onPress }: ServiceCardProps): React.ReactElement => (
+const ServiceCardComponent = ({ service, onPress }: ServiceCardProps): React.ReactElement => (
   <Pressable disabled={onPress === undefined} onPress={onPress}>
     <Card>
       <View style={styles.row}>
@@ -35,6 +36,9 @@ export const ServiceCard = ({ service, onPress }: ServiceCardProps): React.React
     </Card>
   </Pressable>
 );
+
+/** Memoised to match the other list rows; a barber's service list re-renders on every tab change. */
+export const ServiceCard = memo(ServiceCardComponent);
 
 const styles = StyleSheet.create({
   badges: {

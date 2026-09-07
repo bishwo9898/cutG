@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -28,7 +29,7 @@ const availability = (value: string | null): string => {
   return `Next ${slot.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
 };
 
-export const BarberCard = ({
+const BarberCardComponent = ({
   barber,
   compact = false,
   href,
@@ -77,7 +78,7 @@ export const BarberCard = ({
             <Text style={styles.availability}>{availability(barber.nextAvailableSlot)}</Text>
             <View style={styles.badges}>
               {barber.mobileService?.isEnabled === true ? (
-                <Badge label="✓ Mobile visits" tone="success" />
+                <Badge icon="car" label="Mobile visits" tone="success" />
               ) : null}
               {barber.onlinePaymentsAvailable === true ? (
                 <Badge icon="card" label="Online payments" tone="success" />
@@ -89,6 +90,9 @@ export const BarberCard = ({
     )}
   </Pressable>
 );
+
+/** Memoised: these are rows in the discovery list, re-rendered on every scroll tick otherwise. */
+export const BarberCard = memo(BarberCardComponent);
 
 const styles = StyleSheet.create({
   availability: { ...typography.caption, color: colors.success, fontWeight: '700' },

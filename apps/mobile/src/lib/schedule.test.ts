@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isSpent, slotState, summariseDay, summaryLabel } from './schedule';
+import { groupSlotsByDay, isSpent, slotState, summariseDay, summaryLabel } from './schedule';
 import type { AvailabilitySlot } from './types';
 
 const slot = (partial: Partial<AvailabilitySlot> & { id: string }): AvailabilitySlot => ({
@@ -105,5 +105,53 @@ describe('summaryLabel', () => {
     expect(summaryLabel(summariseDay([slot({ id: 'a', status: 'AVAILABLE', isPast: true })]))).toBe(
       'Nothing scheduled',
     );
+  });
+});
+
+describe('groupSlotsByDay', () => {
+  const on = (id: string, date: string, startTime: string): AvailabilitySlot => ({
+    id,
+    barberId: 'b',
+    slotDate: date,
+    startTime,
+    endTime: startTime,
+  });
+
+  it('splits a multi-day run into days, in order', () => {
+    const days = groupSlotsByDay([
+      on('1', '2026-09-07', '09:00'),
+      on('2', '2026-09-07', '09:30'),
+      on('3', '2026-09-08', '09:00'),
+    ]);
+    expect(days).toHaveLength(2);
+    expect(days[0]?.date).toBe('2026-09-07');
+    expect(days[0]?.slots.map((s) => s.id)).toEqual(['1', '2']);
+    expect(days[1]?.slots.map((s) => s.id)).toEqual(['3']);
+  });
+
+  it('keeps a single day as one group', () => {
+    expect(groupSlotsByDay([on('1', '2026-09-07', '09:00')])).toHaveLength(1);
+    expect(groupSlotsByDay([])).toEqual([]);
+  });
+
+  it('reads the older `date` field when `slotDate` is absent', () => {
+    const legacy: AvailabilitySlot = {
+      id: '1',
+      barberId: 'b',
+      date: '2026-09-07',
+      startTime: '09:00',
+      endTime: '09:30',
+    };
+    expect(groupSlotsByDay([legacy])[0]?.date).toBe('2026-09-07');
+  });
+
+  it('drops a slot with no day rather than filing it under the previous one', () => {
+    const orphan: AvailabilitySlot = {
+      id: 'x',
+      barberId: 'b',
+      startTime: '09:00',
+      endTime: '09:30',
+    };
+    expect(groupSlotsByDay([on('1', '2026-09-07', '09:00'), orphan])[0]?.slots).toHaveLength(1);
   });
 });

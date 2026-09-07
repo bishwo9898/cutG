@@ -69,3 +69,25 @@ export const summaryLabel = (summary: DaySummary): string => {
   if (summary.blocked > 0) parts.push(`${summary.blocked} blocked`);
   return parts.length === 0 ? 'Nothing scheduled' : parts.join(' · ');
 };
+
+export type SlotDay = { date: string; slots: AvailabilitySlot[] };
+
+/**
+ * Groups a run of slots into the days they belong to, preserving order.
+ *
+ * The barber profile asks for availability without naming a day, so the API answers with several
+ * of them. Rendered as one flat grid that read as a single day running 09:00 to 16:30 and then
+ * starting over at 09:00 — the customer had no way to tell which "09:00" was which, on the screen
+ * they use to decide when to book.
+ */
+export const groupSlotsByDay = (slots: readonly AvailabilitySlot[]): SlotDay[] => {
+  const days: SlotDay[] = [];
+  for (const slot of slots) {
+    const date = slot.slotDate ?? slot.date;
+    if (date === undefined) continue;
+    const current = days[days.length - 1];
+    if (current !== undefined && current.date === date) current.slots.push(slot);
+    else days.push({ date, slots: [slot] });
+  }
+  return days;
+};
