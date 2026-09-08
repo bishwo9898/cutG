@@ -47,3 +47,29 @@ export const findBarberInCache = (
   }
   return undefined;
 };
+
+/** True when this barber is in the customer's saved list, whatever shape it came back in. */
+export const isBarberSaved = (savedList: unknown, barberId: string): boolean =>
+  findBarberInCache([savedList], barberId) !== undefined;
+
+/**
+ * Adds or removes a barber from the cached saved list, so the heart fills the moment it is
+ * pressed rather than after a round trip and the refetch behind it.
+ */
+export const toggleSavedBarber = <T>(cached: T, barber: PublicBarber, save: boolean): T => {
+  if (cached === null || typeof cached !== 'object') return cached;
+  const record = cached as Record<string, unknown>;
+  const key = (['barbers', 'data', 'items'] as const).find((candidate) =>
+    Array.isArray(record[candidate]),
+  );
+  if (key === undefined) return cached;
+
+  const rows = record[key] as unknown[];
+  const present = rows.some((row) => isPublicBarber(row) && row.id === barber.id);
+  if (present === save) return cached;
+
+  const next = save
+    ? [barber, ...rows]
+    : rows.filter((row) => !(isPublicBarber(row) && row.id === barber.id));
+  return { ...record, [key]: next } as T;
+};

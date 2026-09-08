@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { findBarberInCache } from './barberCache';
+import { findBarberInCache, isBarberSaved, toggleSavedBarber } from './barberCache';
 import type { PublicBarber } from './types';
 
 const barber = (id: string, businessName: string): PublicBarber => ({
@@ -56,5 +56,45 @@ describe('findBarberInCache', () => {
 
   it('survives junk in the cache rather than throwing on the way to a screen', () => {
     expect(findBarberInCache([null, undefined, 42, 'text', { pages: null }], 'a')).toBeUndefined();
+  });
+});
+
+describe('isBarberSaved', () => {
+  it('recognises a barber in the saved list', () => {
+    const saved = { barbers: [barber('a', 'Alpha')] };
+    expect(isBarberSaved(saved, 'a')).toBe(true);
+    expect(isBarberSaved(saved, 'b')).toBe(false);
+  });
+
+  it('says no rather than throwing before the list has loaded', () => {
+    expect(isBarberSaved(undefined, 'a')).toBe(false);
+    expect(isBarberSaved({ barbers: [] }, 'a')).toBe(false);
+  });
+});
+
+describe('toggleSavedBarber', () => {
+  const alpha = barber('a', 'Alpha');
+  const beta = barber('b', 'Beta');
+
+  it('puts a newly saved barber at the top, where the customer will look for it', () => {
+    const next = toggleSavedBarber({ barbers: [beta] }, alpha, true);
+    expect(next.barbers.map((x) => x.id)).toEqual(['a', 'b']);
+  });
+
+  it('removes an unsaved barber', () => {
+    const next = toggleSavedBarber({ barbers: [alpha, beta] }, alpha, false);
+    expect(next.barbers.map((x) => x.id)).toEqual(['b']);
+  });
+
+  it('does nothing when the list already agrees, and keeps the same reference', () => {
+    const saved = { barbers: [alpha] };
+    expect(toggleSavedBarber(saved, alpha, true)).toBe(saved);
+    const empty = { barbers: [] };
+    expect(toggleSavedBarber(empty, alpha, false)).toBe(empty);
+  });
+
+  it('leaves a cache it does not understand alone', () => {
+    expect(toggleSavedBarber(null, alpha, true)).toBeNull();
+    expect(toggleSavedBarber({ nothing: true }, alpha, true)).toEqual({ nothing: true });
   });
 });

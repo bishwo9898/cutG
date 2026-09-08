@@ -4,15 +4,12 @@ import { BarberCard } from '@/components/barber/BarberCard';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { mobileApi } from '@/lib/apiClient';
+import { useSavedBarbers } from '@/hooks/useBarbers';
 import { listFromResponse } from '@/lib/types';
-import { useQuery } from '@tanstack/react-query';
 
 export default function SavedBarbersScreen(): React.ReactElement {
-  const saved = useQuery({
-    queryKey: ['client', 'saved-barbers'],
-    queryFn: () => mobileApi.client.savedBarbers(),
-  });
+  // The same hook the heart uses, so saving from a profile shows up here without a refetch.
+  const saved = useSavedBarbers();
   const list = listFromResponse(saved.data ?? {});
 
   return (

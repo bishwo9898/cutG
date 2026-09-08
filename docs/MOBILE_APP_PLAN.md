@@ -1,6 +1,6 @@
 # Mobile app — working plan
 
-Last updated: September 7, 2026 (round 8)
+Last updated: September 8, 2026 (round 9)
 
 A running tracker for the `apps/mobile` work, so each round can pick up without re-deriving
 context. `docs/MOBILE.md` stays the reference for the runtime, env, and build story; this file is
@@ -281,25 +281,65 @@ Checked and cleared: barber photos showing "No photo yet" is seed data only. `Up
 requires an absolute URL and the mobile upload posts the actual bytes, so a real barber's photo
 works — only the three seeded ones point at `apps/web/public`, which a phone cannot reach.
 
+**Round 9 — nothing moved until the network answered.**
+
+Every mutation in the app was fire, wait for the round trip, invalidate, wait for a second round
+trip. The barber taps Confirm — the action they press most — and the badge does not flip until a
+PATCH and the refetch behind it have both landed. On a phone between clients that reads as a dead
+button, and it is exactly the case that gets worse as the app grows.
+
+- **Appointment status changes are optimistic now.** The badge flips in the same frame; the request
+  and its reconciliation happen behind it, and a failure rolls every touched cache back. The fiddly
+  part is that one appointment lives in four differently-shaped caches at once — today's list, the
+  paged list, its own detail, and the calendar slot that names it — so `patchAppointmentStatus`
+  walks whatever it is handed rather than knowing about any one of them. It returns the *same*
+  object when nothing matched, which matters: a new one would re-render every cached list on every
+  press. In-flight refetches are cancelled first, or one landing late would put the old status back.
+- **The heart on a barber's profile was broken, not just slow.** It never filled, so there was no
+  way to tell whether the tap had registered; and it only ever *saved* — pressing it again re-sent
+  the same request, which the API rejects as a duplicate, so unsaving from a profile was
+  impossible. It reads the saved list now, fills when saved, toggles the right way, and moves
+  immediately. The Saved tab reads through the same hook, so saving from a profile shows up there
+  without a refetch.
+
+Not done, and worth recording: **component tests still are not possible here.** I installed
+`@testing-library/react-native`, wrote a one-line smoke test, and vitest refused it —
+`Unexpected token 'typeof'`, React Native's Flow-typed source, which vitest will not transform
+without a babel pipeline this repo does not have. Rather than spend the round building one, I
+backed the dependencies out and tested the cache logic directly, which is where the actual risk in
+this change lives. The honest options are Jest with the react-native preset (a second runner in the
+monorepo) or testing through the `react-native-web` shims with jsdom; both deserve their own round.
+
+**The emulator did not survive this round.** The badge fix and the profile seeding from round 8
+were confirmed on device, but the two optimistic paths above are covered by unit tests only — the
+emulator wedged repeatedly on `screencap` with the machine at load 8, and I stopped rather than
+keep restarting it. Walking them is the first thing to do next round.
+
 ## Queue, roughly in order
 
-1. **`expo-image` for the discovery feed.** The app uses React Native's `Image` everywhere, so
+1. **Walk the optimistic paths on a device.** Confirm/decline from the barber's Today list, and the
+   heart on a barber's profile. Both are tested at the cache-logic level and neither has been
+   pressed on a phone.
+2. **`expo-image` for the discovery feed.** The app uses React Native's `Image` everywhere, so
    there is no shared cache, no placeholder while a photo loads, and no memory ceiling on a long
    scroll — all of which a marketplace feed feels. Deliberately not done this round: it is a native
    module, so it needs a prebuild and a Gradle rebuild, and the first one on this project took 55
    minutes. Worth doing as its own piece of work rather than wedged into a feature round.
-2. **The remaining unbounded lists.** `PagedList` covers the barber's and customer's appointments
+3. **The remaining unbounded lists.** `PagedList` covers the barber's and customer's appointments
    and the marketplace. Still rendering everything into a ScrollView: notifications and a barber's
    reviews are the two that can genuinely grow without limit. Saved barbers, services and the
    calendar are all bounded by something real and can stay as they are.
-3. **Decide what to do about seeded images.** They live in `apps/web/public`, so the phone can
+4. **Decide what to do about seeded images.** They live in `apps/web/public`, so the phone can
    never load them. Either serve them from the API or ship local placeholder assets — right now
    every seeded barber shows "No photo yet".
-4. **Migrate `@clerk/clerk-expo` → `@clerk/expo`.** Deprecation warning on every boot.
-5. **`npx expo install --check`.** 17 packages may need aligning; expo is 57.0.15 vs 57.0.19.
-6. **Empty and error states** sweep, now that the date strip can legitimately be empty.
-7. **Component tests.** There is no setup, which is why logic keeps being extracted to `lib/`.
-   `@testing-library/react-native` would let the screens themselves be covered.
+5. **Migrate `@clerk/clerk-expo` → `@clerk/expo`.** Deprecation warning on every boot.
+6. **`npx expo install --check`.** 17 packages may need aligning; expo is 57.0.15 vs 57.0.19.
+7. **Empty and error states** sweep, now that the date strip can legitimately be empty.
+8. **Component tests.** Attempted in round 9 and abandoned: vitest cannot transform React
+   Native's Flow-typed source, so `@testing-library/react-native` will not load. Either add Jest
+   with the react-native preset, or render through the `react-native-web` shims under jsdom with
+   `@testing-library/react`. Until then, logic keeps getting extracted to `lib/` — which is why
+   that directory has grown a test file for every round.
 
 ## Notes that will save time later
 

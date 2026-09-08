@@ -16,7 +16,7 @@ import {
   useBarberReviews,
   useBarberServices,
   useBarberSlots,
-  useSaveBarber,
+  useToggleSavedBarber,
 } from '@/hooks/useBarbers';
 import { groupSlotsByDay } from '@/lib/schedule';
 import { listFromResponse } from '@/lib/types';
@@ -40,7 +40,7 @@ export default function BarberProfileScreen(): React.ReactElement {
   const services = useBarberServices(barberId);
   const slots = useBarberSlots(barberId);
   const reviews = useBarberReviews(barberId);
-  const saveBarber = useSaveBarber();
+  const savedBarbers = useToggleSavedBarber();
   const serviceList = listFromResponse(services.data ?? {});
   const slotList = listFromResponse(slots.data ?? {});
   const reviewList = listFromResponse(reviews.data ?? {});
@@ -58,6 +58,8 @@ export default function BarberProfileScreen(): React.ReactElement {
         <EmptyState title="Profile unavailable" message="This barber could not be loaded." />
       </Screen>
     );
+
+  const saved = savedBarbers.isSaved(barberId);
 
   return (
     <Screen
@@ -78,12 +80,17 @@ export default function BarberProfileScreen(): React.ReactElement {
           </View>
         )}
         <Pressable
+          accessibilityLabel={saved ? 'Remove from saved barbers' : 'Save this barber'}
+          accessibilityRole="button"
+          accessibilityState={{ selected: saved }}
           style={styles.heart}
-          onPress={() => {
-            void saveBarber.mutateAsync(barberId);
-          }}
+          onPress={() => savedBarbers.toggle(profile.data)}
         >
-          <Text style={styles.heartText}>♡</Text>
+          <Ionicons
+            color={saved ? colors.error : colors.textPrimary}
+            name={saved ? 'heart' : 'heart-outline'}
+            size={22}
+          />
         </Pressable>
       </View>
       <Text style={styles.title}>{profile.data.businessName}</Text>
@@ -170,10 +177,6 @@ const styles = StyleSheet.create({
     right: spacing.md,
     top: spacing.md,
     width: 44,
-  },
-  heartText: {
-    color: colors.accentLight,
-    fontSize: 24,
   },
   hero: {
     height: 260,

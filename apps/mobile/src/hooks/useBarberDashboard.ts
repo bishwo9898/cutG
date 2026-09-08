@@ -5,6 +5,7 @@ import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 import { usePagedQuery } from '@/hooks/usePagedQuery';
 import type { PagedFilters, PagedQueryResult } from '@/hooks/usePagedQuery';
 import { mobileApi } from '@/lib/apiClient';
+import { patchAppointmentStatus } from '@/lib/appointmentCache';
 import { queryClient } from '@/lib/queryClient';
 import type { UpdateBarberProfileRequest, UpdateServiceRequest } from '@barber-saas/shared-types';
 
@@ -14,6 +15,7 @@ import type {
   BarberProfile,
   BarberService,
   Paginated,
+  AppointmentStatus,
 } from '@/lib/types';
 import type { BarberAppointmentDetail } from '@barber-saas/shared-types';
 import type { ScheduleEntry } from '@barber-saas/shared-types';
@@ -105,16 +107,61 @@ export const useUpdateBarberProfile = (): UseMutationResult<
 export const useBarberServicesPrivate = (): UseQueryResult<Paginated<BarberService>> =>
   useQuery({ queryKey: ['barber', 'services'], queryFn: () => mobileApi.barber.services() });
 
+type StatusChange = { id: string; status: string; notes?: string };
+/** Snapshots of every cache this touched, so a failure can put them all back. */
+type StatusRollback = { previous: Array<[readonly unknown[], unknown]> };
+
+/**
+ * Confirm, decline, start, complete — the actions a barber presses all day.
+ *
+ * The change is applied to the cache before the request goes out, so the badge flips in the same
+ * frame instead of after a PATCH and the refetch its invalidation triggers. Two round trips of
+ * dead button, on a phone between clients, was the worst-feeling thing in the portal.
+ */
 export const useUpdateAppointmentStatus = (): UseMutationResult<
   AppointmentSummary,
   Error,
-  { id: string; status: string; notes?: string }
+  StatusChange,
+  StatusRollback
 > =>
-  useMutation({
+  useMutation<AppointmentSummary, Error, StatusChange, StatusRollback>({
     mutationFn: ({ id, status, notes }) =>
       mobileApi.barber.updateAppointmentStatus(id, { status, notes }),
-    onSuccess: async (): Promise<void> => {
+
+    onMutate: async ({ id, status }): Promise<StatusRollback> => {
+      // In-flight refetches would otherwise land after the patch and put the old status back.
+      await queryClient.cancelQueries({ queryKey: ['barber', 'appointments'] });
+      await queryClient.cancelQueries({ queryKey: ['barber', 'slots'] });
+
+      const touched: Array<[readonly unknown[], unknown]> = [];
+      for (const key of [
+        ['barber', 'appointments'],
+        ['barber', 'slots'],
+      ]) {
+        for (const [queryKey, data] of queryClient.getQueriesData({ queryKey: key })) {
+          const patched = patchAppointmentStatus(data, id, status as AppointmentStatus);
+          // Only remember caches this actually changed; restoring the rest on failure would
+          // discard anything that arrived in the meantime.
+          if (patched !== data) {
+            touched.push([queryKey, data]);
+            queryClient.setQueryData(queryKey, patched);
+          }
+        }
+      }
+      return { previous: touched };
+    },
+
+    onError: (_error, _variables, context): void => {
+      for (const [queryKey, data] of context?.previous ?? []) {
+        queryClient.setQueryData(queryKey, data);
+      }
+    },
+
+    // Reconcile either way: the server decides things the patch cannot, such as what a completed
+    // booking does to the day's revenue.
+    onSettled: async (): Promise<void> => {
       await queryClient.invalidateQueries({ queryKey: ['barber', 'appointments'] });
+      await queryClient.invalidateQueries({ queryKey: ['barber', 'slots'] });
     },
   });
 
