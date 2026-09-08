@@ -389,3 +389,73 @@ input:checked + .toggle-track::after,
 .toggle-input:checked + .toggle-track::after {
   background: #fff;
 }
+
+/* ==========================================================================
+   Auth — one centred column, no photography
+
+   The previous shell was a two-column split with a full-bleed photograph in the left half. It cost
+   an image download on the one screen where somebody is trying to do a single thing, and it pushed
+   the two fields they came for off to one side. This centres them and loads nothing.
+   ========================================================================== */
+
+.auth-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100svh;
+  padding: clamp(24px, 6vh, 64px) 20px;
+  background: var(--ivory-canvas);
+}
+
+.auth-shell-inner {
+  display: grid;
+  justify-items: center;
+  gap: 22px;
+  width: min(100%, 27rem);
+}
+
+.auth-shell-brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  color: var(--ivory-ink);
+  font-family: var(--font-display);
+  font-size: 26px;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+}
+
+.auth-shell-brand-mark {
+  padding: 2px 7px 3px;
+  border-radius: 8px;
+  color: var(--ivory-surface);
+  background: var(--ivory-ink);
+}
+
+.auth-shell .auth-form {
+  width: 100%;
+  border: 1px solid var(--ivory-line);
+  border-radius: 20px;
+  padding: clamp(24px, 4vw, 34px);
+  background: var(--ivory-surface);
+  box-shadow: 0 18px 44px rgba(57, 45, 36, 0.07);
+}
+
+.auth-shell-note {
+  max-width: 24rem;
+  margin: 0;
+  color: var(--ivory-muted);
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .auth-shell {
+    /* Let the card meet the edges rather than sitting in a thin gutter. */
+    padding-inline: 14px;
+  }
+
+  .auth-shell .auth-form {
+    border-radius: 16px;
+  }
+}

@@ -7,16 +7,15 @@ import { HeroFlipWord } from '@/components/landing/hero-flip-word';
 import { LandingNav } from '@/components/landing/landing-nav';
 import { LandingSection } from '@/components/landing/landing-section';
 import { ServiceRouteMap } from '@/components/landing/service-route-map';
-import { AI_STUDIO_PUBLIC } from '@/lib/features';
 
 export const metadata: Metadata = {
-  title: 'cutG - Premium barber booking, mobile service, and AI preview',
+  title: 'cutG - Premium barber booking and mobile barber service',
   description:
-    'Book trusted barbers, preview your next cut with AI, and bring premium barber service to your door.',
+    'Book trusted barbers, compare real availability, and bring premium barber service to your door.',
   openGraph: {
     title: 'cutG - Your barber, wherever you are',
     description:
-      'Book trusted barbers nearby, bring them to your door, and preview your next look before the appointment.',
+      'Book trusted barbers nearby, bring them to your door, and agree on the cut before the appointment.',
     type: 'website',
   },
 };
@@ -35,7 +34,7 @@ const steps = [
   {
     number: '03',
     title: 'Get the cut.',
-    body: 'At their shop or yours. Show your AI preview so the look is clear before the first pass.',
+    body: 'At their shop or yours. Bring a reference so the look is clear before the first pass.',
   },
 ];
 
@@ -101,23 +100,41 @@ export default function LandingPage(): React.ReactElement {
         </div>
       </LandingSection>
 
-      {AI_STUDIO_PUBLIC && (
-        <LandingSection className="landing-cinematic-section" id="hair-design">
-          <div className="landing-cinematic-shell">
-            <div className="landing-cinematic-section-heading">
-              <div>
-                <p className="landing-cinematic-eyebrow">AI Hair Design Studio</p>
-                <h2>See it before you commit.</h2>
-              </div>
-              <p>
-                A single realistic preview helps you align on the look before the appointment
-                begins.
-              </p>
-            </div>
-            <HairDesignSlider />
+      {/*
+        The wipe is a showcase, not a doorway into the studio: the AI feature behind it is still
+        being built, so the section shows what a shared reference looks like and sends the visitor
+        to book rather than into something unfinished. Restore the studio CTA when it ships.
+      */}
+      <LandingSection className="landing-cinematic-section" id="preview">
+        <div className="landing-cinematic-shell landing-cinematic-preview-grid">
+          <div className="landing-cinematic-preview-copy">
+            <p className="landing-cinematic-eyebrow">The preview</p>
+            <h2>Agree on the cut before the first pass.</h2>
+            <p>
+              Drag the handle to compare. The clearer the reference, the less gets lost between the
+              cut you pictured and the one you walk out with.
+            </p>
+            <ul className="landing-cinematic-preview-points">
+              <li>
+                <Check size={15} /> Attach a reference photo to any booking
+              </li>
+              <li>
+                <Check size={15} /> Your barber sees it before you arrive
+              </li>
+              <li>
+                <Check size={15} /> No more &quot;a little off the top&quot;
+              </li>
+            </ul>
+            <Link
+              className="landing-cinematic-button landing-cinematic-button-primary"
+              href="/client/start"
+            >
+              Find your barber <ArrowUpRight size={16} />
+            </Link>
           </div>
-        </LandingSection>
-      )}
+          <HairDesignSlider showFooter={false} />
+        </div>
+      </LandingSection>
 
       <LandingSection
         className="landing-cinematic-section landing-cinematic-section-surface"

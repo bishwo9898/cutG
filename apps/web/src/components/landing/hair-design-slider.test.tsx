@@ -1,9 +1,28 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { HairDesignSlider } from './hair-design-slider';
 
 describe('HairDesignSlider', () => {
+  // vitest is not running with `globals`, so Testing Library's automatic cleanup never registers
+  // and renders would otherwise stack across tests in the same file.
+  afterEach(cleanup);
+
+  it('sends visitors to book rather than into the unfinished studio', () => {
+    // The wipe is back on the public page while the AI studio behind it is still being built.
+    // A "try it" link here would drop a first-time visitor into a half-finished feature.
+    render(<HairDesignSlider />);
+    const cta = screen.getByRole('link');
+    expect(cta.getAttribute('href')).toBe('/client/start');
+    expect(cta.getAttribute('href')).not.toContain('design');
+  });
+
+  it('drops its footer when the section around it already carries the copy', () => {
+    const { container } = render(<HairDesignSlider showFooter={false} />);
+    expect(container.querySelector('.landing-cinematic-slider-footer')).toBeNull();
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
   it('uses the supplied images and follows the pointer without a click', () => {
     const { container } = render(<HairDesignSlider />);
 

@@ -8,7 +8,29 @@ import { useRef, useState } from 'react';
 const beforeImage = '/images/landing/hair-preview-before.webp';
 const afterImage = '/images/landing/hair-preview-after.png';
 
-export function HairDesignSlider(): React.ReactElement {
+type HairDesignSliderProps = {
+  caption?: string;
+  subCaption?: string;
+  ctaHref?: string;
+  ctaLabel?: string;
+  /** Off when the surrounding section already carries the copy and the call to action. */
+  showFooter?: boolean;
+};
+
+/**
+ * The before/after wipe.
+ *
+ * The footer copy and its call to action are props because this sits on the public landing page
+ * while the AI studio behind it is still being built — sending a visitor to `/client/design` would
+ * drop them into an unfinished feature. The default points at booking instead.
+ */
+export function HairDesignSlider({
+  caption = 'See the finished shape before you sit down, so you and your barber start from the same picture.',
+  subCaption = 'Every booking can carry a reference photo.',
+  ctaHref = '/client/start',
+  ctaLabel = 'Find your barber',
+  showFooter = true,
+}: HairDesignSliderProps = {}): React.ReactElement {
   const [sliderPosition, setSliderPosition] = useState(50);
   const frameRef = useRef<HTMLDivElement | null>(null);
 
@@ -86,15 +108,17 @@ export function HairDesignSlider(): React.ReactElement {
         </div>
       </div>
 
-      <div className="landing-cinematic-slider-footer">
-        <div>
-          <p>One realistic preview, attached to the booking before the chair ever turns.</p>
-          <small>Keep the haircut conversation clear before the first pass.</small>
+      {showFooter && (
+        <div className="landing-cinematic-slider-footer">
+          <div>
+            <p>{caption}</p>
+            <small>{subCaption}</small>
+          </div>
+          <Link className="landing-cinematic-button landing-cinematic-button-primary" href={ctaHref}>
+            {ctaLabel}
+          </Link>
         </div>
-        <Link className="landing-cinematic-button landing-cinematic-button-primary" href="/client/design">
-          Try it free
-        </Link>
-      </div>
+      )}
     </div>
   );
 }

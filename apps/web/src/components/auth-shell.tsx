@@ -1,22 +1,22 @@
-import { Scissors } from 'lucide-react';
+import Link from 'next/link';
 
 type AuthAudience = 'CLIENT' | 'BARBER' | 'GENERAL';
 
-const copy: Record<AuthAudience, { heading: string; body: string }> = {
-  CLIENT: {
-    heading: 'Your next cut, without the back-and-forth.',
-    body: 'Find trusted barbers, compare services, and keep every appointment in one place.',
-  },
-  BARBER: {
-    heading: 'More time behind the chair. Less time behind a screen.',
-    body: 'Keep your services, schedule, customers, and daily appointments in one calm workspace.',
-  },
-  GENERAL: {
-    heading: 'One platform. Two focused experiences.',
-    body: 'Book a trusted barber or run your business with a workspace built around the way you work.',
-  },
+/** One quiet line under the form. The old shell gave this a half-screen photo panel of its own. */
+const note: Record<AuthAudience, string> = {
+  CLIENT: 'Find trusted barbers and keep every appointment in one place.',
+  BARBER: 'Your services, schedule, and customers in one calm workspace.',
+  GENERAL: 'Book a trusted barber, or run your business from one workspace.',
 };
 
+/**
+ * The frame around every sign-in, sign-up and password screen.
+ *
+ * Deliberately a single centred column. It used to be a two-column split with a background
+ * photograph filling the left half — which cost a full-bleed image download on the one screen
+ * where somebody is trying to do exactly one thing, and pushed the fields they came for off to
+ * one side. Nothing here loads an image at all now.
+ */
 export function AuthShell({
   children,
   audience = 'GENERAL',
@@ -24,23 +24,18 @@ export function AuthShell({
   children: React.ReactNode;
   audience?: AuthAudience;
 }): React.ReactElement {
-  const message = copy[audience];
   return (
-    <main className="auth-page">
-      <section className="auth-brand">
-        <div className="brand-lockup">
-          <span className="brand-mark">
-            <Scissors size={19} />
-          </span>
-          cutG
-        </div>
-        <div className="auth-quote">
-          <h2>{message.heading}</h2>
-          <p>{message.body}</p>
-        </div>
-        <small>Built for the craft.</small>
-      </section>
-      <section className="auth-panel">{children}</section>
+    <main className="auth-shell">
+      <div className="auth-shell-inner">
+        <Link className="auth-shell-brand" href="/">
+          <span className="auth-shell-brand-mark">cut</span>
+          <span>G</span>
+        </Link>
+
+        {children}
+
+        <p className="auth-shell-note">{note[audience]}</p>
+      </div>
     </main>
   );
 }

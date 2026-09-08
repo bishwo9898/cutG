@@ -138,42 +138,82 @@
   line-height: 0.9;
 }
 
+/**
+ * The word that swaps between "whenever" and "wherever".
+ *
+ * This is now the only definition of it. There used to be a second, conflicting one in globals.css:
+ * that one built a 3D flip, and this sheet — loading later — quietly cancelled it with
+ * `perspective: none` and replaced the motion with a slide. The two together produced the actual
+ * bug, which was that `overflow: hidden` on a box exactly 1.12em tall sliced the outgoing italic
+ * off partway through every swap.
+ *
+ * So: nothing is clipped. Both words are laid on top of each other and cross-faded with a short
+ * rise, which stays legible from the first frame to the last and reads as deliberate rather than
+ * as something the browser is struggling with.
+ */
 .landing-cinematic-flip-word {
-  overflow: hidden;
-  perspective: none;
-  transform-style: flat;
+  position: relative;
+  display: inline-grid;
+  align-items: baseline;
+  justify-items: start;
+  margin: 0 0.06em;
+  line-height: inherit;
+  /* Visible, not hidden: the descender of a large serif italic lives outside the em box. */
+  overflow: visible;
+  vertical-align: baseline;
   color: var(--ivory-champagne);
+  font-style: italic;
+  font-weight: 300;
 }
 
-.landing-cinematic-flip-word::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: 0.1em;
-  left: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--ivory-champagne) 24%, var(--ivory-champagne) 76%, transparent);
-  opacity: 0.55;
+/* Holds the width of the longer word so the line never reflows mid-swap. */
+.landing-cinematic-flip-sizer {
+  visibility: hidden;
+  white-space: nowrap;
 }
 
 .landing-cinematic-flip-face {
-  transform-origin: 50% 50%;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: baseline;
+  white-space: nowrap;
   transition:
-    transform 640ms cubic-bezier(0.19, 1, 0.22, 1),
-    opacity 460ms ease,
-    filter 460ms ease;
+    transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 520ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
 }
 
 .landing-cinematic-flip-word[data-active='0'] .landing-cinematic-flip-face[data-face='0'],
 .landing-cinematic-flip-word[data-active='1'] .landing-cinematic-flip-face[data-face='1'] {
-  filter: blur(0);
-  transform: translateY(0) scale(1);
+  opacity: 1;
+  transform: translateY(0);
 }
 
+/* The outgoing word lifts away and the incoming one rises into its place. A sixth of a line is
+   enough to read as movement without either word ever leaving the reader's eye. */
 .landing-cinematic-flip-word[data-active='0'] .landing-cinematic-flip-face[data-face='1'],
 .landing-cinematic-flip-word[data-active='1'] .landing-cinematic-flip-face[data-face='0'] {
-  filter: blur(7px);
-  transform: translateY(42%) scale(0.94);
+  opacity: 0;
+  transform: translateY(0.16em);
+}
+
+/* A steady rule under the word, so the eye has something that does not move to hold on to. */
+.landing-cinematic-flip-word::after {
+  position: absolute;
+  right: 0;
+  bottom: -0.06em;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--ivory-champagne) 22%,
+    var(--ivory-champagne) 78%,
+    transparent
+  );
+  opacity: 0.5;
+  content: '';
 }
 
 .landing-cinematic-hero-subhead {
@@ -410,4 +450,276 @@
 .landing-cinematic-footer small,
 .landing-cinematic-footer nav {
   color: var(--ivory-muted);
+}
+
+/* ==========================================================================
+   Navigation — reacts to where the reader is, without re-rendering to do it
+   ========================================================================== */
+
+.landing-cinematic-nav {
+  /* Written every frame by the nav component; used by the progress hairline below. */
+  --nav-progress: 0;
+  padding-block: 18px;
+  transition:
+    padding 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 320ms ease,
+    box-shadow 320ms ease,
+    border-color 320ms ease;
+}
+
+/* Compacts once the reader leaves the hero, giving the page back a little height and signalling
+   that they have moved — quieter than a bar that slides away and comes back. */
+.landing-cinematic-nav.is-scrolled {
+  padding-block: 11px;
+  border-bottom-color: rgba(89, 70, 55, 0.1);
+  background: rgba(250, 247, 241, 0.82);
+  box-shadow: 0 10px 34px rgba(57, 45, 36, 0.06);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+}
+
+.landing-cinematic-nav.is-scrolled .landing-cinematic-brand {
+  font-size: 24px;
+}
+
+.landing-cinematic-brand {
+  transition: font-size 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* How far through the page the reader is. A hairline rather than a bar: it answers the question
+   without asking for attention. */
+.landing-cinematic-nav-progress {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  transform: scaleX(var(--nav-progress));
+  transform-origin: left;
+  background: linear-gradient(90deg, var(--ivory-champagne), rgba(178, 146, 98, 0.45));
+  opacity: 0;
+  transition: opacity 320ms ease;
+  pointer-events: none;
+}
+
+.landing-cinematic-nav.is-scrolled .landing-cinematic-nav-progress {
+  opacity: 0.9;
+}
+
+/* The section the reader is actually in keeps its underline drawn. */
+.landing-cinematic-nav-links a[aria-current='true'] {
+  color: var(--ivory-ink);
+}
+
+.landing-cinematic-nav-links a[aria-current='true']::after {
+  transform: scaleX(1);
+}
+
+/* ==========================================================================
+   Scroll — assisted, not taken over
+   ========================================================================== */
+
+/*
+ * `proximity`, deliberately, not `mandatory`.
+ *
+ * Mandatory snapping seizes the scroll: stop between two sections and the page yanks itself to one
+ * of them, which is the opposite of not noticing it is there. Proximity only finishes a gesture
+ * that was already most of the way to a section, so a reader who wants to sit between two — or read
+ * a long one at their own pace — keeps control, and someone flicking down gets set down neatly.
+ *
+ * Scoped with :has so it applies to the landing page alone; the portals scroll normally.
+ */
+html:has(.landing-cinematic-page) {
+  /* The compacted height of the fixed bar. Snap points and anchors are both inset by it, and the
+     sections below subtract it, so a snapped section fills exactly the space under the nav —
+     no band of the next one showing, nothing of its own cut off. */
+  --landing-nav-h: 72px;
+
+  scroll-snap-type: y proximity;
+  scroll-padding-top: var(--landing-nav-h);
+  scroll-behavior: smooth;
+}
+
+.landing-cinematic-page > section {
+  scroll-snap-align: start;
+  /* A flick can carry past several sections; forcing a stop at each would feel like a ratchet. */
+  scroll-snap-stop: normal;
+}
+
+/*
+ * Sections hold a screen so a snap lands on something whole.
+ *
+ * `min-height`, not `height`: anything with more to say than fits — the barber plans on a short
+ * laptop — grows and scrolls normally rather than being cropped.
+ */
+.landing-cinematic-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* The viewport less the bar that sits over it — see --landing-nav-h above. */
+  min-height: calc(100svh - var(--landing-nav-h, 72px));
+  /*
+   * Proportional to the screen, so the breathing room scales instead of eating a fixed 200px out
+   * of a short laptop display.
+   *
+   * This gets every section inside a 900px viewport. It will not do so on every screen ever made —
+   * the mobile-service timeline is five rows of text and shrinking those to win a fit would just
+   * trade a real problem for a worse one. Proximity snapping is chosen precisely so that a section
+   * taller than the screen scrolls through normally and the next one still lands cleanly.
+   */
+  padding-block: clamp(36px, 5.2vh, 88px);
+}
+
+@media (max-width: 860px) {
+  /* On a phone the sections are naturally taller than the viewport and snapping them to the top
+     would strand headings off-screen, so let the page scroll the ordinary way. */
+  html:has(.landing-cinematic-page) {
+    scroll-snap-type: none;
+  }
+
+  .landing-cinematic-section {
+    min-height: 0;
+    padding-block: clamp(64px, 9vh, 96px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.landing-cinematic-page) {
+    scroll-snap-type: none;
+    scroll-behavior: auto;
+  }
+
+  .landing-cinematic-nav,
+  .landing-cinematic-brand,
+  .landing-cinematic-nav-progress {
+    transition: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Sizing the tall sections so a snap lands on a whole one
+
+   These three carry a picture or a map, and at fixed pixel sizes they ran 90-190px past a 900px
+   laptop screen — enough that snapping to the top of one cut its last line off. Their media is
+   measured against the viewport now, so the section fits whatever screen it is opened on rather
+   than only the one it was designed on.
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 861px) {
+  /* The frame drives its own size from its height, and the 3:4 ratio derives the width. */
+  .landing-cinematic-slider-shell {
+    width: auto;
+    justify-items: center;
+    gap: 14px;
+  }
+
+  .landing-cinematic-slider-frame {
+    width: auto;
+    height: min(48svh, 480px);
+  }
+
+  .landing-cinematic-map-card {
+    min-height: 0;
+    height: min(30svh, 292px);
+  }
+
+  .landing-cinematic-story-card {
+    gap: 14px;
+    padding: 20px;
+  }
+
+  .landing-cinematic-timeline {
+    padding: 10px 14px;
+  }
+
+  /* Each row is a label and one line of small print; 20px of vertical padding around that was
+     generous enough to push the section past the fold on a laptop. */
+  .landing-cinematic-timeline-row {
+    padding: 6px 0;
+  }
+
+  /* Same trade in the barber section: the cards keep their own padding, the stack between them
+     tightens. */
+  .landing-cinematic-barber-benefits {
+    margin-top: 12px;
+  }
+
+  .landing-cinematic-barber-benefits article {
+    padding: 20px;
+  }
+
+  .landing-cinematic-pricing {
+    margin-top: 16px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   The preview section
+
+   Copy on one side, the wipe on the other. Stacked, the image had to stay small to keep the
+   section inside a screen and floated in a lot of empty canvas; side by side it can be twice the
+   size and the section still fits, because the height budget is spent across the width instead of
+   down the page.
+   -------------------------------------------------------------------------- */
+
+.landing-cinematic-preview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(32px, 5vw, 72px);
+}
+
+.landing-cinematic-preview-copy {
+  display: grid;
+  justify-items: start;
+  gap: 18px;
+  max-width: 30rem;
+}
+
+.landing-cinematic-preview-copy h2 {
+  margin: 0;
+}
+
+.landing-cinematic-preview-copy > p {
+  margin: 0;
+  color: var(--ivory-ink-soft);
+}
+
+.landing-cinematic-preview-points {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ivory-ink-soft);
+  font-size: 15px;
+}
+
+.landing-cinematic-preview-points li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.landing-cinematic-preview-points svg {
+  flex: none;
+  color: var(--ivory-champagne);
+}
+
+@media (min-width: 861px) {
+  /* Bigger than the stacked version could afford, and still inside the screen. */
+  .landing-cinematic-preview-grid .landing-cinematic-slider-frame {
+    height: min(62svh, 580px);
+  }
+}
+
+@media (max-width: 860px) {
+  .landing-cinematic-preview-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .landing-cinematic-preview-copy {
+    max-width: none;
+  }
 }
